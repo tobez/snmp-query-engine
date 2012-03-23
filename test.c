@@ -32,7 +32,6 @@ encode_string_oid(const char *oid, struct encode *e)
 	unsigned char *s = e->b;
 	unsigned n;
 	unsigned n2 = 0;
-	int last = 0;
 
 	if (e->len + 2 > e->max_len) {
 		errno = EMSGSIZE;
@@ -157,7 +156,7 @@ encode_dump(FILE *f, struct encode *e)
 }
 
 int
-test(const char *oid, const unsigned char *res, int len)
+test(const char *oid, const char *res, int len)
 {
 	char *buf = malloc(len + 20);
 	struct encode e = encode_init(buf, len + 20);
