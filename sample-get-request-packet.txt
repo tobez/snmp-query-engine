@@ -3,6 +3,22 @@
 00000020  0b 2b 06 01 02 01 02 02  01 02 87 69 05 00 30 0e  |.+.........i..0.|
 00000030  06 0a 2b 06 01 02 01 02  02 01 02 19 05 00        |..+...........  |
 
+PDU Types
+   0xA0 = GetRequest
+   0xA1 = GetNextRequest
+   0xA2 = GetResponse
+   0xA3 = SetRequest
+   0xA4 = Trap
+
+Error statuses:
+
+   0   no error
+   1   too big
+   2   no such name
+   3   bad values
+   4   read only
+   5   generic error
+
 30 sequence
 3c   of length 3c = 60 bytes                       \
 02 integer  (= SNMP version)                       |
@@ -11,7 +27,7 @@
 04 octet string (= community)                      |
 06   of size 6                                     |
 70 75 62 6c 69 63  value "public"                  |
-a0 PDU?                                            |
+a0 PDU = GetRequest                                |
 2f   of size 2f = 47 bytes                      \  |
 02 integer (= request-id)                       |  |
 04   of size 4                                  |  |
