@@ -18,6 +18,20 @@ Error statuses:
    3   bad values
    4   read only
    5   generic error
+   (v2 only)
+   6   no access
+   7   wrong type
+   8   wrong length
+   9   wrong encoding
+  10   wrong value
+  11   no creation
+  12   inconsistent value
+  13   resource unavailable
+  14   commit failed
+  15   undo failed
+  16   authorization error
+  17   not writable
+  18   inconsistent name
 
 30 sequence
 3c   of length 3c = 60 bytes                       \
