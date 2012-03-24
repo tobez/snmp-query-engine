@@ -4,9 +4,14 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define AT_OID 6
+#define AT_INTEGER  2
+#define AT_STRING   4
+#define AT_OID      6
+#define AT_SEQUENCE 0x30
 
 #define MAX_OID 268435455  /* 2^28-1 to fit into 4 bytes */
+
+#define PDU_GET_REQUEST 0xa0
 
 struct encode
 {
@@ -16,6 +21,10 @@ struct encode
 	int max_len;
 };
 
+extern int encode_type_len(unsigned char type, unsigned i, struct encode *e);
+extern int encode_integer(unsigned i, struct encode *e);
+extern int encode_string(const char *s, struct encode *e);
+
 struct encode encode_init(void *buf, int size)
 {
 	struct encode e;
@@ -23,6 +32,130 @@ struct encode encode_init(void *buf, int size)
 	e.len = 0;
 	e.max_len = size;
 	return e;
+}
+
+int
+build_get_request_packet(int version, const char *community,
+						 const char *oid_list,
+						 unsigned request_id, struct encode *e)
+{
+	unsigned char *packet_sequence = e->b;
+	unsigned char *pdu;
+
+	if (e->len + 2 > e->max_len) {
+		errno = EMSGSIZE;
+		return -1;
+	}
+	packet_sequence[0] = AT_SEQUENCE;
+	e->len += 2;
+	e->b   += 2;
+	if (version < 0 || version > 1) {
+		errno = EINVAL;
+		return -1;
+	}
+	if (encode_integer((unsigned)version, e) < 0)	return -1;
+	if (encode_string(community, e) < 0)	return -1;
+	if (e->len + 2 > e->max_len) {
+		errno = EMSGSIZE;
+		return -1;
+	}
+	pdu = e->b;
+	pdu[0] = PDU_GET_REQUEST;
+	e->len += 2;
+	e->b   += 2;
+	if (encode_integer(request_id, e) < 0)	return -1;
+	if (encode_integer(0, e) < 0)	return -1; /* error-status */
+	if (encode_integer(0, e) < 0)	return -1; /* error-index */
+	// XXX
+	// sequence of oid-values
+	//    sequence
+	//       oid
+	//       value
+	//    adjust length
+	// adjust length
+	// adjust PDU length
+	// adjust packet sequence length
+	return 0;
+}
+
+int
+encode_string(const char *s, struct encode *e)
+{
+	int i = strlen(s);
+	if (encode_type_len(AT_STRING, i, e) < 0)	return -1;
+	if (e->len + i > e->max_len) {
+		errno = EMSGSIZE;
+		return -1;
+	}
+	memmove(e->b, s, i);
+	e->b   += i;
+	e->len += i;
+	return 0;
+}
+
+int
+encode_integer(unsigned i, struct encode *e)
+{
+	return encode_type_len(AT_INTEGER, i, e);
+}
+
+int
+encode_type_len(unsigned char type, unsigned i, struct encode *e)
+{
+	int l;
+	if (i <= 127) {
+		l = 2;
+		if (e->len + l > e->max_len) {
+			errno = EMSGSIZE;
+			return -1;
+		}
+		e->b[1] = i & 0x7f;
+	} else if (i <= 255) {
+		l = 3;
+		if (e->len + l > e->max_len) {
+			errno = EMSGSIZE;
+			return -1;
+		}
+		e->b[1] = 0x81;
+		e->b[2] = i & 0xff;
+	} else if (i <= 65535) {
+		l = 4;
+		if (e->len + l > e->max_len) {
+			errno = EMSGSIZE;
+			return -1;
+		}
+		e->b[1] = 0x82;
+		e->b[2] = (i >> 8) & 0xff;
+		e->b[3] = i & 0xff;
+	} else if (i <= 16777215) {
+		l = 5;
+		if (e->len + l > e->max_len) {
+			errno = EMSGSIZE;
+			return -1;
+		}
+		e->b[1] = 0x83;
+		e->b[2] = (i >> 16) & 0xff;
+		e->b[3] = (i >> 8) & 0xff;
+		e->b[4] = i & 0xff;
+	} else if (i <= 4294967295u) {
+		l = 6;
+		if (e->len + l > e->max_len) {
+			errno = EMSGSIZE;
+			return -1;
+		}
+		e->b[1] = 0x83;
+		e->b[2] = (i >> 24) & 0xff;
+		e->b[3] = (i >> 16) & 0xff;
+		e->b[4] = (i >> 8) & 0xff;
+		e->b[5] = i & 0xff;
+	} else {
+		errno = ERANGE;
+		return -1;
+	}
+	e->b[0] = type;
+	e->b   += l;
+	e->len += l;
+	return 0;
 }
 
 int
