@@ -6,12 +6,18 @@
 
 #define AT_INTEGER  2
 #define AT_STRING   4
+#define AT_NULL		5
 #define AT_OID      6
 #define AT_SEQUENCE 0x30
 
 #define MAX_OID 268435455  /* 2^28-1 to fit into 4 bytes */
 
 #define PDU_GET_REQUEST 0xa0
+
+#define SPACECHECK(bytes) if (e->len + (bytes) > e->max_len) { errno = EMSGSIZE; return -1; }
+#define SPACECHECK2 SPACECHECK(2)
+#define EXTEND(bytes) { int sz = (bytes); e->len += sz; e->b += sz; }
+#define EXTEND2 EXTEND(2)
 
 struct encode
 {
@@ -24,6 +30,8 @@ struct encode
 extern int encode_type_len(unsigned char type, unsigned i, struct encode *e);
 extern int encode_integer(unsigned i, struct encode *e);
 extern int encode_string(const char *s, struct encode *e);
+extern int encode_string_oid(const char *oid, struct encode *e);
+extern int encode_store_length(struct encode *e, unsigned char *s);
 
 struct encode encode_init(void *buf, int size)
 {
@@ -39,42 +47,87 @@ build_get_request_packet(int version, const char *community,
 						 const char *oid_list,
 						 unsigned request_id, struct encode *e)
 {
-	unsigned char *packet_sequence = e->b;
+	unsigned char *packet_sequence;
 	unsigned char *pdu;
+	unsigned char *oid_sequence;
 
-	if (e->len + 2 > e->max_len) {
-		errno = EMSGSIZE;
-		return -1;
-	}
-	packet_sequence[0] = AT_SEQUENCE;
-	e->len += 2;
-	e->b   += 2;
+	SPACECHECK2;
+	packet_sequence = e->b;
+   	packet_sequence[0] = AT_SEQUENCE;
+	EXTEND2;
+
 	if (version < 0 || version > 1) {
 		errno = EINVAL;
 		return -1;
 	}
 	if (encode_integer((unsigned)version, e) < 0)	return -1;
 	if (encode_string(community, e) < 0)	return -1;
-	if (e->len + 2 > e->max_len) {
-		errno = EMSGSIZE;
-		return -1;
-	}
+
+	SPACECHECK2;
 	pdu = e->b;
 	pdu[0] = PDU_GET_REQUEST;
-	e->len += 2;
-	e->b   += 2;
+	EXTEND2;
+
 	if (encode_integer(request_id, e) < 0)	return -1;
 	if (encode_integer(0, e) < 0)	return -1; /* error-status */
 	if (encode_integer(0, e) < 0)	return -1; /* error-index */
-	// XXX
-	// sequence of oid-values
-	//    sequence
-	//       oid
-	//       value
-	//    adjust length
-	// adjust length
-	// adjust PDU length
-	// adjust packet sequence length
+
+	SPACECHECK2;
+	oid_sequence = e->b;
+	oid_sequence[0] = AT_SEQUENCE;
+	EXTEND2;
+
+	while (*oid_list) {
+		unsigned char *seq;
+		int l;
+
+		SPACECHECK2;
+		seq = e->b;
+		seq[0] = AT_SEQUENCE;
+		EXTEND2;
+		l = encode_string_oid(oid_list, e);
+		if (l < 0)	return -1;
+		SPACECHECK2;
+		e->b[0] = AT_NULL;
+		e->b[1] = 0;
+		EXTEND2;
+		if (encode_store_length(e, seq) < 0)	return -1;
+		oid_list += l+1;
+	}
+
+	if (encode_store_length(e, oid_sequence) < 0)	return -1;
+	if (encode_store_length(e, pdu) < 0)	return -1;
+	if (encode_store_length(e, packet_sequence) < 0)	return -1;
+	return 0;
+}
+
+int
+encode_store_length(struct encode *e, unsigned char *s)
+{
+	int n = e->b - s - 2;
+
+	/* assert(s >= e->buf); */
+	/* assert(s + 2 <= e->b); */
+	if (n <= 127) {
+		s[1] = n & 0x7f;
+	} else if ( n <= 255) {
+		SPACECHECK(1);
+		memmove(s+3, s+2, n);
+		s[1] = 0x81;
+		s[2] = n & 0xff;
+		EXTEND(1);
+	} else if ( n <= 65535) {
+		SPACECHECK(2);
+		memmove(s+4, s+2, n);
+		s[1] = 0x82;
+		s[2] = (n >> 8) & 0xff;
+		s[3] = n & 0xff;
+		EXTEND(2);
+	} else {
+		/* XXX larger sizes are possible */
+		errno = EMSGSIZE;
+		return -1;
+	}
 	return 0;
 }
 
@@ -161,6 +214,7 @@ encode_type_len(unsigned char type, unsigned i, struct encode *e)
 int
 encode_string_oid(const char *oid, struct encode *e)
 {
+	const char *o;
 	int l = 0;
 	unsigned char *s = e->b;
 	unsigned n;
@@ -174,18 +228,19 @@ encode_string_oid(const char *oid, struct encode *e)
 	s++;
 	l += 2;
 
-	if (*oid == '.') oid++;
+	o = oid;
+	if (*o == '.') o++;
 
 	n = 0;
-	while (isdigit(*oid)) {
-		n = 10*n + *oid++ - '0';
+	while (isdigit(*o)) {
+		n = 10*n + *o++ - '0';
 	}
-	if (*oid++ != '.') {
+	if (*o++ != '.') {
 		errno = EINVAL;
 		return -1;
 	}
-	while (isdigit(*oid)) {
-		n2 = 10*n2 + *oid++ - '0';
+	while (isdigit(*o)) {
+		n2 = 10*n2 + *o++ - '0';
 	}
 	if (n2 >= 40) {
 		errno = EINVAL;
@@ -233,14 +288,14 @@ encode_string_oid(const char *oid, struct encode *e)
 			*s++ = n & 0x7f;
 			l += 4;
 		}
-		if (*oid == 0)	break;
-		if (*oid++ != '.') {
+		if (*o == 0)	break;
+		if (*o++ != '.') {
 			errno = EINVAL;
 			return -1;
 		}
 		n = 0;
-		while (isdigit(*oid)) {
-			n = 10*n + *oid++ - '0';
+		while (isdigit(*o)) {
+			n = 10*n + *o++ - '0';
 		}
 	}
 	n = l - 2;
@@ -273,7 +328,7 @@ encode_string_oid(const char *oid, struct encode *e)
 		errno = EMSGSIZE;
 		return -1;
 	}
-	return 0;
+	return o-oid;
 }
 
 void
@@ -283,7 +338,15 @@ encode_dump(FILE *f, struct encode *e)
 	int i;
 
 	for (i = 0; i < e->len; i++) {
-		fprintf(f, "%02x", (unsigned)*s++);
+		fprintf(f, "%02x ", (unsigned)s[i]);
+		if (i % 16 == 15 && i < e->len-1) {
+			int j;
+			fprintf(f, "  ");
+			for (j = i - 16; j <= i; j++) {
+				fprintf(f, "%c", isprint(s[j]) ? s[j] : '.');
+			}
+			fprintf(f, "\n");
+		}
 	}
 	fprintf(f, "\n");
 }
@@ -406,6 +469,21 @@ main(void)
 		"Books are overflowing onto the tables and the sofas "
 		"and making little heaps under the windows.", 4);
 	fprintf(stderr, "%d of %d tests passed succesfully\n", success, n_tests);
+
+	{
+		struct encode e;
+		char buf[1500];
+		e = encode_init(buf, 1500);
+		if (build_get_request_packet(1, "public",
+			"1.3.6.1.2.1.2.2.1.2.1001\0"
+			"1.3.6.1.2.1.2.2.1.2.25\0",
+			6789012, &e) < 0)
+		{
+			perror("build_get_request_packet");
+		} else {
+			encode_dump(stderr, &e);
+		}
+	}
 	return 0;
 }
 
