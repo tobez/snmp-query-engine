@@ -28,7 +28,7 @@ struct encode
 };
 
 extern int encode_type_len(unsigned char type, unsigned i, struct encode *e);
-extern int encode_integer(unsigned i, struct encode *e);
+extern int encode_integer(unsigned i, struct encode *e, int force_size);
 extern int encode_string(const char *s, struct encode *e);
 extern int encode_string_oid(const char *oid, struct encode *e);
 extern int encode_store_length(struct encode *e, unsigned char *s);
@@ -60,7 +60,7 @@ build_get_request_packet(int version, const char *community,
 		errno = EINVAL;
 		return -1;
 	}
-	if (encode_integer((unsigned)version, e) < 0)	return -1;
+	if (encode_integer((unsigned)version, e, 0) < 0)	return -1;
 	if (encode_string(community, e) < 0)	return -1;
 
 	SPACECHECK2;
@@ -68,9 +68,9 @@ build_get_request_packet(int version, const char *community,
 	pdu[0] = PDU_GET_REQUEST;
 	EXTEND2;
 
-	if (encode_integer(request_id, e) < 0)	return -1;
-	if (encode_integer(0, e) < 0)	return -1; /* error-status */
-	if (encode_integer(0, e) < 0)	return -1; /* error-index */
+	if (encode_integer(request_id, e, 4) < 0)	return -1;
+	if (encode_integer(0, e, 0) < 0)	return -1; /* error-status */
+	if (encode_integer(0, e, 0) < 0)	return -1; /* error-index */
 
 	SPACECHECK2;
 	oid_sequence = e->b;
@@ -147,9 +147,37 @@ encode_string(const char *s, struct encode *e)
 }
 
 int
-encode_integer(unsigned i, struct encode *e)
+encode_integer(unsigned i, struct encode *e, int force_size)
 {
-	return encode_type_len(AT_INTEGER, i, e);
+	int l;
+	if (i <= 255)
+		l = 1;
+	else if (i <= 65535)
+		l = 2;
+	else if (i <= 16777215)
+		l = 3;
+	else if (i < 4294967295u)
+		l = 4;
+	else {
+		errno = ERANGE;
+		return -1;
+	}
+	if (force_size)
+		l = force_size;
+	if (encode_type_len(AT_INTEGER, l, e) < 0) return -1;
+	SPACECHECK(l);
+	switch (l) {
+	case 4:
+		e->b[l-4] = (i >> 24) & 0xff;
+	case 3:
+		e->b[l-3] = (i >> 16) & 0xff;
+	case 2:
+		e->b[l-2] = (i >> 8) & 0xff;
+	case 1:
+		e->b[l-1] = i & 0xff;
+	}
+	EXTEND(l);
+	return 0;
 }
 
 int
@@ -158,44 +186,29 @@ encode_type_len(unsigned char type, unsigned i, struct encode *e)
 	int l;
 	if (i <= 127) {
 		l = 2;
-		if (e->len + l > e->max_len) {
-			errno = EMSGSIZE;
-			return -1;
-		}
+		SPACECHECK(l);
 		e->b[1] = i & 0x7f;
 	} else if (i <= 255) {
 		l = 3;
-		if (e->len + l > e->max_len) {
-			errno = EMSGSIZE;
-			return -1;
-		}
+		SPACECHECK(l);
 		e->b[1] = 0x81;
 		e->b[2] = i & 0xff;
 	} else if (i <= 65535) {
 		l = 4;
-		if (e->len + l > e->max_len) {
-			errno = EMSGSIZE;
-			return -1;
-		}
+		SPACECHECK(l);
 		e->b[1] = 0x82;
 		e->b[2] = (i >> 8) & 0xff;
 		e->b[3] = i & 0xff;
 	} else if (i <= 16777215) {
 		l = 5;
-		if (e->len + l > e->max_len) {
-			errno = EMSGSIZE;
-			return -1;
-		}
+		SPACECHECK(l);
 		e->b[1] = 0x83;
 		e->b[2] = (i >> 16) & 0xff;
 		e->b[3] = (i >> 8) & 0xff;
 		e->b[4] = i & 0xff;
 	} else if (i <= 4294967295u) {
 		l = 6;
-		if (e->len + l > e->max_len) {
-			errno = EMSGSIZE;
-			return -1;
-		}
+		SPACECHECK(l);
 		e->b[1] = 0x83;
 		e->b[2] = (i >> 24) & 0xff;
 		e->b[3] = (i >> 16) & 0xff;
@@ -206,8 +219,7 @@ encode_type_len(unsigned char type, unsigned i, struct encode *e)
 		return -1;
 	}
 	e->b[0] = type;
-	e->b   += l;
-	e->len += l;
+	EXTEND(l);
 	return 0;
 }
 
