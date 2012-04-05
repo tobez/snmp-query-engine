@@ -14,9 +14,36 @@ usage(char *err)
 	exit(err ? 1 : 0);
 }
 
+static void
+do_accept(struct socket_info *si)
+{
+	fprintf(stderr, "incoming connection!\n");
+}
+
 void
 create_listening_socket(int port)
 {
+	int fd;
+	struct sockaddr_in servaddr;
+	struct socket_info *si;
+
+	fd = socket(PF_INET, SOCK_STREAM, 0);
+	if (fd < 0)
+		croak(1, "create_listening_socket: socket");
+
+	bzero(&servaddr, sizeof(servaddr));
+	servaddr.sin_family      = PF_INET;
+	servaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	servaddr.sin_port        = htons(port);
+
+	if (bind(fd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
+		croak(1, "create_listening_socket: bind");
+
+	if (listen(fd, 1024) < 0)
+		croak(1, "create_listening_socket: listen");
+
+	si = new_socket_info(fd);
+	on_read(si, do_accept);
 }
 
 int
