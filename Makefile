@@ -8,7 +8,7 @@ all: snmp-query-engine
 snmp-query-engine: main.o event_loop.o carp.o
 	cc $(CFLAGS) -o snmp-query-engine \
 	  main.o event_loop.o carp.o \
-	  $(LIBPATH) -lJudy
+	  $(LIBPATH) -lJudy -lmsgpack
 
 main.o: main.c sqe.h
 	cc -c $(CFLAGS) -o main.o main.c

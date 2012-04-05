@@ -20,6 +20,7 @@
 #endif
 
 #include <Judy.h>
+#include <msgpack.h>
 
 struct socket_info;
 
