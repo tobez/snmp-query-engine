@@ -1,29 +1,4 @@
-#include <unistd.h>
-#include <stdlib.h>
-#include <stdio.h>
-
 #include "sqe.h"
-
-#if defined(__linux__)
-static char proggy[MAXPATHLEN];
-#endif
-
-const char *thisprogname(void)
-{
-#if defined(__FreeBSD__)
-	return getprogname();
-#elif defined(__APPLE__)
-	return getprogname();
-#elif defined(__sun__)
-	return getexecname();
-#elif defined(__linux__)
-	if (readlink("/proc/self/exe", proggy, MAXPATHLEN) != -1)
-		return proggy;
-	return "";
-#else
-#error "unsupported OS"
-#endif
-}
 
 void
 usage(char *err)
@@ -38,8 +13,6 @@ usage(char *err)
 	fprintf(f, "\t-p prt\tlisten on port prt instead of default 7667\n");
 	exit(err ? 1 : 0);
 }
-
-int listen_sock;
 
 void
 create_listening_socket(int port)
