@@ -37,6 +37,7 @@ void croakx(int exit_code, const char *fmt, ...);
 struct socket_info *new_socket_info(int fd);
 void delete_socket_info(struct socket_info *si);
 void on_read(struct socket_info *si, void (*read_handler)(struct socket_info *si));
+void on_write(struct socket_info *si, void (*write_handler)(struct socket_info *si));
 void event_loop(void);
 
 #endif

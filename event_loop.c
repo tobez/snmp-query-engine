@@ -44,6 +44,8 @@ on_read(struct socket_info *si, void (*read_handler)(struct socket_info *si))
 		set_ke.ident  = si->fd;
 		set_ke.filter = EVFILT_READ;
 		set_ke.flags  = EV_ADD | EV_RECEIPT;
+		if (!read_handler)
+			set_ke.flags |= EV_DISABLE;
 
 		nev = kevent(kq, &set_ke, 1, &get_ke, 1, NULL);
 		if (nev < 0)
@@ -55,6 +57,40 @@ on_read(struct socket_info *si, void (*read_handler)(struct socket_info *si))
 		if (get_ke.data != 0) {
 			errno = get_ke.data;
 			croak(1, "on_read: kevent (error in data)");
+		}
+	}
+#endif
+}
+
+void
+on_write(struct socket_info *si, void (*write_handler)(struct socket_info *si))
+{
+	si->write_handler = write_handler;
+#ifdef WITH_KQUEUE
+	if (kq < 0) {
+		if ( (kq = kqueue()) < 0)
+			croak(1, "on_write: kqueue");
+	}
+	{
+		struct kevent set_ke, get_ke;
+		int nev;
+
+		set_ke.ident  = si->fd;
+		set_ke.filter = EVFILT_WRITE;
+		set_ke.flags  = EV_ADD | EV_RECEIPT;
+		if (!write_handler)
+			set_ke.flags |= EV_DISABLE;
+
+		nev = kevent(kq, &set_ke, 1, &get_ke, 1, NULL);
+		if (nev < 0)
+			croak(1, "on_write: kevent");
+		if (nev != 1)
+			croakx(1, "on_write: unexpected nev %d", nev);
+		if ((get_ke.flags & EV_ERROR) == 0)
+			croakx(1, "on_write: unexpectedly EV_ERROR is not set");
+		if (get_ke.data != 0) {
+			errno = get_ke.data;
+			croak(1, "on_write: kevent (error in data)");
 		}
 	}
 #endif
@@ -84,6 +120,18 @@ event_loop(void)
 					}
 				} else {
 					fprintf(stderr, "event_loop: EVFILT_READ: ident %u - no FD found in socks\n", (unsigned)ke[i].ident);
+				}
+			} else if (ke[i].filter == EVFILT_WRITE) {
+				JLG(slot, socks, ke[i].ident);
+				if (slot && *slot) {
+					si = *slot;
+					if (si->write_handler) {
+						si->write_handler(si);
+					} else {
+						fprintf(stderr, "event_loop: EVFILT_WRITE: ident %u - socket does not have a write handler\n", (unsigned)ke[i].ident);
+					}
+				} else {
+					fprintf(stderr, "event_loop: EVFILT_WRITE: ident %u - no FD found in socks\n", (unsigned)ke[i].ident);
 				}
 			} else {
 				fprintf(stderr, "event_loop: unexpected filter value %d, ident %u\n", ke[i].filter, (unsigned)ke[i].ident);

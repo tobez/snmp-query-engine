@@ -15,9 +15,25 @@ usage(char *err)
 }
 
 static void
-do_accept(struct socket_info *si)
+client_input(struct socket_info *si)
 {
-	fprintf(stderr, "incoming connection!\n");
+	fprintf(stderr, "some data's here\n");
+}
+
+static void
+do_accept(struct socket_info *lsi)
+{
+	struct sockaddr_in addr;
+	int fd;
+	unsigned len;
+	struct socket_info *si;
+
+	len = sizeof(addr);
+	if ( (fd = accept(lsi->fd, (struct sockaddr *)&addr, &len)) < 0)
+		croak(1, "do_accept: accept");
+	fprintf(stderr, "incoming connection from %s!\n", inet_ntoa(addr.sin_addr));
+	si = new_socket_info(fd);
+	on_read(si, client_input);
 }
 
 void
