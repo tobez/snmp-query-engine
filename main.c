@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "sqe.h"
+
 #if defined(__linux__)
 static char proggy[MAXPATHLEN];
 #endif
@@ -37,6 +39,13 @@ usage(char *err)
 	exit(err ? 1 : 0);
 }
 
+int listen_sock;
+
+void
+create_listening_socket(int port)
+{
+}
+
 int
 main(int argc, char **argv)
 {
@@ -59,6 +68,10 @@ main(int argc, char **argv)
 	argv += optind;
 	if (argc != 0)
 		usage("extraneous arguments");
+
+	create_listening_socket(port);
+	event_loop();
+
 	return 0;
 }
 
