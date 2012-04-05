@@ -35,7 +35,7 @@ on_read(struct socket_info *si, void (*read_handler)(struct socket_info *si))
 #ifdef WITH_KQUEUE
 	if (kq < 0) {
 		if ( (kq = kqueue()) < 0)
-			croak(1, "kqueue");
+			croak(1, "on_read: kqueue");
 	}
 	{
 		struct kevent set_ke, get_ke;
@@ -46,7 +46,16 @@ on_read(struct socket_info *si, void (*read_handler)(struct socket_info *si))
 		set_ke.flags  = EV_ADD | EV_RECEIPT;
 
 		nev = kevent(kq, &set_ke, 1, &get_ke, 1, NULL);
-		fprintf(stderr, "nev: %d, flags: %d\n", nev, get_ke.flags);
+		if (nev < 0)
+			croak(1, "on_read: kevent");
+		if (nev != 1)
+			croakx(1, "on_read: unexpected nev %d", nev);
+		if ((get_ke.flags & EV_ERROR) == 0)
+			croakx(1, "on_read: unexpectedly EV_ERROR is not set");
+		if (get_ke.data != 0) {
+			errno = get_ke.data;
+			croak(1, "on_read: kevent (error in data)");
+		}
 	}
 #endif
 }
@@ -55,6 +64,31 @@ on_read(struct socket_info *si, void (*read_handler)(struct socket_info *si))
 void
 event_loop(void)
 {
-	getchar();
+	struct kevent ke[10];
+	int nev, i;
+	while (1) {
+		nev = kevent(kq, NULL, 0, ke, 10, NULL);
+		if (nev < 0)
+			croak(1, "event_loop: kevent");
+		for (i = 0; i < nev; i++) {
+			struct socket_info *si, **slot;
+
+			if (ke[i].filter == EVFILT_READ) {
+				JLG(slot, socks, ke[i].ident);
+				if (slot && *slot) {
+					si = *slot;
+					if (si->read_handler) {
+						si->read_handler(si);
+					} else {
+						fprintf(stderr, "event_loop: EVFILT_READ: ident %u - socket does not have a read handler\n", (unsigned)ke[i].ident);
+					}
+				} else {
+					fprintf(stderr, "event_loop: EVFILT_READ: ident %u - no FD found in socks\n", (unsigned)ke[i].ident);
+				}
+			} else {
+				fprintf(stderr, "event_loop: unexpected filter value %d, ident %u\n", ke[i].filter, (unsigned)ke[i].ident);
+			}
+		}
+	}
 }
 #endif
