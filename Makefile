@@ -5,10 +5,11 @@ CFLAGS=	-Wall -Werror $(OPTIMIZE) $(INCPATH)
 
 all: snmp-query-engine
 
-snmp-query-engine: main.o event_loop.o carp.o
-	cc $(CFLAGS) -o snmp-query-engine \
-	  main.o event_loop.o carp.o \
-	  $(LIBPATH) -lJudy -lmsgpack
+STDOBJ=event_loop.o carp.o
+STDLINK=$(STDOBJ) $(LIBPATH) -lJudy -lmsgpack
+
+snmp-query-engine: main.o $(STDOBJ)
+	cc $(CFLAGS) -o snmp-query-engine main.o $(STDLINK)
 
 main.o: main.c sqe.h
 	cc -c $(CFLAGS) -o main.o main.c
@@ -21,3 +22,6 @@ carp.o: carp.c sqe.h
 
 test: test.c
 	cc $(CFLAGS) -o test test.c && ./test
+
+test_msgpack: test_msgpack.c $(STDOBJ)
+	cc $(CFLAGS) -o test_msgpack test_msgpack.c $(STDLINK)
