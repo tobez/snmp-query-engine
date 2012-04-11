@@ -50,7 +50,7 @@ set_handlers(struct socket_info *si,
 
 	if (ep < 0) {
 		if ( (ep = epoll_create(10)) < 0)
-			croak(1, "on_read: epoll_create");
+			croak(1, "set_handlers: epoll_create");
 	}
 
 	if (si->read_handler || si->write_handler) {
@@ -77,9 +77,29 @@ set_handlers(struct socket_info *si,
 
 	set_ev.data.fd = si->fd;
 	if (epoll_ctl(ep, op, si->fd, &set_ev) < 0)
-		croak(1, "on_read: epoll_ctl");
+		croak(1, "set_handlers: epoll_ctl");
 }
 #endif
+
+void
+binary_dump(FILE *f, void *buf, int len)
+{
+	unsigned char *s = buf;
+	int i;
+
+	for (i = 0; i < len; i++) {
+		fprintf(f, "%02x ", (unsigned)s[i]);
+		if (i % 16 == 15 && i < len-1) {
+			int j;
+			fprintf(f, "  ");
+			for (j = i - 16; j <= i; j++) {
+				fprintf(f, "%c", isprint(s[j]) ? s[j] : '.');
+			}
+			fprintf(f, "\n");
+		}
+	}
+	fprintf(f, "\n");
+}
 
 void
 on_read(struct socket_info *si, void (*read_handler)(struct socket_info *si))
@@ -93,12 +113,10 @@ on_read(struct socket_info *si, void (*read_handler)(struct socket_info *si))
 	{
 		struct kevent set_ke, get_ke;
 		int nev;
+		unsigned flags = EV_ADD | EV_RECEIPT;
 
-		set_ke.ident  = si->fd;
-		set_ke.filter = EVFILT_READ;
-		set_ke.flags  = EV_ADD | EV_RECEIPT;
-		if (!read_handler)
-			set_ke.flags |= EV_DISABLE;
+		if (!read_handler) flags |= EV_DISABLE;
+		EV_SET(&set_ke, si->fd, EVFILT_READ, flags, 0, 0, 0);
 
 		nev = kevent(kq, &set_ke, 1, &get_ke, 1, NULL);
 		if (nev < 0)
@@ -130,12 +148,10 @@ on_write(struct socket_info *si, void (*write_handler)(struct socket_info *si))
 	{
 		struct kevent set_ke, get_ke;
 		int nev;
+		unsigned flags = EV_ADD | EV_RECEIPT;
 
-		set_ke.ident  = si->fd;
-		set_ke.filter = EVFILT_WRITE;
-		set_ke.flags  = EV_ADD | EV_RECEIPT;
-		if (!write_handler)
-			set_ke.flags |= EV_DISABLE;
+		if (!write_handler) flags |= EV_DISABLE;
+		EV_SET(&set_ke, si->fd, EVFILT_WRITE, flags, 0, 0, 0);
 
 		nev = kevent(kq, &set_ke, 1, &get_ke, 1, NULL);
 		if (nev < 0)

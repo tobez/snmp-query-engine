@@ -16,21 +16,21 @@ if (!($daemon_pid = fork)) {
 	exit;  # unreach
 }
 
-Time::HiRes::sleep(0.5);
+Time::HiRes::sleep(0.2);
 our $mp = Data::MessagePack->new()->prefer_integer;
 our $conn = IO::Socket::INET->new(PeerAddr => "127.0.0.1:7668", Proto => "tcp")
 	or die "cannot connect to snmp-query-engine daemon: $!\n";
-my $xx = getsockopt($conn, SOL_SOCKET, SO_SNDLOWAT);
-my $lowat = unpack("I", $xx);
-print "SNDLOWAT is $lowat\n";
-$xx = getsockopt($conn, SOL_SOCKET, SO_RCVLOWAT);
-$lowat = unpack("I", $xx);
-print "RCVLOWAT is $lowat\n";
-my $tcp = IPPROTO_TCP;
-my $packed = getsockopt($conn, $tcp, TCP_NODELAY)
-	or die "getsockopt TCP_NODELAY: $!";
-my $nodelay = unpack("I", $packed);
-print "Nagle's algorithm is turned ", $nodelay ? "off\n" : "on\n";
+#my $xx = getsockopt($conn, SOL_SOCKET, SO_SNDLOWAT);
+#my $lowat = unpack("I", $xx);
+#print "SNDLOWAT is $lowat\n";
+#$xx = getsockopt($conn, SOL_SOCKET, SO_RCVLOWAT);
+#$lowat = unpack("I", $xx);
+#print "RCVLOWAT is $lowat\n";
+#my $tcp = IPPROTO_TCP;
+#my $packed = getsockopt($conn, $tcp, TCP_NODELAY)
+#	or die "getsockopt TCP_NODELAY: $!";
+#my $nodelay = unpack("I", $packed);
+#print "Nagle's algorithm is turned ", $nodelay ? "off\n" : "on\n";
 
 request({x=>1});  # not an array
 request([]); # empty array

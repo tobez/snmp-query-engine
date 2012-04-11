@@ -142,9 +142,9 @@ do_accept(struct socket_info *lsi)
 	if (!c)
 		croak(1, "do_accept: malloc(client_connection)");
 	bzero(c, sizeof(*c));
+	si->udata = c;
 	msgpack_unpacker_init(&c->unpacker, MSGPACK_UNPACKER_INIT_BUFFER_SIZE);
 	msgpack_unpacked_init(&c->input);
-	si->udata = c;
 	on_read(si, client_input);
 }
 
