@@ -12,13 +12,14 @@ use Socket ':all';
 
 my $daemon_pid;
 if (!($daemon_pid = fork)) {
-	exec("$FindBin::Bin/../snmp-query-engine", "-p7668");
+	exec("$FindBin::Bin/../snmp-query-engine", "-p7668", "-q");
 	exit;  # unreach
 }
 
 Time::HiRes::sleep(0.5);
 our $mp = Data::MessagePack->new()->prefer_integer;
-our $conn = IO::Socket::INET->new(PeerAddr => "127.0.0.1:7668", Proto => "tcp");
+our $conn = IO::Socket::INET->new(PeerAddr => "127.0.0.1:7668", Proto => "tcp")
+	or die "cannot connect to snmp-query-engine daemon: $!\n";
 my $xx = getsockopt($conn, SOL_SOCKET, SO_SNDLOWAT);
 my $lowat = unpack("I", $xx);
 print "SNDLOWAT is $lowat\n";
@@ -46,12 +47,12 @@ kill 15, $daemon_pid;
 sub request
 {
 	my $d = shift;
-	print "packing "; dd $d;
+	#print "packing "; dd $d;
 	my $p = $mp->pack($d);
-	print "sending ", length($p), " bytes\n";
+	#print "sending ", length($p), " bytes\n";
 	$conn->syswrite($p);
 	my $reply;
-	print "reading\n";
+	#print "reading\n";
 	$conn->sysread($reply, 65536);
 	dd $mp->unpack($reply);
 }
