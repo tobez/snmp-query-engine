@@ -21,7 +21,7 @@ usage(char *err)
  */
 
 static void
-error_reply(struct socket_info *si, int code, unsigned id, char *error)
+error_reply(struct socket_info *si, unsigned code, unsigned id, char *error)
 {
 	msgpack_sbuffer* buffer = msgpack_sbuffer_new();
 	msgpack_packer* pk = msgpack_packer_new(buffer, msgpack_sbuffer_write);
@@ -66,6 +66,9 @@ client_input(struct socket_info *si)
 
 	while (msgpack_unpacker_next(&c->unpacker, &c->input)) {
 		msgpack_object *o;
+		uint32_t id;
+		uint32_t type;
+
 		got = 1;
 		printf("got client input: ");
 		msgpack_object_print(stdout, c->input.data);
@@ -83,7 +86,17 @@ client_input(struct socket_info *si)
 			error_reply(si, 21, 0, "Request without an id");
 			goto end;
 		}
-		error_reply(si, 21, 42, "Request not understood");
+		if (o->via.array.ptr[1].type != MSGPACK_OBJECT_POSITIVE_INTEGER) {
+			error_reply(si, 21, 0, "Request id is not a positive integer");
+			goto end;
+		}
+		id = o->via.array.ptr[1].via.u64;
+		if (o->via.array.ptr[0].type != MSGPACK_OBJECT_POSITIVE_INTEGER) {
+			error_reply(si, 21, id, "Request type is not a positive integer");
+			goto end;
+		}
+		type = o->via.array.ptr[0].via.u64;
+		error_reply(si, type+10, id, "Request not understood");
 end:;
 	}
 	if (got) {
