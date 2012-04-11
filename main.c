@@ -14,6 +14,30 @@ usage(char *err)
 	exit(err ? 1 : 0);
 }
 
+/*
+ * get request:
+ * [ 0, $id, $ip, $port, $version, $community, [$oids], {other parameters} ]
+ *
+ */
+
+static void
+error_reply(struct socket_info *si, int code, unsigned id, char *error)
+{
+	msgpack_sbuffer* buffer = msgpack_sbuffer_new();
+	msgpack_packer* pk = msgpack_packer_new(buffer, msgpack_sbuffer_write);
+	int l = strlen(error);
+
+	msgpack_pack_array(pk, 3);
+	msgpack_pack_int(pk, code);
+	msgpack_pack_int(pk, id);
+	msgpack_pack_raw(pk, l);
+	msgpack_pack_raw_body(pk, error, l);
+
+	write(si->fd, buffer->data, buffer->size);
+	msgpack_sbuffer_free(buffer);
+	msgpack_packer_free(pk);
+}
+
 static void
 client_input(struct socket_info *si)
 {
@@ -41,10 +65,26 @@ client_input(struct socket_info *si)
 	msgpack_unpacker_buffer_consumed(&c->unpacker, n);
 
 	while (msgpack_unpacker_next(&c->unpacker, &c->input)) {
+		msgpack_object *o;
 		got = 1;
 		printf("got client input: ");
 		msgpack_object_print(stdout, c->input.data);
 		printf("\n");
+		o = &c->input.data;
+		if (o->type != MSGPACK_OBJECT_ARRAY) {
+			error_reply(si, 21, 0, "Request is not an array");
+			goto end;
+		}
+		if (o->via.array.size < 1) {
+			error_reply(si, 21, 0, "Request is an empty array");
+			goto end;
+		}
+		if (o->via.array.size < 2) {
+			error_reply(si, 21, 0, "Request without an id");
+			goto end;
+		}
+		error_reply(si, 21, 42, "Request not understood");
+end:;
 	}
 	if (got) {
 		msgpack_unpacker_expand_buffer(&c->unpacker, 0);
