@@ -32,6 +32,12 @@ struct socket_info
 	void (*write_handler)(struct socket_info *si);
 };
 
+struct client_connection
+{
+	msgpack_unpacker unpacker;
+	msgpack_unpacked input;
+};
+
 const char *thisprogname(void);
 void croak(int exit_code, const char *fmt, ...);
 void croakx(int exit_code, const char *fmt, ...);

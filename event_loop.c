@@ -25,7 +25,11 @@ new_socket_info(int fd)
 void
 delete_socket_info(struct socket_info *si)
 {
-	/* XXX */
+	int rc;
+
+	JLD(rc, socks, si->fd);
+	close(si->fd);
+	free(si);
 }
 
 void
