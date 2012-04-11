@@ -8,16 +8,25 @@ use IO::Socket::INET;
 use Data::Dump;
 use Time::HiRes;
 use FindBin;
+use Socket ':all';
 
 my $daemon_pid;
 if (!($daemon_pid = fork)) {
-	exec("$FindBin::Bin/../snmp-query-engine", "-p7668", "-q");
+	exec("$FindBin::Bin/../snmp-query-engine", "-p7668");
 	exit;  # unreach
 }
 
-Time::HiRes::sleep(0.2);
+Time::HiRes::sleep(0.5);
 our $mp = Data::MessagePack->new()->prefer_integer;
 our $conn = IO::Socket::INET->new(PeerAddr => "127.0.0.1:7668", Proto => "tcp");
+my $xx = getsockopt($conn, SOL_SOCKET, SO_SNDLOWAT);
+my $lowat = unpack("I", $xx);
+print "LOWAT is $lowat\n";
+my $tcp = IPPROTO_TCP;
+my $packed = getsockopt($conn, $tcp, TCP_NODELAY)
+	or die "getsockopt TCP_NODELAY: $!";
+my $nodelay = unpack("I", $packed);
+print "Nagle's algorithm is turned ", $nodelay ? "off\n" : "on\n";
 
 request({x=>1});  # not an array
 request([]); # empty array
@@ -34,8 +43,12 @@ kill 15, $daemon_pid;
 sub request
 {
 	my $d = shift;
-	$conn->print($mp->pack($d));
+	print "packing "; dd $d;
+	my $p = $mp->pack($d);
+	print "sending ", length($p), " bytes\n";
+	$conn->syswrite($p);
 	my $reply;
+	print "reading\n";
 	$conn->sysread($reply, 65536);
 	dd $mp->unpack($reply);
 }

@@ -1,6 +1,7 @@
 test
 test_msgpack
 test.dSYM/
+test_msgpack.dSYM/
 *.o
 .*.swp
 snmp-query-engine
