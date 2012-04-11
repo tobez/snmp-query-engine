@@ -4,3 +4,5 @@ test.dSYM/
 *.o
 .*.swp
 snmp-query-engine
+*.core
+core

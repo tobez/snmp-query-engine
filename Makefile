@@ -9,7 +9,7 @@ STDOBJ=event_loop.o carp.o
 STDLINK=$(STDOBJ) $(LIBPATH) -lJudy -lmsgpack
 
 clean:
-	rm -f *.o snmp-query-engine test test_msgpack
+	rm -f *.o snmp-query-engine test test_msgpack *.core core
 
 snmp-query-engine: main.o $(STDOBJ)
 	cc $(CFLAGS) -o snmp-query-engine main.o $(STDLINK)

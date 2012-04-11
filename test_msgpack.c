@@ -1,5 +1,33 @@
 #include "sqe.h"
 
+void
+add_input_bytes(msgpack_unpacker *unpacker, char *buf, int sz)
+{
+	msgpack_unpacked result;
+	int got = 0;
+
+	printf("reading %d bytes\n", sz);
+	//getchar();
+	printf("ENT u(%lu) f(%lu) o(%lu) p(%lu)\n", unpacker->used, unpacker->free, unpacker->off, unpacker->parsed);
+	msgpack_unpacker_reserve_buffer(unpacker, sz);
+	printf("EXP u(%lu) f(%lu) o(%lu) p(%lu)\n", unpacker->used, unpacker->free, unpacker->off, unpacker->parsed);
+	memcpy(msgpack_unpacker_buffer(unpacker), buf, sz);
+	msgpack_unpacker_buffer_consumed(unpacker, sz);
+	printf("CON u(%lu) f(%lu) o(%lu) p(%lu)\n", unpacker->used, unpacker->free, unpacker->off, unpacker->parsed);
+
+	msgpack_unpacked_init(&result);
+	while (msgpack_unpacker_next(unpacker, &result)) {
+		got = 1;
+		msgpack_object_print(stdout, result.data);
+		printf("\n");
+	}
+	if (got) {
+		msgpack_unpacker_expand_buffer(unpacker, 0);
+		printf("XXX u(%lu) f(%lu) o(%lu) p(%lu)\n", unpacker->used, unpacker->free, unpacker->off, unpacker->parsed);
+	}
+	msgpack_unpacked_destroy(&result);
+}
+
 int
 main(void)
 {
@@ -13,19 +41,20 @@ main(void)
 				 "\x74\x2a";
 	int buf2_len = 50;
 	msgpack_unpacker unpacker;
-	msgpack_unpacked result;
-
-	(void)buf2; (void)buf2_len;
 
 	msgpack_unpacker_init(&unpacker, MSGPACK_UNPACKER_INIT_BUFFER_SIZE);
-	msgpack_unpacker_reserve_buffer(&unpacker, buf1_len-1);
-	memcpy(msgpack_unpacker_buffer(&unpacker), buf1, buf1_len-1);
-	msgpack_unpacker_buffer_consumed(&unpacker, buf1_len-1);
 
-	msgpack_unpacked_init(&result);
-	while (msgpack_unpacker_next(&unpacker, &result)) {
-		msgpack_object_print(stdout, result.data);
-		printf("\n");
+	while (buf1_len) {
+		add_input_bytes(&unpacker, buf1, 3);
+		buf1_len -= 3;
+		buf1 += 3;
+		printf("buf1 len is now %d\n", buf1_len);
+	}
+	while (buf2_len) {
+		add_input_bytes(&unpacker, buf2, 2);
+		buf2_len -= 2;
+		buf2 += 2;
+		printf("buf2 len is now %d\n", buf2_len);
 	}
 
 	return 0;
