@@ -36,7 +36,8 @@ error_reply(struct socket_info *si, unsigned code, unsigned id, char *error)
 	msgpack_pack_raw(pk, l);
 	msgpack_pack_raw_body(pk, error, l);
 
-	write(si->fd, buffer->data, buffer->size);
+	if (write(si->fd, buffer->data, buffer->size) < 0)
+		croak(1, "error_reply: write");
 	msgpack_sbuffer_free(buffer);
 	msgpack_packer_free(pk);
 }
