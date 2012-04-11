@@ -1,5 +1,7 @@
 #include "sqe.h"
 
+int opt_quiet = 0;
+
 void
 usage(char *err)
 {
@@ -11,6 +13,7 @@ usage(char *err)
 	fprintf(f, "Usage parameters:\n");
 	fprintf(f, "\t-h\t\tproduce usage text and quit\n");
 	fprintf(f, "\t-p prt\tlisten on port prt instead of default 7667\n");
+	fprintf(f, "\t-q\t\tquiet operation\n");
 	exit(err ? 1 : 0);
 }
 
@@ -39,6 +42,12 @@ error_reply(struct socket_info *si, unsigned code, unsigned id, char *error)
 }
 
 static void
+handle_get_request(struct socket_info *si, unsigned id, msgpack_object *o)
+{
+	error_reply(si, 20, id, "Get request not implemented yet");
+}
+
+static void
 client_input(struct socket_info *si)
 {
 	struct client_connection *c = si->udata;
@@ -56,7 +65,8 @@ client_input(struct socket_info *si)
 		msgpack_unpacked_destroy(&c->input);
 		msgpack_unpacker_destroy(&c->unpacker);
 		free(c);
-		fprintf(stderr, "client disconnect\n");
+		if (!opt_quiet)
+			fprintf(stderr, "client disconnect\n");
 		return;
 	}
 
@@ -70,33 +80,41 @@ client_input(struct socket_info *si)
 		uint32_t type;
 
 		got = 1;
-		printf("got client input: ");
-		msgpack_object_print(stdout, c->input.data);
-		printf("\n");
+		if (!opt_quiet) {
+			printf("got client input: ");
+			msgpack_object_print(stdout, c->input.data);
+			printf("\n");
+		}
 		o = &c->input.data;
 		if (o->type != MSGPACK_OBJECT_ARRAY) {
-			error_reply(si, 21, 0, "Request is not an array");
+			error_reply(si, 30, 0, "Request is not an array");
 			goto end;
 		}
 		if (o->via.array.size < 1) {
-			error_reply(si, 21, 0, "Request is an empty array");
+			error_reply(si, 30, 0, "Request is an empty array");
 			goto end;
 		}
 		if (o->via.array.size < 2) {
-			error_reply(si, 21, 0, "Request without an id");
+			error_reply(si, 30, 0, "Request without an id");
 			goto end;
 		}
 		if (o->via.array.ptr[1].type != MSGPACK_OBJECT_POSITIVE_INTEGER) {
-			error_reply(si, 21, 0, "Request id is not a positive integer");
+			error_reply(si, 30, 0, "Request id is not a positive integer");
 			goto end;
 		}
 		id = o->via.array.ptr[1].via.u64;
 		if (o->via.array.ptr[0].type != MSGPACK_OBJECT_POSITIVE_INTEGER) {
-			error_reply(si, 21, id, "Request type is not a positive integer");
+			error_reply(si, 30, id, "Request type is not a positive integer");
 			goto end;
 		}
 		type = o->via.array.ptr[0].via.u64;
-		error_reply(si, type+10, id, "Request not understood");
+		switch (type) {
+		case 0:
+			handle_get_request(si, id, o);
+			break;
+		default:
+			error_reply(si, type+20, id, "Unknown request type");
+		}
 end:;
 	}
 	if (got) {
@@ -116,7 +134,8 @@ do_accept(struct socket_info *lsi)
 	len = sizeof(addr);
 	if ( (fd = accept(lsi->fd, (struct sockaddr *)&addr, &len)) < 0)
 		croak(1, "do_accept: accept");
-	fprintf(stderr, "incoming connection from %s!\n", inet_ntoa(addr.sin_addr));
+	if (!opt_quiet)
+		fprintf(stderr, "incoming connection from %s!\n", inet_ntoa(addr.sin_addr));
 	si = new_socket_info(fd);
 	c = malloc(sizeof(*c));
 	if (!c)
@@ -131,7 +150,7 @@ do_accept(struct socket_info *lsi)
 void
 create_listening_socket(int port)
 {
-	int fd;
+	int fd, on;
 	struct sockaddr_in servaddr;
 	struct socket_info *si;
 
@@ -143,6 +162,10 @@ create_listening_socket(int port)
 	servaddr.sin_family      = PF_INET;
 	servaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 	servaddr.sin_port        = htons(port);
+
+	on = 1;
+	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof (on)) < 0)
+		croak(1, "create_listening_socket: setsockopt of SO_REUSEADDR error");
 
 	if (bind(fd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
 		croak(1, "create_listening_socket: bind");
@@ -160,13 +183,16 @@ main(int argc, char **argv)
 	int o;
 	int port = 7667;
 
-	while ( (o = getopt(argc, argv, "hp:")) != -1) {
+	while ( (o = getopt(argc, argv, "hp:q")) != -1) {
 		switch (o) {
 		case 'h':
 			usage(NULL);
 			break;
 		case 'p':
 			port = strtol(optarg, NULL, 10);
+			break;
+		case 'q':
+			opt_quiet = 1;
 			break;
 		default:
 			usage("");

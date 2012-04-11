@@ -38,6 +38,8 @@ struct client_connection
 	msgpack_unpacked input;
 };
 
+extern int opt_quiet;
+
 const char *thisprogname(void);
 void croak(int exit_code, const char *fmt, ...);
 void croakx(int exit_code, const char *fmt, ...);
