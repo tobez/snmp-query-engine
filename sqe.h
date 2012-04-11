@@ -18,6 +18,10 @@
 #include <sys/event.h>
 #define WITH_KQUEUE 1
 #endif
+#if defined(__linux__)
+#include <sys/epoll.h>
+#define WITH_EPOLL 1
+#endif
 
 #include <Judy.h>
 #include <msgpack.h>

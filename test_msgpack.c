@@ -8,12 +8,12 @@ add_input_bytes(msgpack_unpacker *unpacker, char *buf, int sz)
 
 	printf("reading %d bytes\n", sz);
 	//getchar();
-	printf("ENT u(%lu) f(%lu) o(%lu) p(%lu)\n", unpacker->used, unpacker->free, unpacker->off, unpacker->parsed);
+	printf("ENT u(%u) f(%u) o(%u) p(%u)\n", (unsigned)unpacker->used, (unsigned)unpacker->free, (unsigned)unpacker->off, (unsigned)unpacker->parsed);
 	msgpack_unpacker_reserve_buffer(unpacker, sz);
-	printf("EXP u(%lu) f(%lu) o(%lu) p(%lu)\n", unpacker->used, unpacker->free, unpacker->off, unpacker->parsed);
+	printf("EXP u(%u) f(%u) o(%u) p(%u)\n", (unsigned)unpacker->used, (unsigned)unpacker->free, (unsigned)unpacker->off, (unsigned)unpacker->parsed);
 	memcpy(msgpack_unpacker_buffer(unpacker), buf, sz);
 	msgpack_unpacker_buffer_consumed(unpacker, sz);
-	printf("CON u(%lu) f(%lu) o(%lu) p(%lu)\n", unpacker->used, unpacker->free, unpacker->off, unpacker->parsed);
+	printf("CON u(%u) f(%u) o(%u) p(%u)\n", (unsigned)unpacker->used, (unsigned)unpacker->free, (unsigned)unpacker->off, (unsigned)unpacker->parsed);
 
 	msgpack_unpacked_init(&result);
 	while (msgpack_unpacker_next(unpacker, &result)) {
@@ -23,7 +23,7 @@ add_input_bytes(msgpack_unpacker *unpacker, char *buf, int sz)
 	}
 	if (got) {
 		msgpack_unpacker_expand_buffer(unpacker, 0);
-		printf("XXX u(%lu) f(%lu) o(%lu) p(%lu)\n", unpacker->used, unpacker->free, unpacker->off, unpacker->parsed);
+		printf("XXX u(%u) f(%u) o(%u) p(%u)\n", (unsigned)unpacker->used, (unsigned)unpacker->free, (unsigned)unpacker->off, (unsigned)unpacker->parsed);
 	}
 	msgpack_unpacked_destroy(&result);
 }

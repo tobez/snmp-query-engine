@@ -1,7 +1,13 @@
 #include "sqe.h"
 
 void *socks = NULL;
+
+#ifdef WITH_KQUEUE
 int kq = -1;
+#endif
+#ifdef WITH_EPOLL
+int ep = -1;
+#endif
 
 struct socket_info *
 new_socket_info(int fd)
@@ -62,6 +68,12 @@ on_read(struct socket_info *si, void (*read_handler)(struct socket_info *si))
 			errno = get_ke.data;
 			croak(1, "on_read: kevent (error in data)");
 		}
+	}
+#endif
+#ifdef WITH_EPOLL
+	if (ep < 0) {
+		if ( (ep = epoll_create(10)) < 0)
+			croak(1, "on_read: epoll_create");
 	}
 #endif
 }
@@ -142,5 +154,11 @@ event_loop(void)
 			}
 		}
 	}
+}
+#endif
+#ifdef WITH_EPOLL
+void
+event_loop(void)
+{
 }
 #endif
