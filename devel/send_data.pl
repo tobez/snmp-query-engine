@@ -21,7 +21,10 @@ our $mp = Data::MessagePack->new()->prefer_integer;
 our $conn = IO::Socket::INET->new(PeerAddr => "127.0.0.1:7668", Proto => "tcp");
 my $xx = getsockopt($conn, SOL_SOCKET, SO_SNDLOWAT);
 my $lowat = unpack("I", $xx);
-print "LOWAT is $lowat\n";
+print "SNDLOWAT is $lowat\n";
+$xx = getsockopt($conn, SOL_SOCKET, SO_RCVLOWAT);
+$lowat = unpack("I", $xx);
+print "RCVLOWAT is $lowat\n";
 my $tcp = IPPROTO_TCP;
 my $packed = getsockopt($conn, $tcp, TCP_NODELAY)
 	or die "getsockopt TCP_NODELAY: $!";
