@@ -5,7 +5,7 @@ CFLAGS=	-Wall -Werror $(OPTIMIZE) $(INCPATH)
 
 all: snmp-query-engine test_ber test_msgpack
 
-STDOBJ=event_loop.o carp.o client_input.o client_listen.o opts.o
+STDOBJ=event_loop.o carp.o client_input.o client_listen.o opts.o util.o
 STDLINK=$(STDOBJ) $(LIBPATH) -lJudy -lmsgpack
 
 clean:
@@ -25,6 +25,9 @@ carp.o: carp.c sqe.h
 
 opts.o: opts.c sqe.h
 	cc -c $(CFLAGS) -o opts.o opts.c
+
+util.o: util.c sqe.h
+	cc -c $(CFLAGS) -o util.o util.c
 
 client_input.o: client_input.c sqe.h
 	cc -c $(CFLAGS) -o client_input.o client_input.c

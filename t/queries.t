@@ -34,8 +34,18 @@ request_match("bad request: bad id 2", [0,"heps"], [30,0,qr/id is not a positive
 request_match("bad request: bad type 1", [-1,12], [30,12,qr/type is not a positive integer/]);
 request_match("bad request: bad type 2", ["heps",13], [30,13,qr/type is not a positive integer/]);
 request_match("bad request: unknown type", [9,14], [29,14,qr/unknown request type/i]);
+request_match("bad request length 1", [0,15,"127.0.0.1",161, 2], [20,15,qr/bad request length/i]);
+request_match("bad request length 2", [0,16,"127.0.0.1",161, 2, "public", ["1.3.6.1.2.1.1.5.0"], "heh", "heh"],
+			  [20,16,qr/bad request length/i]);
+request_match("bad SNMP version #1", [0,17,"127.0.0.1",161, 0, "public", ["1.3.6.1.2.1.1.5.0"]], [20,17,qr/bad SNMP version/i]);
+request_match("bad SNMP version #2", [0,18,"127.0.0.1",161, 3, "public", ["1.3.6.1.2.1.1.5.0"]], [20,18,qr/bad SNMP version/i]);
+request_match("bad SNMP version #3", [0,19,"127.0.0.1",161, "meow", "public", ["1.3.6.1.2.1.1.5.0"]], [20,19,qr/bad SNMP version/i]);
+request_match("bad port number #1", [0,17,"127.0.0.1",-2, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [20,17,qr/bad port number/i]);
+request_match("bad port number #2", [0,18,"127.0.0.1",[], 1, "public", ["1.3.6.1.2.1.1.5.0"]], [20,18,qr/bad port number/i]);
+request_match("bad port number #3", [0,19,"127.0.0.1",66666, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [20,19,qr/bad port number/i]);
+request_match("bad community", [0,20,"127.0.0.1",161, 1, [], ["1.3.6.1.2.1.1.5.0"]], [20,20,qr/bad community/i]);
 
-request_match("fails for now", [0,42,"127.0.0.1", 2, "public", ["1.3.6.1.2.1.1.5.0"]],
+request_match("fails for now", [0,42,"127.0.0.1",161, 2, "public", ["1.3.6.1.2.1.1.5.0"]],
 			  [20,42,qr/not implemented/i]);
 
 kill 15, $daemon_pid;

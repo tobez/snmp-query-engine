@@ -27,6 +27,17 @@
 #include <Judy.h>
 #include <msgpack.h>
 
+#define RI_TYPE          0
+#define RI_ID            1
+#define RI_GET_IP        2
+#define RI_GET_PORT      3
+#define RI_GET_SNMP_VER  4
+#define RI_GET_COMMUNITY 5
+#define RI_GET_OIDS      6
+#define RI_GET_PARAMS    7
+
+#define RT_GET 0
+
 struct socket_info;
 
 struct socket_info
@@ -59,5 +70,8 @@ void create_listening_socket(int port);
 
 /* client_input.c */
 void new_client_connection(int fd);
+
+/* util.c */
+char *object_string(msgpack_object *o);
 
 #endif
