@@ -44,6 +44,9 @@ request_match("bad port number #1", [0,17,"127.0.0.1",-2, 1, "public", ["1.3.6.1
 request_match("bad port number #2", [0,18,"127.0.0.1",[], 1, "public", ["1.3.6.1.2.1.1.5.0"]], [20,18,qr/bad port number/i]);
 request_match("bad port number #3", [0,19,"127.0.0.1",66666, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [20,19,qr/bad port number/i]);
 request_match("bad community", [0,20,"127.0.0.1",161, 1, [], ["1.3.6.1.2.1.1.5.0"]], [20,20,qr/bad community/i]);
+request_match("bad IP 1", [0,21,666,161, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [20,21,qr/bad IP/i]);
+request_match("bad IP 2", [0,22,[],161, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [20,22,qr/bad IP/i]);
+request_match("bad IP 3", [0,23,"257.12.22.13",161, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [20,23,qr/bad IP/i]);
 
 request_match("fails for now", [0,42,"127.0.0.1",161, 2, "public", ["1.3.6.1.2.1.1.5.0"]],
 			  [20,42,qr/not implemented/i]);

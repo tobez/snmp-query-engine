@@ -32,6 +32,7 @@ handle_get_request(struct socket_info *si, unsigned id, msgpack_object *o)
 	unsigned ver = 0;
 	unsigned port = 65536;
 	char *community = NULL;
+	struct in_addr ip;
 
 	if (o->via.array.size < 7 || o->via.array.size > 8)
 		return error_reply(si, 20, id, "bad request length");
@@ -46,8 +47,10 @@ handle_get_request(struct socket_info *si, unsigned id, msgpack_object *o)
 	if (port > 65535)
 		return error_reply(si, 20, id, "bad port number");
 
-	if (o->via.array.ptr[RI_GET_COMMUNITY].type == MSGPACK_OBJECT_RAW)
-		community = object_string(&o->via.array.ptr[RI_GET_COMMUNITY]);
+	if (!object2ip(&o->via.array.ptr[RI_GET_IP], &ip))
+		return error_reply(si, 20, id, "bad IP");
+
+	community = object2string(&o->via.array.ptr[RI_GET_COMMUNITY]);
 	if (!community)
 		return error_reply(si, 20, id, "bad community");
 

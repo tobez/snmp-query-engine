@@ -72,6 +72,7 @@ void create_listening_socket(int port);
 void new_client_connection(int fd);
 
 /* util.c */
-char *object_string(msgpack_object *o);
+char *object2string(msgpack_object *o);
+int object2ip(msgpack_object *o, struct in_addr *ip); /* 1 = success, 0 = failure */
 
 #endif
