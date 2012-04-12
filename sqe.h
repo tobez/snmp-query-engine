@@ -54,4 +54,10 @@ void on_read(struct socket_info *si, void (*read_handler)(struct socket_info *si
 void on_write(struct socket_info *si, void (*write_handler)(struct socket_info *si));
 void event_loop(void);
 
+/* client_listen.c */
+void create_listening_socket(int port);
+
+/* client_input.c */
+void new_client_connection(int fd);
+
 #endif
