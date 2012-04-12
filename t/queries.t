@@ -48,6 +48,8 @@ request_match("bad IP 1", [0,21,666,161, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [2
 request_match("bad IP 2", [0,22,[],161, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [20,22,qr/bad IP/i]);
 request_match("bad IP 3", [0,23,"257.12.22.13",161, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [20,23,qr/bad IP/i]);
 
+request_match("fails for now", [0,41,"127.0.0.1",161, 2, "meow", ["1.3.6.1.2.1.1.5.0"]],
+			  [20,41,qr/not implemented/i]);
 request_match("fails for now", [0,42,"127.0.0.1",161, 2, "public", ["1.3.6.1.2.1.1.5.0"]],
 			  [20,42,qr/not implemented/i]);
 

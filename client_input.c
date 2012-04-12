@@ -34,6 +34,7 @@ handle_get_request(struct socket_info *si, unsigned id, msgpack_object *o)
 	char *community = NULL;
 	struct in_addr ip;
 	struct destination *dest;
+	struct request_queue *q;
 
 	if (o->via.array.size < 7 || o->via.array.size > 8)
 		return error_reply(si, 20, id, "bad request length");
@@ -59,6 +60,8 @@ handle_get_request(struct socket_info *si, unsigned id, msgpack_object *o)
 	free(dest->community);
 	dest->community = community;
 	dest->version = ver;
+
+	q = get_request_queue(dest, si->fd, id);
 
 	return error_reply(si, 20, id, "not implemented");
 }

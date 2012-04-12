@@ -58,7 +58,22 @@ struct destination
 {
 	unsigned version;
 	char *community;
-	void *requests;
+	void *request_queues; /* by fd */
+};
+
+struct request_queue
+{
+	struct destination *dest;
+	int fd;
+	void *requests;  /* by id */
+	/* XXX */
+};
+
+struct request_get
+{
+	int type;  /* RT_GET */
+	unsigned id;
+	/* XXX */
 };
 
 extern int opt_quiet;
@@ -84,5 +99,8 @@ int object2ip(msgpack_object *o, struct in_addr *ip); /* 1 = success, 0 = failur
 
 /* destination.c */
 struct destination *get_destination(struct in_addr *ip, unsigned port);
+
+/* request_queue.c */
+struct request_queue *get_request_queue(struct destination *dest, int fd, unsigned id);
 
 #endif
