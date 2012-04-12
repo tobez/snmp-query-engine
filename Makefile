@@ -3,13 +3,13 @@ INCPATH=	-I/usr/local/include -I/opt/local/include
 LIBPATH=	-L/usr/local/lib -L/opt/local/lib
 CFLAGS=	-Wall -Werror $(OPTIMIZE) $(INCPATH)
 
-all: snmp-query-engine test test_msgpack
+all: snmp-query-engine test_ber test_msgpack
 
 STDOBJ=event_loop.o carp.o
 STDLINK=$(STDOBJ) $(LIBPATH) -lJudy -lmsgpack
 
 clean:
-	rm -f *.o snmp-query-engine test test_msgpack *.core core
+	rm -f *.o snmp-query-engine test_ber test_msgpack *.core core
 
 snmp-query-engine: main.o $(STDOBJ)
 	cc $(CFLAGS) -o snmp-query-engine main.o $(STDLINK)
@@ -23,8 +23,14 @@ event_loop.o: event_loop.c sqe.h
 carp.o: carp.c sqe.h
 	cc -c $(CFLAGS) -o carp.o carp.c
 
-test: test.c $(STDOBJ)
-	cc $(CFLAGS) -o test test.c $(STDLINK)
+test_ber: test_ber.c $(STDOBJ)
+	cc $(CFLAGS) -o test_ber test_ber.c $(STDLINK)
 
 test_msgpack: test_msgpack.c $(STDOBJ)
 	cc $(CFLAGS) -o test_msgpack test_msgpack.c $(STDLINK)
+
+test: snmp-query-engine
+	prove t/queries.t
+
+test-details: snmp-query-engine
+	perl t/queries.t

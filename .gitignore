@@ -1,6 +1,6 @@
-test
+test_ber
+test_ber.dSYM/
 test_msgpack
-test.dSYM/
 test_msgpack.dSYM/
 *.o
 .*.swp
