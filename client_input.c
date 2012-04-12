@@ -33,6 +33,7 @@ handle_get_request(struct socket_info *si, unsigned id, msgpack_object *o)
 	unsigned port = 65536;
 	char *community = NULL;
 	struct in_addr ip;
+	struct destination *dest;
 
 	if (o->via.array.size < 7 || o->via.array.size > 8)
 		return error_reply(si, 20, id, "bad request length");
@@ -54,7 +55,11 @@ handle_get_request(struct socket_info *si, unsigned id, msgpack_object *o)
 	if (!community)
 		return error_reply(si, 20, id, "bad community");
 
-	free(community);
+	dest = get_destination(&ip, port);
+	free(dest->community);
+	dest->community = community;
+	dest->version = ver;
+
 	return error_reply(si, 20, id, "not implemented");
 }
 

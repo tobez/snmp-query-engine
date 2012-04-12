@@ -54,6 +54,13 @@ struct client_connection
 	msgpack_unpacked input;
 };
 
+struct destination
+{
+	unsigned version;
+	char *community;
+	void *requests;
+};
+
 extern int opt_quiet;
 
 const char *thisprogname(void);
@@ -74,5 +81,8 @@ void new_client_connection(int fd);
 /* util.c */
 char *object2string(msgpack_object *o);
 int object2ip(msgpack_object *o, struct in_addr *ip); /* 1 = success, 0 = failure */
+
+/* destination.c */
+struct destination *get_destination(struct in_addr *ip, unsigned port);
 
 #endif
