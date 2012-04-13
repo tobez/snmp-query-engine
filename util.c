@@ -1,7 +1,7 @@
 #include "sqe.h"
 
 char *
-object2string(msgpack_object *o)
+object_strdup(msgpack_object *o)
 {
 	char *s;
 
@@ -16,15 +16,21 @@ object2string(msgpack_object *o)
 	return s;
 }
 
+char *
+object2string(msgpack_object *o, char s[], int bufsize)
+{
+	if (o->type != MSGPACK_OBJECT_RAW) return NULL;
+	if (o->via.raw.size >= bufsize)    return NULL;
+
+	memcpy(s, o->via.raw.ptr, o->via.raw.size);
+	s[o->via.raw.size] = 0;
+	return s;
+}
+
 int
 object2ip(msgpack_object *o, struct in_addr *ip)
 {
-	char *s = object2string(o);
-	if (!s)	return 0;
-	if (inet_aton(s, ip)) {
-		free(s);
-		return 1;
-	}
-	free(s);
-	return 0;
+	char buf[16];
+	if (!object2string(o, buf, 16))	return 0;
+	return inet_aton(buf, ip);
 }

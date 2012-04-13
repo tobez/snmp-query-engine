@@ -31,9 +31,9 @@ handle_get_request(struct socket_info *si, unsigned id, msgpack_object *o)
 {
 	unsigned ver = 0;
 	unsigned port = 65536;
-	char *community = NULL;
+	char community[256];
 	struct in_addr ip;
-	struct destination *dest;
+	struct client_requests_info *cri;
 
 	if (o->via.array.size < 7 || o->via.array.size > 8)
 		return error_reply(si, 20, id, "bad request length");
@@ -51,14 +51,12 @@ handle_get_request(struct socket_info *si, unsigned id, msgpack_object *o)
 	if (!object2ip(&o->via.array.ptr[RI_GET_IP], &ip))
 		return error_reply(si, 20, id, "bad IP");
 
-	community = object2string(&o->via.array.ptr[RI_GET_COMMUNITY]);
-	if (!community)
+	if (!object2string(&o->via.array.ptr[RI_GET_COMMUNITY], community, 256))
 		return error_reply(si, 20, id, "bad community");
 
-	dest = get_destination(&ip, port);
-	free(dest->community);
-	dest->community = community;
-	dest->version = ver;
+	cri = get_client_requests_info(&ip, port, si->fd);
+	strcpy(cri->dest->community, community);
+	cri->dest->version = ver;
 
 	return error_reply(si, 20, id, "not implemented");
 }

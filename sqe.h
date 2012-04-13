@@ -61,7 +61,7 @@ struct client_connection
 struct destination
 {
 	unsigned version;
-	char *community;
+	char community[256];
 	JudyL client_requests_info;   /* JudyL of struct client_requests_info indexed by fd */
 	JudyL sid_info;  /* JudyL of (JudyHS of struct oid_info indexed by oid) indexed by sid */
 };
@@ -114,10 +114,15 @@ void create_listening_socket(int port);
 void new_client_connection(int fd);
 
 /* util.c */
-char *object2string(msgpack_object *o);
+char *object_strdup(msgpack_object *o);
+char *object2string(msgpack_object *o, char s[], int bufsize);
 int object2ip(msgpack_object *o, struct in_addr *ip); /* 1 = success, 0 = failure */
 
 /* destination.c */
+/* get_destination() cannot return NULL, it would rather die */
 struct destination *get_destination(struct in_addr *ip, unsigned port);
+
+/* client_requests_info.c */
+struct client_requests_info *get_client_requests_info(struct in_addr *ip, unsigned port, int fd);
 
 #endif
