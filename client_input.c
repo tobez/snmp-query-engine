@@ -34,6 +34,7 @@ handle_get_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	char community[256];
 	struct in_addr ip;
 	struct client_requests_info *cri;
+	struct cid_info *ci;
 
 	if (o->via.array.size < 7 || o->via.array.size > 8)
 		return error_reply(si, 20, cid, "bad request length");
@@ -62,6 +63,9 @@ handle_get_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	cri = get_client_requests_info(&ip, port, si->fd);
 	strcpy(cri->dest->community, community);
 	cri->dest->version = ver;
+	ci = get_cid_info(cri, cid);
+	if (ci->n_oids != 0)
+		return error_reply(si, 20, cid, "duplicate request id");
 
 	return error_reply(si, 20, cid, "not implemented");
 }

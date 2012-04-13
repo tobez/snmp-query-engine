@@ -125,4 +125,7 @@ struct destination *get_destination(struct in_addr *ip, unsigned port);
 /* client_requests_info.c */
 struct client_requests_info *get_client_requests_info(struct in_addr *ip, unsigned port, int fd);
 
+/* cid_info.c */
+struct cid_info *get_cid_info(struct client_requests_info *cri, unsigned cid);
+
 #endif
