@@ -13,6 +13,7 @@ get_cid_info(struct client_requests_info *cri, unsigned cid)
 		if (!ci)
 			croak(2, "get_cid_info: malloc(cid_info)");
 		bzero(ci, sizeof(*ci));
+		ci->fd = cri->fd;
 		TAILQ_INIT(&ci->oids_being_queried);
 		TAILQ_INIT(&ci->oids_done);
 		*ci_slot = ci;

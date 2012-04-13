@@ -26,6 +26,7 @@ get_client_requests_info(struct in_addr *ip, unsigned port, int fd)
 			croak(2, "get_client_requests_info: malloc(cri)");
 		bzero(cri, sizeof(*cri));
 		cri->dest = dest;
+		cri->fd   = fd;
 		TAILQ_INIT(&cri->oids_to_query);
 		*cri_slot = cri;
 	}

@@ -10,7 +10,7 @@ object_strdup(msgpack_object *o)
 
 	s = malloc(o->via.raw.size + 1);
 	if (!s)
-		croak(1, "object2string: malloc(%d)", o->via.raw.size + 1);
+		croak(1, "object_strdup: malloc(%d)", o->via.raw.size + 1);
 	memcpy(s, o->via.raw.ptr, o->via.raw.size);
 	s[o->via.raw.size] = 0;
 	return s;

@@ -35,6 +35,7 @@ handle_get_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	struct in_addr ip;
 	struct client_requests_info *cri;
 	struct cid_info *ci;
+	struct oid_info_head oi;
 
 	if (o->via.array.size < 7 || o->via.array.size > 8)
 		return error_reply(si, 20, cid, "bad request length");
@@ -66,6 +67,13 @@ handle_get_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	ci = get_cid_info(cri, cid);
 	if (ci->n_oids != 0)
 		return error_reply(si, 20, cid, "duplicate request id");
+
+	TAILQ_INIT(&oi);
+	if ( (ci->n_oids = allocate_oid_info_list(&oi, &o->via.array.ptr[RI_GET_OIDS], ci)) == 0) {
+		// XXX free allocated objects
+		return error_reply(si, 20, cid, "bad oid list");
+	}
+	TAILQ_CONCAT(&cri->oids_to_query, &oi, oid_list);
 
 	return error_reply(si, 20, cid, "not implemented");
 }

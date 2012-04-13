@@ -89,6 +89,7 @@ TAILQ_HEAD(oid_info_head, oid_info);
 struct client_requests_info
 {
 	struct destination *dest;
+	int fd;
 	JudyL cid_info; /* JudyL of struct cid_info ("cid" = client id) indexed by cid */
 	struct oid_info_head oids_to_query;
 };
@@ -96,9 +97,10 @@ struct client_requests_info
 struct cid_info
 {
 	unsigned cid;
-	unsigned n_oids;
-	unsigned n_oids_being_queried;
-	unsigned n_oids_done;
+	int fd;
+	int n_oids;
+	int n_oids_being_queried;
+	int n_oids_done;
 	struct oid_info_head oids_being_queried;
 	struct oid_info_head oids_done;
 };
@@ -158,5 +160,8 @@ struct client_requests_info *get_client_requests_info(struct in_addr *ip, unsign
 
 /* cid_info.c */
 struct cid_info *get_cid_info(struct client_requests_info *cri, unsigned cid);
+
+/* oid_info.c */
+int allocate_oid_info_list(struct oid_info_head *oi, msgpack_object *o, struct cid_info *ci);
 
 #endif
