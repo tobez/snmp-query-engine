@@ -47,6 +47,10 @@ request_match("bad community", [0,20,"127.0.0.1",161, 1, [], ["1.3.6.1.2.1.1.5.0
 request_match("bad IP 1", [0,21,666,161, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [20,21,qr/bad IP/i]);
 request_match("bad IP 2", [0,22,[],161, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [20,22,qr/bad IP/i]);
 request_match("bad IP 3", [0,23,"257.12.22.13",161, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [20,23,qr/bad IP/i]);
+request_match("oids is not an array 1", [0,24,"127.0.0.1",161, 2, "meow", 42], [20,24,qr/oids must be an array/i]);
+request_match("oids is not an array 2", [0,25,"127.0.0.1",161, 2, "meow", {}], [20,25,qr/oids must be an array/i]);
+request_match("oids is not an array 3", [0,26,"127.0.0.1",161, 2, "meow", "oids"], [20,26,qr/oids must be an array/i]);
+request_match("oids is an empty array", [0,27,"127.0.0.1",161, 2, "meow", []], [20,27,qr/oids is an empty array/i]);
 
 request_match("fails for now", [0,41,"127.0.0.1",161, 2, "meow", ["1.3.6.1.2.1.1.5.0"]],
 			  [20,41,qr/not implemented/i]);

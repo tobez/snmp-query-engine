@@ -54,6 +54,11 @@ handle_get_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	if (!object2string(&o->via.array.ptr[RI_GET_COMMUNITY], community, 256))
 		return error_reply(si, 20, cid, "bad community");
 
+	if (o->via.array.ptr[RI_GET_OIDS].type != MSGPACK_OBJECT_ARRAY)
+		return error_reply(si, 20, cid, "oids must be an array");
+	if (o->via.array.ptr[RI_GET_OIDS].via.array.size < 1)
+		return error_reply(si, 20, cid, "oids is an empty array");
+
 	cri = get_client_requests_info(&ip, port, si->fd);
 	strcpy(cri->dest->community, community);
 	cri->dest->version = ver;
