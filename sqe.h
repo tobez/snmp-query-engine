@@ -39,8 +39,26 @@
 
 #define RT_GET 0
 
+#define AT_INTEGER  2
+#define AT_STRING   4
+#define AT_NULL		5
+#define AT_OID      6
+#define AT_SEQUENCE 0x30
+
+#define MAX_OID 268435455  /* 2^28-1 to fit into 4 bytes */
+
+#define PDU_GET_REQUEST 0xa0
+
 typedef void* JudyL;
 typedef void* JudyHS;
+
+struct encode
+{
+	unsigned char *buf;
+	unsigned char *b;
+	int len;
+	int max_len;
+};
 
 struct socket_info;
 
@@ -91,12 +109,25 @@ struct oid_info
 	unsigned sid;
 	unsigned cid;
 	int fd;
-	// some kind of distinguisher between table walk and get
-	// struct encode oid
-	// struct encode value
+	// XXX some kind of distinguisher between table walk and get
+	struct encode oid;
+	struct encode value;
 };
 
 extern int opt_quiet;
+
+/* ber.c */
+extern struct encode encode_init(void *buf, int size);
+extern int encode_type_len(unsigned char type, unsigned i, struct encode *e);
+extern int encode_integer(unsigned i, struct encode *e, int force_size);
+extern int encode_string(const char *s, struct encode *e);
+extern int encode_string_oid(const char *oid, int oid_len, struct encode *e);
+extern int encode_store_length(struct encode *e, unsigned char *s);
+extern int build_get_request_packet(int version, const char *community,
+									const char *oid_list,
+									unsigned request_id, struct encode *e);
+extern void encode_dump(FILE *f, struct encode *e);
+
 
 const char *thisprogname(void);
 void croak(int exit_code, const char *fmt, ...);
