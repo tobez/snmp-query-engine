@@ -29,7 +29,7 @@
 #include <msgpack.h>
 
 #define RI_TYPE          0
-#define RI_ID            1
+#define RI_CID           1
 #define RI_GET_IP        2
 #define RI_GET_PORT      3
 #define RI_GET_SNMP_VER  4

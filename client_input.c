@@ -1,7 +1,7 @@
 #include "sqe.h"
 
 static int
-error_reply(struct socket_info *si, unsigned code, unsigned id, char *error)
+error_reply(struct socket_info *si, unsigned code, unsigned cid, char *error)
 {
 	msgpack_sbuffer* buffer = msgpack_sbuffer_new();
 	msgpack_packer* pk = msgpack_packer_new(buffer, msgpack_sbuffer_write);
@@ -9,7 +9,7 @@ error_reply(struct socket_info *si, unsigned code, unsigned id, char *error)
 
 	msgpack_pack_array(pk, 3);
 	msgpack_pack_int(pk, code);
-	msgpack_pack_int(pk, id);
+	msgpack_pack_int(pk, cid);
 	msgpack_pack_raw(pk, l);
 	msgpack_pack_raw_body(pk, error, l);
 
@@ -22,12 +22,12 @@ error_reply(struct socket_info *si, unsigned code, unsigned id, char *error)
 
 /*
  * get request:
- * [ 0, $id, $ip, $port, $version, $community, [$oids], {other parameters} ]
+ * [ 0, $cid, $ip, $port, $version, $community, [$oids], {other parameters} ]
  *
  */
 
 static int
-handle_get_request(struct socket_info *si, unsigned id, msgpack_object *o)
+handle_get_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 {
 	unsigned ver = 0;
 	unsigned port = 65536;
@@ -36,29 +36,29 @@ handle_get_request(struct socket_info *si, unsigned id, msgpack_object *o)
 	struct client_requests_info *cri;
 
 	if (o->via.array.size < 7 || o->via.array.size > 8)
-		return error_reply(si, 20, id, "bad request length");
+		return error_reply(si, 20, cid, "bad request length");
 
 	if (o->via.array.ptr[RI_GET_SNMP_VER].type == MSGPACK_OBJECT_POSITIVE_INTEGER)
 		ver = o->via.array.ptr[RI_GET_SNMP_VER].via.u64;
 	if (ver != 1 && ver != 2)
-		return error_reply(si, 20, id, "bad SNMP version");
+		return error_reply(si, 20, cid, "bad SNMP version");
 
 	if (o->via.array.ptr[RI_GET_PORT].type == MSGPACK_OBJECT_POSITIVE_INTEGER)
 		port = o->via.array.ptr[RI_GET_PORT].via.u64;
 	if (port > 65535)
-		return error_reply(si, 20, id, "bad port number");
+		return error_reply(si, 20, cid, "bad port number");
 
 	if (!object2ip(&o->via.array.ptr[RI_GET_IP], &ip))
-		return error_reply(si, 20, id, "bad IP");
+		return error_reply(si, 20, cid, "bad IP");
 
 	if (!object2string(&o->via.array.ptr[RI_GET_COMMUNITY], community, 256))
-		return error_reply(si, 20, id, "bad community");
+		return error_reply(si, 20, cid, "bad community");
 
 	cri = get_client_requests_info(&ip, port, si->fd);
 	strcpy(cri->dest->community, community);
 	cri->dest->version = ver;
 
-	return error_reply(si, 20, id, "not implemented");
+	return error_reply(si, 20, cid, "not implemented");
 }
 
 static void
@@ -90,7 +90,7 @@ client_input(struct socket_info *si)
 
 	while (msgpack_unpacker_next(&c->unpacker, &c->input)) {
 		msgpack_object *o;
-		uint32_t id;
+		uint32_t cid;
 		uint32_t type;
 
 		got = 1;
@@ -112,22 +112,22 @@ client_input(struct socket_info *si)
 			error_reply(si, 30, 0, "Request without an id");
 			goto end;
 		}
-		if (o->via.array.ptr[RI_ID].type != MSGPACK_OBJECT_POSITIVE_INTEGER) {
+		if (o->via.array.ptr[RI_CID].type != MSGPACK_OBJECT_POSITIVE_INTEGER) {
 			error_reply(si, 30, 0, "Request id is not a positive integer");
 			goto end;
 		}
-		id = o->via.array.ptr[RI_ID].via.u64;
+		cid = o->via.array.ptr[RI_CID].via.u64;
 		if (o->via.array.ptr[RI_TYPE].type != MSGPACK_OBJECT_POSITIVE_INTEGER) {
-			error_reply(si, 30, id, "Request type is not a positive integer");
+			error_reply(si, 30, cid, "Request type is not a positive integer");
 			goto end;
 		}
 		type = o->via.array.ptr[RI_TYPE].via.u64;
 		switch (type) {
 		case RT_GET:
-			handle_get_request(si, id, o);
+			handle_get_request(si, cid, o);
 			break;
 		default:
-			error_reply(si, type+20, id, "Unknown request type");
+			error_reply(si, type+20, cid, "Unknown request type");
 		}
 end:;
 	}
