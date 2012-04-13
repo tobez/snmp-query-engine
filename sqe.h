@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/socket.h>
+#include <sys/queue.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #if defined(__FreeBSD__) || defined(__APPLE__)
@@ -38,6 +39,9 @@
 
 #define RT_GET 0
 
+typedef void* JudyL;
+typedef void* JudyHS;
+
 struct socket_info;
 
 struct socket_info
@@ -58,22 +62,38 @@ struct destination
 {
 	unsigned version;
 	char *community;
-	void *request_queues; /* by fd */
+	JudyL client_requests_info;   /* JudyL of struct client_requests_info indexed by fd */
+	JudyL sid_info;  /* JudyL of (JudyHS of struct oid_info indexed by oid) indexed by sid */
 };
 
-struct request_queue
+TAILQ_HEAD(oid_info_head, oid_info);
+
+struct client_requests_info
 {
 	struct destination *dest;
-	int fd;
-	void *requests;  /* by id */
-	/* XXX */
+	JudyL cid_info; /* JudyL of struct cid_info ("cid" = client id) indexed by cid */
+	struct oid_info_head oids_to_query;
 };
 
-struct request_get
+struct cid_info
 {
-	int type;  /* RT_GET */
-	unsigned id;
-	/* XXX */
+	unsigned cid;
+	unsigned n_oids;
+	unsigned n_oids_being_queried;
+	unsigned n_oids_done;
+	struct oid_info_head oids_being_queried;
+	struct oid_info_head oids_done;
+};
+
+struct oid_info
+{
+	TAILQ_ENTRY(oid_info) oid_list;
+	unsigned sid;
+	unsigned cid;
+	int fd;
+	// some kind of distinguisher between table walk and get
+	// struct encode oid
+	// struct encode value
 };
 
 extern int opt_quiet;
@@ -99,8 +119,5 @@ int object2ip(msgpack_object *o, struct in_addr *ip); /* 1 = success, 0 = failur
 
 /* destination.c */
 struct destination *get_destination(struct in_addr *ip, unsigned port);
-
-/* request_queue.c */
-struct request_queue *get_request_queue(struct destination *dest, int fd, unsigned id);
 
 #endif

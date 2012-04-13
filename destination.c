@@ -1,6 +1,6 @@
 #include "sqe.h"
 
-void *by_ip;
+JudyL by_ip;
 
 struct destination *get_destination(struct in_addr *ip, unsigned port)
 {
