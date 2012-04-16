@@ -130,6 +130,7 @@ extern int build_get_request_packet(int version, const char *community,
 									const char *oid_list,
 									unsigned request_id, struct encode *e);
 extern void encode_dump(FILE *f, struct encode *e);
+extern unsigned char *decode_string_oid(unsigned char *s, int l, char *buf, int buf_size);
 
 
 const char *thisprogname(void);

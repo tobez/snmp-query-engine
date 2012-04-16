@@ -213,7 +213,10 @@ encode_type_len(unsigned char type, unsigned i, struct encode *e)
 unsigned char *
 decode_string_oid(unsigned char *s, int l, char *buf, int buf_size)
 {
-	int n;
+	int n, n_bytes, printed;
+	unsigned x, x2 = 0;
+	int first = 1;
+
 	if (l < 1 || *s != AT_OID) {
 		errno = EINVAL;
 		return NULL;
@@ -225,8 +228,73 @@ decode_string_oid(unsigned char *s, int l, char *buf, int buf_size)
 	}
 	n = *s;
 	s++;  l--;
+	if (n <= 127) {
+		/* ok */;
+	} else if (n == 0x81 && l >= 1) {
+		n = *s;
+		s++;  l--;
+	} else if (n == 0x82 && l >= 2) {
+		n = *s * 256;
+		s++;  l--;
+		n += *s;
+		s++;  l--;
+	} else {
+		errno = EINVAL;
+		return NULL;
+	}
+	if (n > l) {
+		errno = EINVAL;
+		return NULL;
+	}
 
-	return s;
+	while (l > 0) {
+		x = 0; n_bytes = 0;
+		while (*s >= 0x80 && l > 0) {
+			x <<= 7;
+			x |= *s & 0x7f;
+			s++;  l--;
+			n_bytes++;
+		}
+		if (l <= 0) {
+			errno = EINVAL;
+			return NULL;
+		}
+		x <<= 7;
+		x |= *s & 0x7f;
+		s++;  l--;
+		if (n_bytes > 3) {
+			errno = EINVAL;
+			return NULL;
+		}
+
+		if (first) {
+			x2 = x % 40;
+			x /= 40;
+			goto print_number;
+second_number:
+			x = x2;
+			first = 0;
+		}
+print_number:
+		if (!first && buf_size >= 1) {
+			*buf++ = '.';
+		}
+		// XXX we probably want to replace snprintf() with something faster
+		if ( (printed = snprintf(buf, buf_size, "%u", x)) >= buf_size) {
+			errno = EMSGSIZE;
+			return NULL;
+		}
+		buf += printed;
+		buf_size -= printed;
+		if (first)	goto second_number;
+	}
+	if (buf_size >= 1) {
+		*buf = '\0';
+		return s;
+	}
+
+	errno = EMSGSIZE;
+	return NULL;
 }
 
 int

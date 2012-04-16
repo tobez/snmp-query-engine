@@ -5,11 +5,16 @@ test_encode_string_oid(int *test, char *oid, int oid_len, const char *res, int l
 {
 	char *buf = malloc(len + 20);
 	struct encode e = encode_init(buf, len + 20);
+	char out_buf[4096];
+	int oid_len2;
 
 	(*test)++;
 	buf[len] = '\x55';
 	if (oid_len >= 0) {
 		oid[oid_len] = '\xAA';
+		oid_len2 = oid_len;
+	} else {
+		oid_len2 = strlen(oid);
 	}
 	if (encode_string_oid(oid, oid_len, &e) < 0) {
 		fprintf(stderr, "test %d, encode_string_oid: unexpected failure, oid %s\n", *test, oid);
@@ -28,6 +33,22 @@ test_encode_string_oid(int *test, char *oid, int oid_len, const char *res, int l
 	}
 	if (buf[len] != '\x55') {
 		fprintf(stderr, "test %d, encode_string_oid: buffer corruped, oid %s\n", *test, oid);
+		free(buf);
+		return 0;
+	}
+	if (!decode_string_oid((unsigned char *)buf, len, out_buf, 4096)) {
+		fprintf(stderr, "test %d, decode_string_oid: cannot decode encoded oid %s\n", *test, oid);
+		free(buf);
+		return 0;
+	}
+	// fprintf(stderr, "ORIGINAL: %s\nDECODED : %s\n", oid, out_buf);
+	if (strlen(out_buf) != (*oid == '.' ? oid_len2-1 : oid_len2)) {
+		fprintf(stderr, "test %d, decode_string_oid: decoded oid len != encoded oid len, %s\n", *test, oid);
+		free(buf);
+		return 0;
+	}
+	if (strncmp(*oid == '.' ? oid+1 : oid, out_buf, *oid == '.' ? oid_len2-1 : oid_len2) != 0) {
+		fprintf(stderr, "test %d, decode_string_oid: decoded oid != encoded oid %s\n", *test, oid);
 		free(buf);
 		return 0;
 	}
