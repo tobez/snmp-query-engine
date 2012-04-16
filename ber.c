@@ -210,6 +210,25 @@ encode_type_len(unsigned char type, unsigned i, struct encode *e)
 	return 0;
 }
 
+unsigned char *
+decode_string_oid(unsigned char *s, int l, char *buf, int buf_size)
+{
+	int n;
+	if (l < 1 || *s != AT_OID) {
+		errno = EINVAL;
+		return NULL;
+	}
+	s++;  l--;
+	if (l < 1) {
+		errno = EINVAL;
+		return NULL;
+	}
+	n = *s;
+	s++;  l--;
+
+	return s;
+}
+
 int
 encode_string_oid(const char *oid, int oid_len, struct encode *e)
 {
