@@ -1,13 +1,26 @@
 #include "sqe.h"
 
 int
-free_oid_info_list(struct oid_info_head *list)
+free_oid_info_list(struct oid_info_head *list, struct destination *dest)
 {
 	struct oid_info *n1, *n2;
 
 	n1 = TAILQ_FIRST(list);
 	while (n1 != NULL) {
 		n2 = TAILQ_NEXT(n1, oid_list);
+fprintf(stderr, "freeing an oid\n");
+		if (dest && n1->sid) {
+			/* cleanup dest->sid_info pointer to this oid */
+			/* XXX the whole JHS with a given sid is not deleted, but it should */
+			void **sid_slot;
+			Word_t rc;
+
+			JLG(sid_slot, dest->sid_info, n1->sid);
+			if (sid_slot == PJERR)
+				croak(2, "free_oid_info_list: JLG(sid) failed");
+			if (sid_slot)
+				JHSD(rc, *sid_slot, n1->oid.buf, n1->oid.len);
+		}
 		free(n1->oid.buf);
 		free(n1->value.buf);
 		free(n1);
@@ -43,6 +56,6 @@ allocate_oid_info_list(struct oid_info_head *list, msgpack_object *o, struct cid
 	return o->via.array.size;
 
 not_good:
-	free_oid_info_list(list);
+	free_oid_info_list(list, NULL);
 	return 0;
 }

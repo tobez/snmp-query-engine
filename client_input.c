@@ -92,6 +92,7 @@ client_input(struct socket_info *si)
 		croak(1, "client_input: read error");
 	if (n == 0) {
 		si->udata = NULL;
+		free_all_client_request_info_for_fd(si->fd);
 		delete_socket_info(si);
 		msgpack_unpacked_destroy(&c->input);
 		msgpack_unpacker_destroy(&c->unpacker);

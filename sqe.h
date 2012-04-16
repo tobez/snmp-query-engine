@@ -158,11 +158,15 @@ struct destination *get_destination(struct in_addr *ip, unsigned port);
 
 /* client_requests_info.c */
 struct client_requests_info *get_client_requests_info(struct in_addr *ip, unsigned port, int fd);
+int free_client_request_info(struct client_requests_info *cri);
+int free_all_client_request_info_for_fd(int fd);
 
 /* cid_info.c */
 struct cid_info *get_cid_info(struct client_requests_info *cri, unsigned cid);
+int free_cid_info(struct cid_info *ci, struct destination *dest);
 
 /* oid_info.c */
 int allocate_oid_info_list(struct oid_info_head *oi, msgpack_object *o, struct cid_info *ci);
+int free_oid_info_list(struct oid_info_head *list, struct destination *dest);
 
 #endif

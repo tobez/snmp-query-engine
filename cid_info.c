@@ -20,3 +20,12 @@ get_cid_info(struct client_requests_info *cri, unsigned cid)
 	}
 	return *ci_slot;
 }
+
+int
+free_cid_info(struct cid_info *ci, struct destination *dest)
+{
+	free_oid_info_list(&ci->oids_being_queried, dest);
+	free_oid_info_list(&ci->oids_done, NULL);
+	free(ci);
+	return 1;
+}
