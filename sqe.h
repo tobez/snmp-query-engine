@@ -120,6 +120,7 @@ extern int opt_quiet;
 
 /* ber.c */
 extern struct encode encode_init(void *buf, int size);
+extern struct encode encode_dup(struct encode *e);
 extern int encode_type_len(unsigned char type, unsigned i, struct encode *e);
 extern int encode_integer(unsigned i, struct encode *e, int force_size);
 extern int encode_string(const char *s, struct encode *e);

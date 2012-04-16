@@ -22,7 +22,6 @@ allocate_oid_info_list(struct oid_info_head *list, msgpack_object *o, struct cid
 {
 	int i;
 	struct oid_info *oi;
-	char *buf;
 	char tmp_buf[2048];
 	struct encode e;
 
@@ -37,15 +36,7 @@ allocate_oid_info_list(struct oid_info_head *list, msgpack_object *o, struct cid
 		bzero(oi, sizeof(*oi));
 		oi->cid = ci->cid;
 		oi->fd  = ci->fd;
-
-		/* XXX maybe we need a separate encode_dup() function */
-		buf = malloc(e.len);
-		if (!buf)
-			croak(2, "allocate_oid_info_list: malloc(buf(%d))", e.len);
-		oi->oid = encode_init(buf, e.len);
-		memcpy(buf, tmp_buf, e.len);
-		oi->oid.len = e.len;
-		oi->oid.b += e.len;
+		oi->oid = encode_dup(&e);
 
 		TAILQ_INSERT_TAIL(list, oi, oid_list);
 	}

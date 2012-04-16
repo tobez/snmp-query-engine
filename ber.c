@@ -15,6 +15,20 @@ struct encode encode_init(void *buf, int size)
 	return e;
 }
 
+struct encode encode_dup(struct encode *eo)
+{
+	char *buf = malloc(eo->len);
+	struct encode en;
+
+	if (!buf)
+		croak(2, "encode_dup: malloc(buf(%d))", eo->len);
+	en = encode_init(buf, eo->len);
+	memcpy(buf, eo->buf, eo->len);
+	en.len = eo->len;
+	en.b += eo->len;
+	return en;
+}
+
 int
 build_get_request_packet(int version, const char *community,
 						 const char *oid_list,
