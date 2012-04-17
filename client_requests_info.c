@@ -54,16 +54,15 @@ fprintf(stderr, "free_all_client_request_info_for_fd(%d)\n", fd);
 		croak(2, "free_all_client_request_info_for_fd: JLG(fd) failed");
 	if (!fd_slot)
 		return 1;
-fprintf(stderr, "free_all_client_request_info_for_fd(%d) 1111\n", fd);
 
 	ip = 0;
 	JLF(ip_slot, *fd_slot, ip);
 	while (ip_slot) {
-fprintf(stderr, "free_all_client_request_info_for_fd(%d), some ip\n", fd);
 		port = 0;
 		JLF(cri_slot, *ip_slot, port);
 		while (cri_slot) {
-			fprintf(stderr, "free_all_client_request_info_for_fd(%d), some ip:port\n", fd);
+			fprintf(stderr, "free_all_client_request_info_for_fd(%d), %s:%u\n",
+					fd, inet_ntoa((*cri_slot)->dest->ip), (*cri_slot)->dest->port);
 			free_client_request_info(*cri_slot);
 			JLN(cri_slot, *ip_slot, port);
 		}
@@ -83,6 +82,7 @@ free_client_request_info(struct client_requests_info *cri)
 	Word_t rc;
 
 fprintf(stderr, "freeing client_requests_info, fd %d\n", cri->fd);
+fprintf(stderr, "   oids_to_query, fd %d\n", cri->fd);
 	free_oid_info_list(&cri->oids_to_query, NULL);
 	cid = 0;
 	JLF(ci_slot, cri->cid_info, cid);

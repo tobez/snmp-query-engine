@@ -12,7 +12,7 @@ free_oid_info_list(struct oid_info_head *list, struct destination *dest)
 char buf[4096];
 if (!decode_string_oid(n1->oid.buf, n1->oid.len, buf, 4096))
 	strcpy(buf, "buf-too-short");
-fprintf(stderr, "freeing an oid %s\n", buf);
+fprintf(stderr, "       freeing an oid %s\n", buf);
 }
 		if (dest && n1->sid) {
 			/* cleanup dest->sid_info pointer to this oid */

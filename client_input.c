@@ -63,7 +63,7 @@ handle_get_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 
 	cri = get_client_requests_info(&ip, port, si->fd);
 	strcpy(cri->dest->community, community);
-	cri->dest->version = ver;
+	cri->dest->version = ver - 1;
 	ci = get_cid_info(cri, cid);
 	if (ci->n_oids != 0)
 		return error_reply(si, 20, cid, "duplicate request id");
@@ -75,6 +75,7 @@ handle_get_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	}
 	TAILQ_CONCAT(&cri->oids_to_query, &oi, oid_list);
 
+	maybe_query_destination(cri->dest);
 	return error_reply(si, 20, cid, "not implemented");
 }
 

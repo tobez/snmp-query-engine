@@ -34,3 +34,22 @@ object2ip(msgpack_object *o, struct in_addr *ip)
 	if (!object2string(o, buf, 16))	return 0;
 	return inet_aton(buf, ip);
 }
+
+static int sid_initialized = 0;
+static unsigned sid;
+
+unsigned
+next_sid(void)
+{
+	if (!sid_initialized) {
+		sid_initialized = 1;
+		/* XXX use randomness here */
+		sid = 123456;
+	}
+	sid++;
+	sid &= 0xffffffff;
+	if (sid == 0)
+		sid++;
+	return sid;
+}
+
