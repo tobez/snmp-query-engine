@@ -30,6 +30,7 @@ fprintf(stderr, "insert new cri %d-%d-%d\n", fd, ip->s_addr, port);
 		cri->dest = dest;
 		cri->fd   = fd;
 		TAILQ_INIT(&cri->oids_to_query);
+		TAILQ_INIT(&cri->sid_infos);
 		*cri_slot = cri;
 	}
 
@@ -80,8 +81,22 @@ free_client_request_info(struct client_requests_info *cri)
 	struct cid_info **ci_slot;
 	Word_t cid;
 	Word_t rc;
+	struct sid_info *si, *si_temp;
 
 fprintf(stderr, "freeing client_requests_info, fd %d\n", cri->fd);
+
+	si = TAILQ_FIRST(&cri->sid_infos);
+	while (si != NULL) {
+fprintf(stderr, "   sid_info %u\n", si->sid);
+		si_temp = TAILQ_NEXT(si, sid_list);
+		JLD(rc, cri->dest->sid_info, si->sid);
+		free(si->packet.buf);
+		free_oid_info_list(&si->oids_being_queried);
+		free(si);
+		si = si_temp;
+	}
+	TAILQ_INIT(&cri->sid_infos);
+
 fprintf(stderr, "   oids_to_query, fd %d\n", cri->fd);
 	free_oid_info_list(&cri->oids_to_query);
 	cid = 0;

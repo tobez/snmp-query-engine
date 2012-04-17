@@ -33,7 +33,7 @@ maybe_query_destination(struct destination *dest)
 	struct client_requests_info **cri_slot, *cri;
 	struct oid_info *oi, *oi_temp;
 	Word_t fd;
-	struct encode packet;
+	struct packet_info pi;
 	unsigned sid = 0;
 	struct cid_info *ci;
 	struct sid_info *si = NULL, **si_slot;
@@ -64,19 +64,23 @@ maybe_query_destination(struct destination *dest)
 				croak(2, "maybe_query_destination: malloc(sid_info)");
 			bzero(si, sizeof(*si));
 			si->sid = sid;
+			si->cri = cri;
 			TAILQ_INIT(&si->oids_being_queried);
-			if (start_snmp_get_packet(&si->pi, dest->version, dest->community, sid) < 0)
+			bzero(&pi, sizeof(pi));
+			if (start_snmp_get_packet(&pi, dest->version, dest->community, sid) < 0)
 				croak(2, "maybe_query_destination: start_snmp_get_packet");
 			*si_slot = si;
+			TAILQ_INSERT_TAIL(&cri->sid_infos, si, sid_list);
 		}
-		if (si->pi.e.len + oi->oid.len >= dest->max_request_packet_size)
+		if (pi.e.len + oi->oid.len >= dest->max_request_packet_size)
 			break;
-		if (add_encoded_oid_to_snmp_packet(&si->pi, &oi->oid) < 0)
+		if (add_encoded_oid_to_snmp_packet(&pi, &oi->oid) < 0)
 			croak(2, "maybe_query_destination: add_encoded_oid_to_snmp_packet");
 		TAILQ_REMOVE(&cri->oids_to_query, oi, oid_list);
 		ci = get_cid_info(cri, oi->cid);
 		if (!ci || ci->n_oids == 0)
 			croakx(2, "maybe_query_destination: cid_info unexpectedly missing");
+		ci->n_oids_being_queried++;
 		TAILQ_INSERT_TAIL(&si->oids_being_queried, oi, oid_list);
 		// XXX insert oid into dest->sid_info
 {
@@ -87,11 +91,11 @@ fprintf(stderr, "%d-%u will query as sid %u oid %s\n", oi->fd, oi->cid, sid, buf
 }
 	}
 	dest->fd_of_last_query = fd;
-	if (sid) {
-		if (finalize_snmp_packet(&si->pi, &packet) < 0)
+	if (si) {
+		if (finalize_snmp_packet(&pi, &si->packet) < 0)
 			croak(2, "maybe_query_destination: finalize_snmp_packet");
 		fprintf(stderr, "see packet:\n");
-		encode_dump(stderr, &packet);
+		encode_dump(stderr, &si->packet);
 	}
 	// XXX goto
 }

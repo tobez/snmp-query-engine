@@ -98,10 +98,11 @@ struct destination
 
 	int fd_of_last_query;
 	JudyL client_requests_info;   /* JudyL of struct client_requests_info indexed by fd */
-	JudyL sid_info;  /* JudyL of struct client_requests_info indexed by sid */
+	JudyL sid_info;  /* JudyL of struct sid_info indexed by sid */
 };
 
 TAILQ_HEAD(oid_info_head, oid_info);
+TAILQ_HEAD(sid_info_head, sid_info);
 
 struct client_requests_info
 {
@@ -109,6 +110,7 @@ struct client_requests_info
 	int fd;
 	JudyL cid_info; /* JudyL of struct cid_info ("cid" = client id) indexed by cid */
 	struct oid_info_head oids_to_query;
+	struct sid_info_head sid_infos;
 };
 
 struct cid_info
@@ -123,9 +125,11 @@ struct cid_info
 
 struct sid_info
 {
+	TAILQ_ENTRY(sid_info) sid_list;
 	unsigned sid;
+	struct client_requests_info *cri;
 
-	struct packet_info pi;
+	struct encode packet;
 	struct oid_info_head oids_being_queried;
 };
 
