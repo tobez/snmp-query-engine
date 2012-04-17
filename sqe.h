@@ -60,7 +60,7 @@ struct encode
 	int max_len;
 };
 
-struct packet_info
+struct packet_builder
 {
 	unsigned char *packet_sequence;
 	unsigned char *pdu;
@@ -129,6 +129,7 @@ struct sid_info
 	unsigned sid;
 	struct client_requests_info *cri;
 
+	struct packet_builder pb;
 	struct encode packet;
 	struct oid_info_head oids_being_queried;
 };
@@ -160,10 +161,10 @@ extern unsigned char *decode_string_oid(unsigned char *s, int l, char *buf, int 
 extern int build_get_request_packet(int version, const char *community,
 									const char *oid_list,
 									unsigned request_id, struct encode *e);
-extern int start_snmp_get_packet(struct packet_info *pi, int version, const char *community,
+extern int start_snmp_get_packet(struct packet_builder *pb, int version, const char *community,
 								 unsigned request_id);
-extern int add_encoded_oid_to_snmp_packet(struct packet_info *pi, struct encode *oid);
-extern int finalize_snmp_packet(struct packet_info *pi, struct encode *encoded_packet);
+extern int add_encoded_oid_to_snmp_packet(struct packet_builder *pb, struct encode *oid);
+extern int finalize_snmp_packet(struct packet_builder *pb, struct encode *encoded_packet);
 
 /* other locations */
 const char *thisprogname(void);
@@ -200,6 +201,10 @@ extern int free_all_client_request_info_for_fd(int fd);
 /* cid_info.c */
 extern struct cid_info *get_cid_info(struct client_requests_info *cri, unsigned cid);
 extern int free_cid_info(struct cid_info *ci, struct destination *dest);
+
+/* sid_info.c */
+extern struct sid_info *new_sid_info(struct client_requests_info *cri);
+extern void build_snmp_query(struct client_requests_info *cri);
 
 /* oid_info.c */
 extern int allocate_oid_info_list(struct oid_info_head *oi, msgpack_object *o, struct cid_info *ci);

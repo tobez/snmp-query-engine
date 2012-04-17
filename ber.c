@@ -89,22 +89,22 @@ build_get_request_packet(int version, const char *community,
 }
 
 int
-start_snmp_get_packet(struct packet_info *pi, int version, const char *community,
+start_snmp_get_packet(struct packet_builder *pb, int version, const char *community,
 					  unsigned request_id)
 {
 	unsigned char *packet_buf;
 	struct encode *e;
 
-	bzero(pi, sizeof(*pi));
+	bzero(pb, sizeof(*pb));
 	packet_buf = malloc(65000);
 	if (!packet_buf)
 		croak(2, "start_get_request_packet: malloc(packet_buf)");
-	pi->e = encode_init(packet_buf, 65000);
-	e = &pi->e;
+	pb->e = encode_init(packet_buf, 65000);
+	e = &pb->e;
 
 	SPACECHECK2;
-	pi->packet_sequence = e->b;
-   	pi->packet_sequence[0] = AT_SEQUENCE;
+	pb->packet_sequence = e->b;
+   	pb->packet_sequence[0] = AT_SEQUENCE;
 	EXTEND2;
 
 	if (version < 0 || version > 1) {
@@ -115,8 +115,8 @@ start_snmp_get_packet(struct packet_info *pi, int version, const char *community
 	if (encode_string(community, e) < 0)	return -1;
 
 	SPACECHECK2;
-	pi->pdu = e->b;
-	pi->pdu[0] = PDU_GET_REQUEST;
+	pb->pdu = e->b;
+	pb->pdu[0] = PDU_GET_REQUEST;
 	EXTEND2;
 
 	if (encode_integer(request_id, e, 4) < 0)	return -1;
@@ -124,20 +124,20 @@ start_snmp_get_packet(struct packet_info *pi, int version, const char *community
 	if (encode_integer(0, e, 0) < 0)	return -1; /* error-index */
 
 	SPACECHECK2;
-	pi->oid_sequence = e->b;
-	pi->oid_sequence[0] = AT_SEQUENCE;
+	pb->oid_sequence = e->b;
+	pb->oid_sequence[0] = AT_SEQUENCE;
 	EXTEND2;
 
 	return 0;
 }
 
 int
-add_encoded_oid_to_snmp_packet(struct packet_info *pi, struct encode *oid)
+add_encoded_oid_to_snmp_packet(struct packet_builder *pb, struct encode *oid)
 {
 	struct encode *e;
 	unsigned char *seq;
 
-	e = &pi->e;
+	e = &pb->e;
 
 	SPACECHECK2;
 	seq = e->b;
@@ -155,14 +155,14 @@ add_encoded_oid_to_snmp_packet(struct packet_info *pi, struct encode *oid)
 }
 
 int
-finalize_snmp_packet(struct packet_info *pi, struct encode *encoded_packet)
+finalize_snmp_packet(struct packet_builder *pb, struct encode *encoded_packet)
 {
 	struct encode *e;
-	e = &pi->e;
+	e = &pb->e;
 
-	if (encode_store_length(e, pi->oid_sequence) < 0)	return -1;
-	if (encode_store_length(e, pi->pdu) < 0)	return -1;
-	if (encode_store_length(e, pi->packet_sequence) < 0)	return -1;
+	if (encode_store_length(e, pb->oid_sequence) < 0)	return -1;
+	if (encode_store_length(e, pb->pdu) < 0)	return -1;
+	if (encode_store_length(e, pb->packet_sequence) < 0)	return -1;
 	*encoded_packet = encode_dup(e);
 	free(e->buf);
 	return 0;

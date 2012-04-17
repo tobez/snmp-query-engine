@@ -25,6 +25,8 @@ int
 free_cid_info(struct cid_info *ci, struct destination *dest)
 {
 fprintf(stderr, "  freeing cid_info, fd %d, cid %u\n", ci->fd, ci->cid);
+fprintf(stderr, "  n_oids(%d), n_oids_being_queried(%d), n_oids_done(%d)\n",
+		ci->n_oids, ci->n_oids_being_queried, ci->n_oids_done);
 fprintf(stderr, "     oids_done, fd %d, cid %u\n", ci->fd, ci->cid);
 	free_oid_info_list(&ci->oids_done);
 	free(ci);
