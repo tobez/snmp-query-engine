@@ -83,7 +83,7 @@ free_client_request_info(struct client_requests_info *cri)
 
 fprintf(stderr, "freeing client_requests_info, fd %d\n", cri->fd);
 fprintf(stderr, "   oids_to_query, fd %d\n", cri->fd);
-	free_oid_info_list(&cri->oids_to_query, NULL);
+	free_oid_info_list(&cri->oids_to_query);
 	cid = 0;
 	JLF(ci_slot, cri->cid_info, cid);
 	while (ci_slot) {

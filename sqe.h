@@ -98,7 +98,7 @@ struct destination
 
 	int fd_of_last_query;
 	JudyL client_requests_info;   /* JudyL of struct client_requests_info indexed by fd */
-	JudyL sid_info;  /* JudyL of (JudyHS of struct oid_info indexed by oid) indexed by sid */
+	JudyL sid_info;  /* JudyL of struct client_requests_info indexed by sid */
 };
 
 TAILQ_HEAD(oid_info_head, oid_info);
@@ -118,8 +118,15 @@ struct cid_info
 	int n_oids;
 	int n_oids_being_queried;
 	int n_oids_done;
-	struct oid_info_head oids_being_queried;
 	struct oid_info_head oids_done;
+};
+
+struct sid_info
+{
+	unsigned sid;
+
+	struct packet_info pi;
+	struct oid_info_head oids_being_queried;
 };
 
 struct oid_info
@@ -192,6 +199,6 @@ extern int free_cid_info(struct cid_info *ci, struct destination *dest);
 
 /* oid_info.c */
 extern int allocate_oid_info_list(struct oid_info_head *oi, msgpack_object *o, struct cid_info *ci);
-extern int free_oid_info_list(struct oid_info_head *list, struct destination *dest);
+extern int free_oid_info_list(struct oid_info_head *list);
 
 #endif
