@@ -176,9 +176,13 @@ void
 event_loop(void)
 {
 	struct kevent ke[10];
-	int nev, i;
+	int nev, i, ms;
+	struct timespec to;
 	while (1) {
-		nev = kevent(kq, NULL, 0, ke, 10, NULL);
+		ms = sid_next_timeout();
+		to.tv_sec = ms / 1000;
+		to.tv_nsec = (ms % 1000)*1000000;
+		nev = kevent(kq, NULL, 0, ke, 10, &to);
 		if (nev < 0)
 			croak(1, "event_loop: kevent");
 		for (i = 0; i < nev; i++) {
@@ -212,6 +216,7 @@ event_loop(void)
 				fprintf(stderr, "event_loop: unexpected filter value %d, ident %u\n", ke[i].filter, (unsigned)ke[i].ident);
 			}
 		}
+		check_timed_out_requests();
 	}
 }
 #endif

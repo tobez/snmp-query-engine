@@ -56,6 +56,7 @@ request_match("fails for now", [0,41,"127.0.0.1",161, 2, "meow", ["1.3.6.1.2.1.1
 			  [20,41,qr/not implemented/i]);
 request_match("fails for now", [0,42,"127.0.0.1",161, 2, "public", ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0"]],
 			  [20,42,qr/not implemented/i]);
+sleep 3;
 
 close $conn;
 Time::HiRes::sleep(0.2);

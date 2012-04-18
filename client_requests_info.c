@@ -87,13 +87,8 @@ fprintf(stderr, "freeing client_requests_info, fd %d\n", cri->fd);
 
 	si = TAILQ_FIRST(&cri->sid_infos);
 	while (si != NULL) {
-fprintf(stderr, "   sid_info %u\n", si->sid);
 		si_temp = TAILQ_NEXT(si, sid_list);
-		JLD(rc, cri->dest->sid_info, si->sid);
-		sid_stop_timing(si);
-		free(si->packet.buf);
-		free_oid_info_list(&si->oids_being_queried);
-		free(si);
+		free_sid_info(si);
 		si = si_temp;
 	}
 	TAILQ_INIT(&cri->sid_infos);
