@@ -55,7 +55,7 @@ build_get_request_packet(int version, const char *community,
 	pdu[0] = PDU_GET_REQUEST;
 	EXTEND2;
 
-	if (encode_integer(request_id, e, 4) < 0)	return -1;
+	if (encode_integer(request_id, e, 0) < 0)	return -1;
 	if (encode_integer(0, e, 0) < 0)	return -1; /* error-status */
 	if (encode_integer(0, e, 0) < 0)	return -1; /* error-index */
 
@@ -119,7 +119,7 @@ start_snmp_get_packet(struct packet_builder *pb, int version, const char *commun
 	pb->pdu[0] = PDU_GET_REQUEST;
 	EXTEND2;
 
-	if (encode_integer(request_id, e, 4) < 0)	return -1;
+	if (encode_integer(request_id, e, 0) < 0)	return -1;
 	if (encode_integer(0, e, 0) < 0)	return -1; /* error-status */
 	if (encode_integer(0, e, 0) < 0)	return -1; /* error-index */
 
