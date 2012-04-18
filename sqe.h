@@ -13,7 +13,6 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/socket.h>
-#include <sys/queue.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #if defined(__FreeBSD__) || defined(__APPLE__)
@@ -27,6 +26,7 @@
 
 #include <Judy.h>
 #include <msgpack.h>
+#include "bsdqueue.h"
 
 #define RI_TYPE          0
 #define RI_CID           1
