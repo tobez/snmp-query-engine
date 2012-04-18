@@ -131,8 +131,10 @@ struct cid_info
 struct sid_info
 {
 	TAILQ_ENTRY(sid_info) sid_list;
+	TAILQ_ENTRY(sid_info) same_timeout;
 	unsigned sid;
 	struct client_requests_info *cri;
+	struct timeval will_timeout_at;
 
 	struct packet_builder pb;
 	struct encode packet;
@@ -215,6 +217,8 @@ extern int free_cid_info(struct cid_info *ci, struct destination *dest);
 /* sid_info.c */
 extern struct sid_info *new_sid_info(struct client_requests_info *cri);
 extern void build_snmp_query(struct client_requests_info *cri);
+extern void sid_start_timing(struct sid_info *si);
+extern void sid_stop_timing(struct sid_info *si);
 
 /* oid_info.c */
 extern int allocate_oid_info_list(struct oid_info_head *oi, msgpack_object *o, struct cid_info *ci);

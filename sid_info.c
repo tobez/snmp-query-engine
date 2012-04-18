@@ -59,3 +59,33 @@ build_snmp_query(struct client_requests_info *cri)
 	snmp_send(dest, &si->packet);
 }
 
+static void *by_time = NULL;
+
+void
+sid_start_timing(struct sid_info *si)
+{
+	void **sec_slot;
+	struct sid_info_head **usec_slot, *list;
+
+	gettimeofday(&si->will_timeout_at, NULL);
+	JLI(sec_slot, by_time, si->will_timeout_at.tv_sec);
+	if (sec_slot == PJERR)
+		croak(2, "sid_start_timing: JLI(by_time) failed");
+	JLI(usec_slot, *sec_slot, si->will_timeout_at.tv_usec);
+	if (usec_slot == PJERR)
+		croak(2, "sid_start_timing: JLI(*sec_slot) failed");
+	if (!*usec_slot) {
+		list = malloc(sizeof(*list));
+		if (!list)
+			croak(2, "sid_start_timing: malloc(sid_info_head)");
+		TAILQ_INIT(list);
+		*usec_slot = list;
+	}
+	list = *usec_slot;
+	TAILQ_INSERT_TAIL(list, si, same_timeout);
+}
+
+void
+sid_stop_timing(struct sid_info *si)
+{
+}
