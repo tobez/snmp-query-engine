@@ -225,9 +225,10 @@ void
 event_loop(void)
 {
 	struct epoll_event ev[10];
-	int nev, i;
+	int nev, i, ms;
 	while (1) {
-		nev = epoll_wait(ep, ev, 10, -1);
+		ms = sid_next_timeout();
+		nev = epoll_wait(ep, ev, 10, ms);
 		if (nev < 0)
 			croak(1, "event_loop: epoll_wait");
 		for (i = 0; i < nev; i++) {
@@ -263,6 +264,7 @@ event_loop(void)
 				fprintf(stderr, "event_loop: unexpected event 0x%x, fd %u\n", ev[i].events, (unsigned)ev[i].data.fd);
 			}
 		}
+		check_timed_out_requests();
 	}
 }
 #endif
