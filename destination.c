@@ -18,10 +18,15 @@ struct destination *get_destination(struct in_addr *ip, unsigned port)
 		if (!d)
 			croak(2, "get_destination: malloc(destination)");
 		bzero(d, sizeof(*d));
-		d->ip = *ip;
-		d->port = port;
+		d->ip                      = *ip;
+		d->port                    = port;
+		d->dest_addr.sin_family    = PF_INET;
+		d->dest_addr.sin_addr      = *ip;
+		d->dest_addr.sin_port      = htons(port);
 		d->max_packets_on_the_wire = DEFAULT_MAX_PACKETS_ON_THE_WIRE;
 		d->max_request_packet_size = DEFAULT_MAX_REQUEST_PACKET_SIZE;
+		d->timeout                 = DEFAULT_TIMEOUT;
+		d->retries                 = DEFAULT_RETRIES;
 		*dest_slot = d;
 	}
 	return *dest_slot;

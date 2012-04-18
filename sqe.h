@@ -86,6 +86,8 @@ struct client_connection
 
 #define DEFAULT_MAX_PACKETS_ON_THE_WIRE 3
 #define DEFAULT_MAX_REQUEST_PACKET_SIZE 1400
+#define DEFAULT_TIMEOUT 2000
+#define DEFAULT_RETRIES 3
 
 struct destination
 {
@@ -93,8 +95,11 @@ struct destination
 	unsigned port;
 	unsigned version;
 	char community[256];
+	struct sockaddr_in dest_addr;
 	int max_packets_on_the_wire;
 	int max_request_packet_size;
+	int timeout;
+	int retries;
 
 	int fd_of_last_query;
 	JudyL client_requests_info;   /* JudyL of struct client_requests_info indexed by fd */
@@ -179,6 +184,10 @@ void event_loop(void);
 /* client_listen.c */
 extern void create_listening_socket(int port);
 
+/* snmp.c */
+extern void create_snmp_socket(void);
+extern void snmp_send(struct destination *dest, struct encode *packet);
+
 /* client_input.c */
 extern void new_client_connection(int fd);
 
@@ -187,6 +196,7 @@ extern char *object_strdup(msgpack_object *o);
 extern char *object2string(msgpack_object *o, char s[], int bufsize);
 extern int object2ip(msgpack_object *o, struct in_addr *ip); /* 1 = success, 0 = failure */
 extern unsigned next_sid(void);
+extern void dump_buf(FILE *f, void *buf, int len);
 
 /* destination.c */
 /* get_destination() cannot return NULL, it would rather die */

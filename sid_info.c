@@ -56,4 +56,6 @@ build_snmp_query(struct client_requests_info *cri)
 		croak(2, "build_snmp_query: finalize_snmp_packet");
 	fprintf(stderr, "see packet:\n");
 	encode_dump(stderr, &si->packet);
+	snmp_send(dest, &si->packet);
 }
+

@@ -41,6 +41,7 @@ main(int argc, char **argv)
 	if (argc != 0)
 		usage("extraneous arguments");
 
+	create_snmp_socket();
 	create_listening_socket(port);
 	event_loop();
 

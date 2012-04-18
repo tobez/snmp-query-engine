@@ -510,20 +510,5 @@ encode_string_oid(const char *oid, int oid_len, struct encode *e)
 void
 encode_dump(FILE *f, struct encode *e)
 {
-	unsigned char *s = e->buf;
-	int i;
-
-	for (i = 0; i < e->len; i++) {
-		fprintf(f, "%02x ", (unsigned)s[i]);
-		if (i % 16 == 15 && i < e->len-1) {
-			int j;
-			fprintf(f, "  ");
-			for (j = i - 16; j <= i; j++) {
-				fprintf(f, "%c", isprint(s[j]) ? s[j] : '.');
-			}
-			fprintf(f, "\n");
-		}
-	}
-	fprintf(f, "\n");
+	dump_buf(f, e->buf, e->len);
 }
-

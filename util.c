@@ -53,3 +53,22 @@ next_sid(void)
 	return sid;
 }
 
+void
+dump_buf(FILE *f, void *buf, int len)
+{
+	unsigned char *s = buf;
+	int i;
+
+	for (i = 0; i < len; i++) {
+		fprintf(f, "%02x ", (unsigned)s[i]);
+		if (i % 16 == 15 && i < len-1) {
+			int j;
+			fprintf(f, "  ");
+			for (j = i - 16; j <= i; j++) {
+				fprintf(f, "%c", isprint(s[j]) ? s[j] : '.');
+			}
+			fprintf(f, "\n");
+		}
+	}
+	fprintf(f, "\n");
+}
