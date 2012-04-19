@@ -254,6 +254,69 @@ encode_integer(unsigned i, struct encode *e, int force_size)
 }
 
 int
+decode_integer(struct encode *e, int l, unsigned *value)
+{
+	SPACECHECK(l);
+	*value = 0;
+	switch (l) {
+	case 4:
+		*value = *value << 8  | e->b[0];
+		EXTEND(1);
+	case 3:
+		*value = *value << 8  | e->b[0];
+		EXTEND(1);
+	case 2:
+		*value = *value << 8  | e->b[0];
+		EXTEND(1);
+	case 1:
+		*value = *value << 8  | e->b[0];
+		EXTEND(1);
+		break;
+	default:
+		errno = ERANGE;
+		return -1;
+	}
+	return 0;
+}
+
+int
+decode_type_len(struct encode *e, unsigned char *type, unsigned *len)
+{
+	unsigned l;
+
+	SPACECHECK(2);
+	*type = e->b[0];
+	EXTEND(1);
+	l = e->b[0];
+	EXTEND(1);
+	if (l <= 127) {
+		/* do nothing */
+	} else if (l == 0x81) {
+		SPACECHECK(1);
+		l = e->b[0];
+		EXTEND(1);
+	} else if (l == 0x82) {
+		SPACECHECK(2);
+		l = (e->b[0] << 8)  | e->b[1];
+		EXTEND(2);
+	} else if (l == 0x83) {
+		SPACECHECK(3);
+		l = ((e->b[0] << 8)  | e->b[1]) << 8  | e->b[2];
+		EXTEND(3);
+	} else if (l == 0x84) {
+		SPACECHECK(4);
+		l = (((e->b[0] << 8)  | e->b[1]) << 8  | e->b[2]) << 8  | e->b[3];
+		EXTEND(4);
+	} else {
+		errno = ERANGE;
+		return -1;
+	}
+	SPACECHECK(l);
+	*len = l;
+	return 0;
+}
+
+int
 encode_type_len(unsigned char type, unsigned i, struct encode *e)
 {
 	int l;
@@ -282,7 +345,7 @@ encode_type_len(unsigned char type, unsigned i, struct encode *e)
 	} else if (i <= 4294967295u) {
 		l = 6;
 		SPACECHECK(l);
-		e->b[1] = 0x83;
+		e->b[1] = 0x84;
 		e->b[2] = (i >> 24) & 0xff;
 		e->b[3] = (i >> 16) & 0xff;
 		e->b[4] = (i >> 8) & 0xff;

@@ -9,6 +9,11 @@ snmp_receive(struct socket_info *snmp)
 	socklen_t len;
 	char buf[65000];
 	int n;
+	struct encode enc, *e;
+	unsigned char t;
+	unsigned l;
+	unsigned sid;
+	char *where;
 
 	/* XXX if several datagrams are ready we need a good way to bypass another
 	 * kevent/epoll_wait call after reading only one of them. */
@@ -16,8 +21,43 @@ snmp_receive(struct socket_info *snmp)
 	if ( (n = recvfrom(snmp->fd, buf, 65000, 0, (struct sockaddr *)&from, &len)) < 0)
 		croak(1, "snmp_receive: recvfrom");
 fprintf(stderr, "got UDP datagram (%d bytes) from %s:%d\n", n, inet_ntoa(from.sin_addr), ntohs(from.sin_port));
-	//if (n <
 dump_buf(stderr, buf, n);
+	enc = encode_init(buf, n); e = &enc;
+
+	where = "start sequence type/len";
+	if (decode_type_len(e, &t, &l) < 0)	goto bad_snmp_packet;
+	where = "start sequence type";
+	if (t != AT_SEQUENCE)	goto bad_snmp_packet;
+
+	where = "version type/len";
+	if (decode_type_len(e, &t, &l) < 0)	goto bad_snmp_packet;
+	where = "version type";
+	if (t != AT_INTEGER)	goto bad_snmp_packet;
+	e->b += l;  e->len += l;  // XXX skip version
+
+	where = "community type/len";
+	if (decode_type_len(e, &t, &l) < 0)	goto bad_snmp_packet;
+	where = "community type";
+	if (t != AT_STRING)	goto bad_snmp_packet;
+	e->b += l;  e->len += l;  // XXX skip community
+
+	where = "PDU type/len";
+	if (decode_type_len(e, &t, &l) < 0)	goto bad_snmp_packet;
+	where = "PDU type";
+	if (t != PDU_GET_RESPONSE)	goto bad_snmp_packet;
+
+	where = "request id type/len";
+	if (decode_type_len(e, &t, &l) < 0)	goto bad_snmp_packet;
+	where = "request id type";
+	if (t != AT_INTEGER)	goto bad_snmp_packet;
+	where = "request id value";
+	if (decode_integer(e, l, &sid) < 0)	goto bad_snmp_packet;
+
+	fprintf(stderr, "this packet appears to be legit, sid %u\n", sid);
+	return;
+
+bad_snmp_packet:
+	fprintf(stderr, "bad SNMP packet, ignoring: %s\n", where);
 }
 
 void

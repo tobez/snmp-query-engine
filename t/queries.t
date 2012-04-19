@@ -52,10 +52,12 @@ request_match("oids is not an array 2", [0,25,"127.0.0.1",161, 2, "meow", {}], [
 request_match("oids is not an array 3", [0,26,"127.0.0.1",161, 2, "meow", "oids"], [20,26,qr/oids must be an array/i]);
 request_match("oids is an empty array", [0,27,"127.0.0.1",161, 2, "meow", []], [20,27,qr/oids is an empty array/i]);
 
-request_match("fails for now", [0,41,"127.0.0.1",161, 2, "meow", ["1.3.6.1.2.1.1.5.0"]],
+my $target = $^O eq "linux" ? "172.24.253.189" : "127.0.0.1";
+
+request_match("fails for now", [0,41,$target,161, 2, "meow", ["1.3.6.1.2.1.1.5.0"]],
 			  [20,41,qr/not implemented/i]);
-sleep 7;
-request_match("fails for now", [0,42,"127.0.0.1",161, 2, "public", ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0"]],
+#sleep 7;
+request_match("fails for now", [0,42,$target,161, 2, "public", ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0", "1.3.66"]],
 			  [20,42,qr/not implemented/i]);
 
 close $conn;

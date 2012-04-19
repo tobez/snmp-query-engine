@@ -47,7 +47,8 @@
 
 #define MAX_OID 268435455  /* 2^28-1 to fit into 4 bytes */
 
-#define PDU_GET_REQUEST 0xa0
+#define PDU_GET_REQUEST  0xa0
+#define PDU_GET_RESPONSE 0xa2
 
 typedef void* JudyL;
 typedef void* JudyHS;
@@ -166,6 +167,9 @@ extern int encode_string(const char *s, struct encode *e);
 extern int encode_string_oid(const char *oid, int oid_len, struct encode *e);
 extern int encode_store_length(struct encode *e, unsigned char *s);
 extern void encode_dump(FILE *f, struct encode *e);
+
+extern int decode_type_len(struct encode *e, unsigned char *type, unsigned *len);
+extern int decode_integer(struct encode *e, int int_len, unsigned *value);
 extern unsigned char *decode_string_oid(unsigned char *s, int l, char *buf, int buf_size);
 
 extern int build_get_request_packet(int version, const char *community,
