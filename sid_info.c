@@ -299,15 +299,19 @@ process_sid_info_response(struct sid_info *si, struct encode *e)
 	unsigned error_status;
 	unsigned error_index;
 	char *trace;
-	#define CHECK(prob, val) if ((val) < 0) { trace = prob; goto bad_snmp_packet; }
+	int oids_stop;
 
 	/* SNMP packet must be positioned past request id field */
 
+	#define CHECK(prob, val) if ((val) < 0) { trace = prob; goto bad_snmp_packet; }
 	CHECK("decoding error status", decode_integer(e, -1, &error_status));
 	CHECK("decoding error index", decode_integer(e, -1, &error_index));
+	CHECK("oid sequence", decode_sequence(e, &oids_stop));
+	while (inside_sequence(e, oids_stop)) {
+	}
+	#undef CHECK
 
 	return;
 bad_snmp_packet:
 	fprintf(stderr, "sid %u: bad SNMP packet, ignoring: %s\n", si->sid, trace);
-	#undef CHECK
 }

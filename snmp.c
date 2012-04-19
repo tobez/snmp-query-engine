@@ -33,13 +33,9 @@ dump_buf(stderr, buf, n);
 
 	enc = encode_init(buf, n); e = &enc;
 
-	#define CHECK(prob, val) if ((val) < 0) { trace = prob; goto bad_snmp_packet; }
-	trace = "start sequence type/len";
-	if (decode_type_len(e, &t, &l) < 0)	goto bad_snmp_packet;
-	trace = "start sequence type";
-	if (t != AT_SEQUENCE)	goto bad_snmp_packet;
-
-	CHECK("decoding version", decode_integer(e, -1, NULL));
+	#define CHECK(prob, val) if ((val) < 0) { trace = "decoding" # prob; goto bad_snmp_packet; }
+	CHECK("start sequence", decode_sequence(e, NULL));
+	CHECK("version", decode_integer(e, -1, NULL));
 
 	trace = "community type/len";
 	if (decode_type_len(e, &t, &l) < 0)	goto bad_snmp_packet;
@@ -47,11 +43,7 @@ dump_buf(stderr, buf, n);
 	if (t != AT_STRING)	goto bad_snmp_packet;
 	e->b += l;  e->len += l;  // XXX skip community
 
-	trace = "PDU type/len";
-	if (decode_type_len(e, &t, &l) < 0)	goto bad_snmp_packet;
-	trace = "PDU type";
-	if (t != PDU_GET_RESPONSE)	goto bad_snmp_packet;
-
+	CHECK("PDU", decode_composite(e, PDU_GET_RESPONSE, NULL));
 	CHECK("decoding request id", decode_integer(e, -1, &sid));
 	#undef CHECK
 

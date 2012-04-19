@@ -254,6 +254,27 @@ encode_integer(unsigned i, struct encode *e, int force_size)
 }
 
 int
+decode_composite(struct encode *e, unsigned char comp_type, int *composite_end_pos)
+{
+	unsigned char t;
+	unsigned len;
+
+	if (decode_type_len(e, &t, &len) < 0)	return -1;
+	if (t != comp_type) {
+		errno = EINVAL;
+		return -1;
+	}
+	if (len + (unsigned)e->len > INT_MAX) {
+		errno = ERANGE;
+		return -1;
+	}
+	/* SPACECHECK(len);  -- done already by decode_type_len() */
+	if (composite_end_pos)
+		*composite_end_pos = ((int)len) + e->len;
+	return 0;
+}
+
+int
 decode_integer(struct encode *e, int l, unsigned *value)
 {
 	unsigned char t;

@@ -190,6 +190,10 @@ extern void encode_dump(FILE *f, struct encode *e);
 extern int decode_type_len(struct encode *e, unsigned char *type, unsigned *len);
 extern int decode_integer(struct encode *e, int int_len, unsigned *value);
 extern unsigned char *decode_string_oid(unsigned char *s, int l, char *buf, int buf_size);
+extern int decode_composite(struct encode *e, unsigned char comp_type, int *composite_end_pos);
+#define decode_sequence(e,seq_end_pos) decode_composite(e,AT_SEQUENCE,seq_end_pos)
+#define inside_composite(e,s) ((e)->len < s)
+#define inside_sequence(e,s) ((e)->len < s)
 
 extern int build_get_request_packet(int version, const char *community,
 									const char *oid_list,
