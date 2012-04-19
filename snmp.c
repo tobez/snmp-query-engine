@@ -9,7 +9,7 @@ snmp_receive(struct socket_info *snmp)
 	socklen_t len;
 	char buf[65000];
 	int n;
-	struct encode enc, *e;
+	struct ber enc, *e;
 	unsigned char t;
 	unsigned l;
 	unsigned sid;
@@ -31,7 +31,7 @@ dump_buf(stderr, buf, n);
 		return;
 	}
 
-	enc = encode_init(buf, n); e = &enc;
+	enc = ber_init(buf, n); e = &enc;
 
 	#define CHECK(prob, val) if ((val) < 0) { trace = "decoding" # prob; goto bad_snmp_packet; }
 	CHECK("start sequence", decode_sequence(e, NULL));
@@ -84,7 +84,7 @@ create_snmp_socket(void)
 	on_read(snmp, snmp_receive);
 }
 
-void snmp_send(struct destination *dest, struct encode *packet)
+void snmp_send(struct destination *dest, struct ber *packet)
 {
 	if (sendto(snmp->fd, packet->buf, packet->len, 0, (struct sockaddr *)&dest->dest_addr, sizeof(dest->dest_addr)) != packet->len)
 		croak(1, "snmp_send: sendto");

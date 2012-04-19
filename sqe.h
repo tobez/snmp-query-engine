@@ -72,7 +72,7 @@
 typedef void* JudyL;
 typedef void* JudyHS;
 
-struct encode
+struct ber
 {
 	unsigned char *buf;
 	unsigned char *b;
@@ -80,13 +80,15 @@ struct encode
 	int max_len;
 };
 
+extern struct ber BER_NULL;
+
 struct packet_builder
 {
 	unsigned char *packet_sequence;
 	unsigned char *pdu;
 	unsigned char *oid_sequence;
 	int sid_offset;
-	struct encode e;
+	struct ber e;
 };
 
 struct socket_info;
@@ -159,7 +161,7 @@ struct sid_info
 	int retries_left;
 
 	struct packet_builder pb;
-	struct encode packet;
+	struct ber packet;
 	int sid_offset_in_a_packet;
 	struct oid_info_head oids_being_queried;
 };
@@ -171,37 +173,47 @@ struct oid_info
 	unsigned cid;
 	int fd;
 	// XXX some kind of distinguisher between table walk and get
-	struct encode oid;
-	struct encode value;
+	struct ber oid;
+	struct ber value;
 };
 
 extern int opt_quiet;
 
 /* ber.c */
-extern struct encode encode_init(void *buf, int size);
-extern struct encode encode_dup(struct encode *e);
-extern int encode_type_len(unsigned char type, unsigned i, struct encode *e);
-extern int encode_integer(unsigned i, struct encode *e, int force_size);
-extern int encode_string(const char *s, struct encode *e);
-extern int encode_string_oid(const char *oid, int oid_len, struct encode *e);
-extern int encode_store_length(struct encode *e, unsigned char *s);
-extern void encode_dump(FILE *f, struct encode *e);
+extern struct ber ber_init(void *buf, int size);
+extern struct ber ber_dup(struct ber *e);
+extern void ber_dump(FILE *f, struct ber *e);
+extern int ber_equal(struct ber *b1, struct ber *b2);
 
-extern int decode_type_len(struct encode *e, unsigned char *type, unsigned *len);
-extern int decode_integer(struct encode *e, int int_len, unsigned *value);
+extern int encode_type_len(unsigned char type, unsigned i, struct ber *e);
+extern int encode_integer(unsigned i, struct ber *e, int force_size);
+extern int encode_string(const char *s, struct ber *e);
+extern int encode_string_oid(const char *oid, int oid_len, struct ber *e);
+extern int encode_store_length(struct ber *e, unsigned char *s);
+
+extern int decode_type_len(struct ber *e, unsigned char *type, unsigned *len);
+extern int decode_integer(struct ber *e, int int_len, unsigned *value);
 extern unsigned char *decode_string_oid(unsigned char *s, int l, char *buf, int buf_size);
-extern int decode_composite(struct encode *e, unsigned char comp_type, int *composite_end_pos);
+extern int decode_composite(struct ber *e, unsigned char comp_type, int *composite_end_pos);
 #define decode_sequence(e,seq_end_pos) decode_composite(e,AT_SEQUENCE,seq_end_pos)
 #define inside_composite(e,s) ((e)->len < s)
 #define inside_sequence(e,s) ((e)->len < s)
 
+/* In decode_any() and decode_oid(),
+ * the dst buffer will point inside the src buffer,
+ * so if you are going to use it past the life of the src
+ * buffer, do not forget to encode_dup(dst) afterwards.
+ */
+extern int decode_any(struct ber *src, struct ber *dst);
+extern int decode_oid(struct ber *src, struct ber *dst);
+
 extern int build_get_request_packet(int version, const char *community,
 									const char *oid_list,
-									unsigned request_id, struct encode *e);
+									unsigned request_id, struct ber *e);
 extern int start_snmp_get_packet(struct packet_builder *pb, int version, const char *community,
 								 unsigned request_id);
-extern int add_encoded_oid_to_snmp_packet(struct packet_builder *pb, struct encode *oid);
-extern int finalize_snmp_packet(struct packet_builder *pb, struct encode *encoded_packet);
+extern int add_encoded_oid_to_snmp_packet(struct packet_builder *pb, struct ber *oid);
+extern int finalize_snmp_packet(struct packet_builder *pb, struct ber *encoded_packet);
 
 /* other locations */
 const char *thisprogname(void);
@@ -218,7 +230,7 @@ extern void create_listening_socket(int port);
 
 /* snmp.c */
 extern void create_snmp_socket(void);
-extern void snmp_send(struct destination *dest, struct encode *packet);
+extern void snmp_send(struct destination *dest, struct ber *packet);
 
 /* client_input.c */
 extern void new_client_connection(int fd);
@@ -254,7 +266,7 @@ extern void sid_start_timing(struct sid_info *si);
 extern void sid_stop_timing(struct sid_info *si);
 extern int sid_next_timeout(void);
 extern void check_timed_out_requests(void);
-extern void process_sid_info_response(struct sid_info *si, struct encode *e);
+extern void process_sid_info_response(struct sid_info *si, struct ber *e);
 
 /* oid_info.c */
 extern int allocate_oid_info_list(struct oid_info_head *oi, msgpack_object *o, struct cid_info *ci);

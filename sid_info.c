@@ -68,7 +68,7 @@ build_snmp_query(struct client_requests_info *cri)
 	if ( (si->sid_offset_in_a_packet = finalize_snmp_packet(&si->pb, &si->packet)) < 0)
 		croak(2, "build_snmp_query: finalize_snmp_packet");
 	fprintf(stderr, "see packet we are sending (sid %u):\n", si->sid);
-	encode_dump(stderr, &si->packet);
+	ber_dump(stderr, &si->packet);
 	sid_start_timing(si);
 	si->retries_left--;
 	snmp_send(dest, &si->packet);
@@ -270,7 +270,7 @@ void resend_query_with_new_sid(struct sid_info *si)
 	*si_slot = si;
 
 	fprintf(stderr, "see packet we are resending (sid %u, retries left %d):\n", si->sid, si->retries_left);
-	encode_dump(stderr, &si->packet);
+	ber_dump(stderr, &si->packet);
 	sid_start_timing(si);
 	si->retries_left--;
 	snmp_send(si->cri->dest, &si->packet);
@@ -294,20 +294,48 @@ check_timed_out_requests(void)
 }
 
 void
-process_sid_info_response(struct sid_info *si, struct encode *e)
+process_sid_info_response(struct sid_info *si, struct ber *e)
 {
 	unsigned error_status;
 	unsigned error_index;
 	char *trace;
 	int oids_stop;
+	struct ber oid, val;
+	struct oid_info *oi;
+	struct client_requests_info *cri;
+	struct cid_info *ci;
 
 	/* SNMP packet must be positioned past request id field */
 
+	cri = si->cri;
 	#define CHECK(prob, val) if ((val) < 0) { trace = prob; goto bad_snmp_packet; }
 	CHECK("decoding error status", decode_integer(e, -1, &error_status));
 	CHECK("decoding error index", decode_integer(e, -1, &error_index));
-	CHECK("oid sequence", decode_sequence(e, &oids_stop));
+	CHECK("oids sequence", decode_sequence(e, &oids_stop));
 	while (inside_sequence(e, oids_stop)) {
+		CHECK("bindvar", decode_sequence(e, NULL));
+		CHECK("oid", decode_oid(e, &oid));
+		CHECK("value", decode_any(e, &val));
+		TAILQ_FOREACH(oi, &si->oids_being_queried, oid_list) {
+			if (ber_equal(&oid, &oi->oid)) {
+				ci = get_cid_info(cri, oi->cid);
+				if (!ci || ci->n_oids == 0)
+					croakx(2, "process_sid_info_response: cid_info unexpectedly missing");
+				oi->value = ber_dup(&val);
+				oi->sid = 0;
+				TAILQ_REMOVE(&si->oids_being_queried, oi, oid_list);
+				TAILQ_INSERT_TAIL(&ci->oids_done, oi, oid_list);
+				ci->n_oids_being_queried--;
+				ci->n_oids_done++;
+				if (ci->n_oids_done == ci->n_oids) {
+					fprintf(stderr, "HAHA, cid %u is ready for dispatch\n", ci->cid);
+				}
+				break;
+			}
+		}
+	}
+	if (!TAILQ_EMPTY(&si->oids_being_queried)) {
+		fprintf(stderr, "SID %u: unexpectedly, not all oids are accounted for!\n", si->sid);
 	}
 	#undef CHECK
 

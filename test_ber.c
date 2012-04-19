@@ -4,7 +4,7 @@ int
 test_encode_string_oid(int *test, char *oid, int oid_len, const char *res, int len)
 {
 	char *buf = malloc(len + 20);
-	struct encode e = encode_init(buf, len + 20);
+	struct ber e = ber_init(buf, len + 20);
 	char out_buf[4096];
 	int oid_len2;
 
@@ -57,13 +57,13 @@ test_encode_string_oid(int *test, char *oid, int oid_len, const char *res, int l
 		free(buf);
 		return 0;
 	}
-	e = encode_init(buf, len);
+	e = ber_init(buf, len);
 	if (encode_string_oid(oid, oid_len, &e) < 0) {
 		fprintf(stderr, "test %d, encode_string_oid: unexpected failure with just enough buffer space, oid %s\n", *test, oid);
 		free(buf);
 		return 0;
 	}
-	e = encode_init(buf, len-1);
+	e = ber_init(buf, len-1);
 	if (encode_string_oid(oid, oid_len, &e) == 0) {
 		fprintf(stderr, "test %d, encode_string_oid: unexpected success with slightly not enough buffer space, oid %s\n", *test, oid);
 		free(buf);
@@ -79,7 +79,7 @@ test_encode_string(int *test, const char *test_string, int real_string_offset)
 	int len = strlen(test_string);
 	const char *s = test_string + real_string_offset;
 	char *buf = malloc(len + 20);
-	struct encode e = encode_init(buf, len + 20);
+	struct ber e = ber_init(buf, len + 20);
 
 	(*test)++;
 	buf[len] = '\x55';
@@ -103,13 +103,13 @@ test_encode_string(int *test, const char *test_string, int real_string_offset)
 		free(buf);
 		return 0;
 	}
-	e = encode_init(buf, len);
+	e = ber_init(buf, len);
 	if (encode_string(s, &e) < 0) {
 		fprintf(stderr, "test %d, encode_string: unexpected failure with just enough buffer space, string %s\n", *test, s);
 		free(buf);
 		return 0;
 	}
-	e = encode_init(buf, len-1);
+	e = ber_init(buf, len-1);
 	if (encode_string(s, &e) == 0) {
 		fprintf(stderr, "test %d, encode_string: unexpected success with slightly not enough buffer space, string %s\n", *test, s);
 		free(buf);
@@ -153,9 +153,9 @@ main(void)
 	fprintf(stderr, "%d of %d tests passed succesfully\n", success, n_tests);
 
 	{
-		struct encode e;
+		struct ber e;
 		char buf[1500];
-		e = encode_init(buf, 1500);
+		e = ber_init(buf, 1500);
 		if (build_get_request_packet(1, "public",
 			"1.3.6.1.2.1.2.2.1.2.1001\0"
 			"1.3.6.1.2.1.2.2.1.2.25\0",
@@ -163,7 +163,7 @@ main(void)
 		{
 			perror("build_get_request_packet");
 		} else {
-			encode_dump(stderr, &e);
+			ber_dump(stderr, &e);
 		}
 	}
 	return 0;

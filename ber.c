@@ -6,23 +6,26 @@
 #define EXTEND2 EXTEND(2)
 #define OENDCHECK if (o >= oend) { errno = EINVAL; return -1; }
 
-struct encode encode_init(void *buf, int size)
+static unsigned char BUF_NULL[] = "\x05\x00";
+struct ber BER_NULL = { BUF_NULL, BUF_NULL+2, 2, 2 };
+
+struct ber ber_init(void *buf, int size)
 {
-	struct encode e;
+	struct ber e;
 	e.buf = e.b = buf;
 	e.len = 0;
 	e.max_len = size;
 	return e;
 }
 
-struct encode encode_dup(struct encode *eo)
+struct ber ber_dup(struct ber *eo)
 {
 	char *buf = malloc(eo->len);
-	struct encode en;
+	struct ber en;
 
 	if (!buf)
 		croak(2, "encode_dup: malloc(buf(%d))", eo->len);
-	en = encode_init(buf, eo->len);
+	en = ber_init(buf, eo->len);
 	memcpy(buf, eo->buf, eo->len);
 	en.len = eo->len;
 	en.b += eo->len;
@@ -30,9 +33,17 @@ struct encode encode_dup(struct encode *eo)
 }
 
 int
+ber_equal(struct ber *b1, struct ber *b2)
+{
+	if (b1->len != b2->len)
+		return 0;
+	return memcmp(b1->buf, b2->buf, b1->len) == 0;
+}
+
+int
 build_get_request_packet(int version, const char *community,
 						 const char *oid_list,
-						 unsigned request_id, struct encode *e)
+						 unsigned request_id, struct ber *e)
 {
 	unsigned char *packet_sequence;
 	unsigned char *pdu;
@@ -93,13 +104,13 @@ start_snmp_get_packet(struct packet_builder *pb, int version, const char *commun
 					  unsigned request_id)
 {
 	unsigned char *packet_buf;
-	struct encode *e;
+	struct ber *e;
 
 	bzero(pb, sizeof(*pb));
 	packet_buf = malloc(65000);
 	if (!packet_buf)
 		croak(2, "start_get_request_packet: malloc(packet_buf)");
-	pb->e = encode_init(packet_buf, 65000);
+	pb->e = ber_init(packet_buf, 65000);
 	e = &pb->e;
 
 	SPACECHECK2;
@@ -133,9 +144,9 @@ start_snmp_get_packet(struct packet_builder *pb, int version, const char *commun
 }
 
 int
-add_encoded_oid_to_snmp_packet(struct packet_builder *pb, struct encode *oid)
+add_encoded_oid_to_snmp_packet(struct packet_builder *pb, struct ber *oid)
 {
-	struct encode *e;
+	struct ber *e;
 	unsigned char *seq;
 
 	e = &pb->e;
@@ -156,9 +167,9 @@ add_encoded_oid_to_snmp_packet(struct packet_builder *pb, struct encode *oid)
 }
 
 int
-finalize_snmp_packet(struct packet_builder *pb, struct encode *encoded_packet)
+finalize_snmp_packet(struct packet_builder *pb, struct ber *encoded_packet)
 {
-	struct encode *e;
+	struct ber *e;
 	int l;
 	e = &pb->e;
 
@@ -166,13 +177,13 @@ finalize_snmp_packet(struct packet_builder *pb, struct encode *encoded_packet)
 	pb->sid_offset += l;
 	if (encode_store_length(e, pb->pdu) < 0)	return -1;
 	if (encode_store_length(e, pb->packet_sequence) < 0)	return -1;
-	*encoded_packet = encode_dup(e);
+	*encoded_packet = ber_dup(e);
 	free(e->buf);
 	return pb->sid_offset;
 }
 
 int
-encode_store_length(struct encode *e, unsigned char *s)
+encode_store_length(struct ber *e, unsigned char *s)
 {
 	int n = e->b - s - 2;
 
@@ -205,7 +216,7 @@ encode_store_length(struct encode *e, unsigned char *s)
 }
 
 int
-encode_string(const char *s, struct encode *e)
+encode_string(const char *s, struct ber *e)
 {
 	int i = strlen(s);
 	if (encode_type_len(AT_STRING, i, e) < 0)	return -1;
@@ -220,7 +231,7 @@ encode_string(const char *s, struct encode *e)
 }
 
 int
-encode_integer(unsigned i, struct encode *e, int force_size)
+encode_integer(unsigned i, struct ber *e, int force_size)
 {
 	int l;
 	if (i <= 255)
@@ -254,7 +265,7 @@ encode_integer(unsigned i, struct encode *e, int force_size)
 }
 
 int
-decode_composite(struct encode *e, unsigned char comp_type, int *composite_end_pos)
+decode_composite(struct ber *e, unsigned char comp_type, int *composite_end_pos)
 {
 	unsigned char t;
 	unsigned len;
@@ -275,7 +286,7 @@ decode_composite(struct encode *e, unsigned char comp_type, int *composite_end_p
 }
 
 int
-decode_integer(struct encode *e, int l, unsigned *value)
+decode_integer(struct ber *e, int l, unsigned *value)
 {
 	unsigned char t;
 	unsigned len;
@@ -319,7 +330,45 @@ decode_integer(struct encode *e, int l, unsigned *value)
 }
 
 int
-decode_type_len(struct encode *e, unsigned char *type, unsigned *len)
+decode_oid(struct ber *e, struct ber *dst)
+{
+	unsigned char t;
+	unsigned len;
+
+	if (dst)
+		dst->buf = e->b;
+	if (decode_type_len(e, &t, &len) < 0)	return -1;
+	if (t != AT_OID) {
+		errno = EINVAL;
+		return -1;
+	}
+	EXTEND(len);
+	if (dst) {
+		dst->max_len = dst->len = e->b - dst->buf;
+		dst->b = e->b;
+	}
+	return 0;
+}
+
+int
+decode_any(struct ber *e, struct ber *dst)
+{
+	unsigned char t;
+	unsigned len;
+
+	if (dst)
+		dst->buf = e->b;
+	if (decode_type_len(e, &t, &len) < 0)	return -1;
+	EXTEND(len);
+	if (dst) {
+		dst->max_len = dst->len = e->b - dst->buf;
+		dst->b = e->b;
+	}
+	return 0;
+}
+
+int
+decode_type_len(struct ber *e, unsigned char *type, unsigned *len)
 {
 	unsigned l;
 
@@ -356,7 +405,7 @@ decode_type_len(struct encode *e, unsigned char *type, unsigned *len)
 }
 
 int
-encode_type_len(unsigned char type, unsigned i, struct encode *e)
+encode_type_len(unsigned char type, unsigned i, struct ber *e)
 {
 	int l;
 	if (i <= 127) {
@@ -486,7 +535,7 @@ print_number:
 }
 
 int
-encode_string_oid(const char *oid, int oid_len, struct encode *e)
+encode_string_oid(const char *oid, int oid_len, struct ber *e)
 {
 	const char *o;
 	int l = 0;
@@ -616,7 +665,7 @@ encode_string_oid(const char *oid, int oid_len, struct encode *e)
 }
 
 void
-encode_dump(FILE *f, struct encode *e)
+ber_dump(FILE *f, struct ber *e)
 {
 	dump_buf(f, e->buf, e->len);
 }

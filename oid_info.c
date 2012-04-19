@@ -29,11 +29,11 @@ allocate_oid_info_list(struct oid_info_head *list, msgpack_object *o, struct cid
 	int i;
 	struct oid_info *oi;
 	char tmp_buf[2048];
-	struct encode e;
+	struct ber e;
 
 	for (i = 0; i < o->via.array.size; i++) {
 		if (o->via.array.ptr[i].type != MSGPACK_OBJECT_RAW) goto not_good;
-		e = encode_init(tmp_buf, 2048);
+		e = ber_init(tmp_buf, 2048);
 		if (encode_string_oid(o->via.array.ptr[i].via.raw.ptr, o->via.array.ptr[i].via.raw.size, &e) < 0)	goto not_good;
 
 		oi = malloc(sizeof(*oi));
@@ -42,7 +42,7 @@ allocate_oid_info_list(struct oid_info_head *list, msgpack_object *o, struct cid
 		bzero(oi, sizeof(*oi));
 		oi->cid = ci->cid;
 		oi->fd  = ci->fd;
-		oi->oid = encode_dup(&e);
+		oi->oid = ber_dup(&e);
 
 		TAILQ_INSERT_TAIL(list, oi, oid_list);
 	}
