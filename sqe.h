@@ -44,14 +44,29 @@
 #define AT_NULL		        5
 #define AT_OID              6
 #define AT_SEQUENCE         0x30
+
+#define AT_IP_ADDRESS       0x40
+#define AT_COUNTER          0x41
+#define AT_UNSIGNED         0x42
+#define AT_TIMETICKS        0x43
+#define AT_OPAQUE           0x44
+#define AT_COUNTER64        0x45
+
 #define AT_NO_SUCH_OBJECT   0x80
 #define AT_NO_SUCH_INSTANCE 0x81
 #define AT_END_OF_MIB_VIEW  0x82
 
-#define MAX_OID 268435455  /* 2^28-1 to fit into 4 bytes */
+#define PDU_GET_REQUEST      0xa0
+#define PDU_GET_NEXT_REQUEST 0xa1
+#define PDU_GET_RESPONSE     0xa2
+#define PDU_SET_REQUEST      0xa3
+#define PDU_TRAP             0xa4
+#define PDU_GET_BULK_REQUEST 0xa5
+#define PDU_INFORM_REQUEST   0xa6
+#define PDU_SNMPV2_TRAP      0xa7
+#define PDU_REPORT           0xa8
 
-#define PDU_GET_REQUEST  0xa0
-#define PDU_GET_RESPONSE 0xa2
+#define MAX_OID 268435455  /* 2^28-1 to fit into 4 bytes */
 
 typedef void* JudyL;
 typedef void* JudyHS;
