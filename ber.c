@@ -256,7 +256,25 @@ encode_integer(unsigned i, struct encode *e, int force_size)
 int
 decode_integer(struct encode *e, int l, unsigned *value)
 {
+	unsigned char t;
+	unsigned len;
+	if (l < 0) {
+		if (decode_type_len(e, &t, &len) < 0)	return -1;
+		if (t != AT_INTEGER) {
+			errno = EINVAL;
+			return -1;
+		}
+		if (len > INT_MAX) {
+			errno = ERANGE;
+			return -1;
+		}
+		l = (int)len;
+	}
 	SPACECHECK(l);
+	if (!value) {
+		EXTEND(l);
+		return 0;
+	}
 	*value = 0;
 	switch (l) {
 	case 4:

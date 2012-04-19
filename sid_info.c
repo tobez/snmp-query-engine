@@ -292,3 +292,22 @@ check_timed_out_requests(void)
 		free_sid_info(si);
 	}
 }
+
+void
+process_sid_info_response(struct sid_info *si, struct encode *e)
+{
+	unsigned error_status;
+	unsigned error_index;
+	char *trace;
+	#define CHECK(prob, val) if ((val) < 0) { trace = prob; goto bad_snmp_packet; }
+
+	/* SNMP packet must be positioned past request id field */
+
+	CHECK("decoding error status", decode_integer(e, -1, &error_status));
+	CHECK("decoding error index", decode_integer(e, -1, &error_index));
+
+	return;
+bad_snmp_packet:
+	fprintf(stderr, "sid %u: bad SNMP packet, ignoring: %s\n", si->sid, trace);
+	#undef CHECK
+}

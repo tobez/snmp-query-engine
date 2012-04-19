@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <sys/limits.h>
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/time.h>
@@ -249,6 +250,7 @@ extern void sid_start_timing(struct sid_info *si);
 extern void sid_stop_timing(struct sid_info *si);
 extern int sid_next_timeout(void);
 extern void check_timed_out_requests(void);
+extern void process_sid_info_response(struct sid_info *si, struct encode *e);
 
 /* oid_info.c */
 extern int allocate_oid_info_list(struct oid_info_head *oi, msgpack_object *o, struct cid_info *ci);

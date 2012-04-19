@@ -13,7 +13,7 @@ snmp_receive(struct socket_info *snmp)
 	unsigned char t;
 	unsigned l;
 	unsigned sid;
-	char *where;
+	char *trace;
 	struct destination *dest;
 	struct sid_info *si;
 
@@ -33,46 +33,41 @@ dump_buf(stderr, buf, n);
 
 	enc = encode_init(buf, n); e = &enc;
 
-	where = "start sequence type/len";
+	#define CHECK(prob, val) if ((val) < 0) { trace = prob; goto bad_snmp_packet; }
+	trace = "start sequence type/len";
 	if (decode_type_len(e, &t, &l) < 0)	goto bad_snmp_packet;
-	where = "start sequence type";
+	trace = "start sequence type";
 	if (t != AT_SEQUENCE)	goto bad_snmp_packet;
 
-	where = "version type/len";
-	if (decode_type_len(e, &t, &l) < 0)	goto bad_snmp_packet;
-	where = "version type";
-	if (t != AT_INTEGER)	goto bad_snmp_packet;
-	e->b += l;  e->len += l;  // XXX skip version
+	CHECK("decoding version", decode_integer(e, -1, NULL));
 
-	where = "community type/len";
+	trace = "community type/len";
 	if (decode_type_len(e, &t, &l) < 0)	goto bad_snmp_packet;
-	where = "community type";
+	trace = "community type";
 	if (t != AT_STRING)	goto bad_snmp_packet;
 	e->b += l;  e->len += l;  // XXX skip community
 
-	where = "PDU type/len";
+	trace = "PDU type/len";
 	if (decode_type_len(e, &t, &l) < 0)	goto bad_snmp_packet;
-	where = "PDU type";
+	trace = "PDU type";
 	if (t != PDU_GET_RESPONSE)	goto bad_snmp_packet;
 
-	where = "request id type/len";
-	if (decode_type_len(e, &t, &l) < 0)	goto bad_snmp_packet;
-	where = "request id type";
-	if (t != AT_INTEGER)	goto bad_snmp_packet;
-	where = "request id value";
-	if (decode_integer(e, l, &sid) < 0)	goto bad_snmp_packet;
+	CHECK("decoding request id", decode_integer(e, -1, &sid));
+	#undef CHECK
 
 	si = find_sid_info(dest, sid);
 	if (!si) {
 		fprintf(stderr, "unable to find sid_info with sid %u, ignoring packet\n", sid);
 		return;
 	}
+
 	fprintf(stderr, "this packet appears to be legit, sid %u(%u)\n", sid, si->sid);
+	process_sid_info_response(si, e);
 
 	return;
 
 bad_snmp_packet:
-	fprintf(stderr, "bad SNMP packet, ignoring: %s\n", where);
+	fprintf(stderr, "bad SNMP packet, ignoring: %s\n", trace);
 }
 
 void
