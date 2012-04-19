@@ -14,6 +14,8 @@ snmp_receive(struct socket_info *snmp)
 	unsigned l;
 	unsigned sid;
 	char *where;
+	struct destination *dest;
+	struct sid_info *si;
 
 	/* XXX if several datagrams are ready we need a good way to bypass another
 	 * kevent/epoll_wait call after reading only one of them. */
@@ -22,6 +24,13 @@ snmp_receive(struct socket_info *snmp)
 		croak(1, "snmp_receive: recvfrom");
 fprintf(stderr, "got UDP datagram (%d bytes) from %s:%d\n", n, inet_ntoa(from.sin_addr), ntohs(from.sin_port));
 dump_buf(stderr, buf, n);
+
+	dest = find_destination(&from.sin_addr, ntohs(from.sin_port));
+	if (!dest) {
+		fprintf(stderr, "destination %s:%d is not knowing, ignoring packet\n", inet_ntoa(from.sin_addr), ntohs(from.sin_port));
+		return;
+	}
+
 	enc = encode_init(buf, n); e = &enc;
 
 	where = "start sequence type/len";
@@ -53,7 +62,13 @@ dump_buf(stderr, buf, n);
 	where = "request id value";
 	if (decode_integer(e, l, &sid) < 0)	goto bad_snmp_packet;
 
-	fprintf(stderr, "this packet appears to be legit, sid %u\n", sid);
+	si = find_sid_info(dest, sid);
+	if (!si) {
+		fprintf(stderr, "unable to find sid_info with sid %u, ignoring packet\n", sid);
+		return;
+	}
+	fprintf(stderr, "this packet appears to be legit, sid %u(%u)\n", sid, si->sid);
+
 	return;
 
 bad_snmp_packet:

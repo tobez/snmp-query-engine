@@ -228,6 +228,7 @@ extern void dump_buf(FILE *f, void *buf, int len);
 /* destination.c */
 /* get_destination() cannot return NULL, it would rather die */
 extern struct destination *get_destination(struct in_addr *ip, unsigned port);
+extern struct destination *find_destination(struct in_addr *ip, unsigned port);
 extern void maybe_query_destination(struct destination *dest);
 
 /* client_requests_info.c */
@@ -241,6 +242,7 @@ extern int free_cid_info(struct cid_info *ci, struct destination *dest);
 
 /* sid_info.c */
 extern struct sid_info *new_sid_info(struct client_requests_info *cri);
+extern struct sid_info *find_sid_info(struct destination *dest, unsigned sid);
 extern void free_sid_info(struct sid_info *si);
 extern void build_snmp_query(struct client_requests_info *cri);
 extern void sid_start_timing(struct sid_info *si);

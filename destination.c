@@ -32,6 +32,19 @@ struct destination *get_destination(struct in_addr *ip, unsigned port)
 	return *dest_slot;
 }
 
+struct destination *find_destination(struct in_addr *ip, unsigned port)
+{
+	void **ip_slot;
+	struct destination **dest_slot;
+
+	JLG(ip_slot, by_ip, ip->s_addr);
+	if (ip_slot == PJERR || !ip_slot) return NULL;
+
+	JLG(dest_slot, *ip_slot, port);
+	if (dest_slot == PJERR || !dest_slot) return NULL;
+	return *dest_slot;
+}
+
 void
 maybe_query_destination(struct destination *dest)
 {

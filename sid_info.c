@@ -1,6 +1,7 @@
 #include "sqe.h"
 
-struct sid_info *new_sid_info(struct client_requests_info *cri)
+struct sid_info *
+new_sid_info(struct client_requests_info *cri)
 {
 	struct sid_info *si, **si_slot;
 	unsigned sid;
@@ -26,6 +27,16 @@ struct sid_info *new_sid_info(struct client_requests_info *cri)
 	*si_slot = si;
 	TAILQ_INSERT_TAIL(&cri->sid_infos, si, sid_list);
 	return si;
+}
+
+struct sid_info *
+find_sid_info(struct destination *dest, unsigned sid)
+{
+	struct sid_info **si_slot;
+
+	JLG(si_slot, dest->sid_info, sid);
+	if (si_slot == PJERR || !si_slot)	return NULL;
+	return *si_slot;
 }
 
 void
