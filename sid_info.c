@@ -317,21 +317,22 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 		CHECK("oid", decode_oid(e, &oid));
 		CHECK("value", decode_any(e, &val));
 		TAILQ_FOREACH(oi, &si->oids_being_queried, oid_list) {
-			if (ber_equal(&oid, &oi->oid)) {
-				ci = get_cid_info(cri, oi->cid);
-				if (!ci || ci->n_oids == 0)
-					croakx(2, "process_sid_info_response: cid_info unexpectedly missing");
-				oi->value = ber_dup(&val);
-				oi->sid = 0;
-				TAILQ_REMOVE(&si->oids_being_queried, oi, oid_list);
-				TAILQ_INSERT_TAIL(&ci->oids_done, oi, oid_list);
-				ci->n_oids_being_queried--;
-				ci->n_oids_done++;
-				if (ci->n_oids_done == ci->n_oids) {
-					fprintf(stderr, "HAHA, cid %u is ready for dispatch\n", ci->cid);
-				}
-				break;
+			if (!ber_equal(&oid, &oi->oid))
+				continue;
+
+			ci = get_cid_info(cri, oi->cid);
+			if (!ci || ci->n_oids == 0)
+				croakx(2, "process_sid_info_response: cid_info unexpectedly missing");
+			oi->value = ber_dup(&val);
+			oi->sid = 0;
+			TAILQ_REMOVE(&si->oids_being_queried, oi, oid_list);
+			TAILQ_INSERT_TAIL(&ci->oids_done, oi, oid_list);
+			ci->n_oids_being_queried--;
+			ci->n_oids_done++;
+			if (ci->n_oids_done == ci->n_oids) {
+				fprintf(stderr, "HAHA, cid %u is ready for dispatch\n", ci->cid);
 			}
+			break;
 		}
 	}
 	if (!TAILQ_EMPTY(&si->oids_being_queried)) {
