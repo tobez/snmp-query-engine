@@ -9,7 +9,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <ctype.h>
-#include <sys/limits.h>
+#include <limits.h>
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/time.h>
