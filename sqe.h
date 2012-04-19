@@ -39,11 +39,14 @@
 
 #define RT_GET 0
 
-#define AT_INTEGER  2
-#define AT_STRING   4
-#define AT_NULL		5
-#define AT_OID      6
-#define AT_SEQUENCE 0x30
+#define AT_INTEGER          2
+#define AT_STRING           4
+#define AT_NULL		        5
+#define AT_OID              6
+#define AT_SEQUENCE         0x30
+#define AT_NO_SUCH_OBJECT   0x80
+#define AT_NO_SUCH_INSTANCE 0x81
+#define AT_END_OF_MIB_VIEW  0x82
 
 #define MAX_OID 268435455  /* 2^28-1 to fit into 4 bytes */
 

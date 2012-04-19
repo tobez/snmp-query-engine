@@ -60,6 +60,10 @@ request_match("fails for now", [0,41,$target,161, 2, "meow", ["1.3.6.1.2.1.1.5.0
 request_match("fails for now", [0,42,$target,161, 2, "public", ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0", "1.3.66"]],
 			  [20,42,qr/not implemented/i]);
 
+# version 1
+request_match("fails for now", [0,43,$target,161, 1, "public", ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0", "1.3.66"]],
+			  [20,43,qr/not implemented/i]);
+
 close $conn;
 Time::HiRes::sleep(0.2);
 kill 15, $daemon_pid;
