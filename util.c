@@ -58,17 +58,18 @@ dump_buf(FILE *f, void *buf, int len)
 {
 	unsigned char *s = buf;
 	int i;
+	char o[68];
+	int pos[] = { 0,3,6,9,12,15,18,21,25,28,31,34,37,40,43,46 };
+	char hex[] = "0123456789abcdef";
 
-	for (i = 0; i < len; i++) {
-		fprintf(f, "%02x ", (unsigned)s[i]);
-		if (i % 16 == 15 && i < len-1) {
-			int j;
-			fprintf(f, "  ");
-			for (j = i - 16; j <= i; j++) {
-				fprintf(f, "%c", isprint(s[j]) ? s[j] : '.');
-			}
-			fprintf(f, "\n");
+	while (len) {
+		memset(o, ' ', 67);
+		o[67] = 0;
+		for (i = 0; i < 16 && len > 0; i++, len--, s++) {
+			o[pos[i]] = hex[*s >> 4];
+			o[pos[i]+1] = hex[*s & 0x0f];
+			o[51+i] = isprint(*s) ? *s : '.';
 		}
+		fprintf(f, "%s\n", o);
 	}
-	fprintf(f, "\n");
 }
