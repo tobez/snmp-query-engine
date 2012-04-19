@@ -12,7 +12,7 @@ free_oid_info_list(struct oid_info_head *list)
 char buf[4096];
 if (!decode_string_oid(n1->oid.buf, n1->oid.len, buf, 4096))
 	strcpy(buf, "buf-too-short");
-fprintf(stderr, "       freeing an oid %s\n", buf);
+fprintf(stderr, "       freeing an oid (C:%u,S:%u) %s\n", n1->cid, n1->sid, buf);
 }
 		free(n1->oid.buf);
 		free(n1->value.buf);

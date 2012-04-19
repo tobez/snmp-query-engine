@@ -19,6 +19,7 @@ struct sid_info *new_sid_info(struct client_requests_info *cri)
 	bzero(si, sizeof(*si));
 	si->sid = sid;
 	si->cri = cri;
+	si->retries_left = dest->retries;
 	TAILQ_INIT(&si->oids_being_queried);
 	if (start_snmp_get_packet(&si->pb, dest->version, dest->community, sid) < 0)
 		croak(2, "new_sid_info: start_snmp_get_packet");
@@ -35,7 +36,7 @@ build_snmp_query(struct client_requests_info *cri)
 	struct destination *dest;
 	struct cid_info *ci;
 
-	if (TAILQ_EMPTY(&cri->oids_to_query))	return;
+	if (TAILQ_EMPTY(&cri->oids_to_query))	return; /* XXX */
 
 	dest = cri->dest;
 	si = new_sid_info(cri);
@@ -46,17 +47,19 @@ build_snmp_query(struct client_requests_info *cri)
 		if (add_encoded_oid_to_snmp_packet(&si->pb, &oi->oid) < 0)
 			croak(2, "build_snmp_query: add_encoded_oid_to_snmp_packet");
 		TAILQ_REMOVE(&cri->oids_to_query, oi, oid_list);
+		oi->sid = si->sid;
 		ci = get_cid_info(cri, oi->cid);
 		if (!ci || ci->n_oids == 0)
 			croakx(2, "build_snmp_query: cid_info unexpectedly missing");
 		ci->n_oids_being_queried++;
 		TAILQ_INSERT_TAIL(&si->oids_being_queried, oi, oid_list);
 	}
-	if (finalize_snmp_packet(&si->pb, &si->packet) < 0)
+	if ( (si->sid_offset_in_a_packet = finalize_snmp_packet(&si->pb, &si->packet)) < 0)
 		croak(2, "build_snmp_query: finalize_snmp_packet");
-	fprintf(stderr, "see packet:\n");
+	fprintf(stderr, "see packet we are sending (sid %u):\n", si->sid);
 	encode_dump(stderr, &si->packet);
 	sid_start_timing(si);
+	si->retries_left--;
 	snmp_send(dest, &si->packet);
 }
 
@@ -231,14 +234,49 @@ fprintf(stderr, "   freeing sid_info %u\n", si->sid);
 	free(si);
 }
 
+void resend_query_with_new_sid(struct sid_info *si)
+{
+	struct sid_info **si_slot;
+	struct oid_info *oi;
+	Word_t rc;
+
+	JLD(rc, si->cri->dest->sid_info, si->sid);
+	si->sid = next_sid();
+	si->packet.buf[si->sid_offset_in_a_packet+0] = (si->sid >> 24) & 0xff;
+	si->packet.buf[si->sid_offset_in_a_packet+1] = (si->sid >> 16) & 0xff;
+	si->packet.buf[si->sid_offset_in_a_packet+2] = (si->sid >> 8) & 0xff;
+	si->packet.buf[si->sid_offset_in_a_packet+3] = si->sid & 0xff;
+
+	TAILQ_FOREACH(oi, &si->oids_being_queried, oid_list) {
+		oi->sid = si->sid;
+	}
+
+	JLI(si_slot, si->cri->dest->sid_info, si->sid);
+	if (si_slot == PJERR)
+		croak(2, "resend_query_with_new_sid: JLI(sid_info) failed");
+	if (*si_slot)
+		croak(2, "resend_query_with_new_sid: sid_info must not be there");
+	*si_slot = si;
+
+	fprintf(stderr, "see packet we are resending (sid %u, retries left %d):\n", si->sid, si->retries_left);
+	encode_dump(stderr, &si->packet);
+	sid_start_timing(si);
+	si->retries_left--;
+	snmp_send(si->cri->dest, &si->packet);
+}
+
 void
 check_timed_out_requests(void)
 {
 	struct sid_info *si;
 	while ( (si = get_timed_out_sid_info())) {
 		sid_stop_timing(si);
-		/* XXX first, resend the packet unless out of retries */
+		if (si->retries_left > 0) {
+			resend_query_with_new_sid(si);
+			continue;
+		}
 		/* XXX mark si->oids_being_queried as timed out, move them to cid_info->oids_done */
+		fprintf(stderr, "sid %u is timed out, cleaning up\n", si->sid);
 		TAILQ_REMOVE(&si->cri->sid_infos, si, sid_list);
 		free_sid_info(si);
 	}

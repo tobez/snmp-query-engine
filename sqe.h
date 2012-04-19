@@ -65,6 +65,7 @@ struct packet_builder
 	unsigned char *packet_sequence;
 	unsigned char *pdu;
 	unsigned char *oid_sequence;
+	int sid_offset;
 	struct encode e;
 };
 
@@ -135,9 +136,11 @@ struct sid_info
 	unsigned sid;
 	struct client_requests_info *cri;
 	struct timeval will_timeout_at;
+	int retries_left;
 
 	struct packet_builder pb;
 	struct encode packet;
+	int sid_offset_in_a_packet;
 	struct oid_info_head oids_being_queried;
 };
 

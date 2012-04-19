@@ -55,7 +55,7 @@ build_get_request_packet(int version, const char *community,
 	pdu[0] = PDU_GET_REQUEST;
 	EXTEND2;
 
-	if (encode_integer(request_id, e, 0) < 0)	return -1;
+	if (encode_integer(request_id, e, 4) < 0)	return -1;
 	if (encode_integer(0, e, 0) < 0)	return -1; /* error-status */
 	if (encode_integer(0, e, 0) < 0)	return -1; /* error-index */
 
@@ -119,7 +119,8 @@ start_snmp_get_packet(struct packet_builder *pb, int version, const char *commun
 	pb->pdu[0] = PDU_GET_REQUEST;
 	EXTEND2;
 
-	if (encode_integer(request_id, e, 0) < 0)	return -1;
+	if (encode_integer(request_id, e, 4) < 0)	return -1;
+	pb->sid_offset = e->b - e->buf - 4;
 	if (encode_integer(0, e, 0) < 0)	return -1; /* error-status */
 	if (encode_integer(0, e, 0) < 0)	return -1; /* error-index */
 
@@ -158,14 +159,16 @@ int
 finalize_snmp_packet(struct packet_builder *pb, struct encode *encoded_packet)
 {
 	struct encode *e;
+	int l;
 	e = &pb->e;
 
-	if (encode_store_length(e, pb->oid_sequence) < 0)	return -1;
+	if ( (l = encode_store_length(e, pb->oid_sequence)) < 0)	return -1;
+	pb->sid_offset += l;
 	if (encode_store_length(e, pb->pdu) < 0)	return -1;
 	if (encode_store_length(e, pb->packet_sequence) < 0)	return -1;
 	*encoded_packet = encode_dup(e);
 	free(e->buf);
-	return 0;
+	return pb->sid_offset;
 }
 
 int
@@ -177,12 +180,14 @@ encode_store_length(struct encode *e, unsigned char *s)
 	/* assert(s + 2 <= e->b); */
 	if (n <= 127) {
 		s[1] = n & 0x7f;
+		return 0;
 	} else if ( n <= 255) {
 		SPACECHECK(1);
 		memmove(s+3, s+2, n);
 		s[1] = 0x81;
 		s[2] = n & 0xff;
 		EXTEND(1);
+		return 1;
 	} else if ( n <= 65535) {
 		SPACECHECK(2);
 		memmove(s+4, s+2, n);
@@ -190,6 +195,7 @@ encode_store_length(struct encode *e, unsigned char *s)
 		s[2] = (n >> 8) & 0xff;
 		s[3] = n & 0xff;
 		EXTEND(2);
+		return 2;
 	} else {
 		/* XXX larger sizes are possible */
 		errno = EMSGSIZE;
