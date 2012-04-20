@@ -67,6 +67,10 @@
 #define PDU_SNMPV2_TRAP      0xa7
 #define PDU_REPORT           0xa8
 
+/* Our own "ASN" types, used internally */
+#define VAL_TIMEOUT          0x8a
+#define VAL_MISSING          0x8b
+
 #define MAX_OID 268435455  /* 2^28-1 to fit into 4 bytes */
 
 typedef void* JudyL;
@@ -81,6 +85,8 @@ struct ber
 };
 
 extern struct ber BER_NULL;
+extern struct ber BER_TIMEOUT;
+extern struct ber BER_MISSING;
 
 struct packet_builder
 {
@@ -267,6 +273,8 @@ extern void sid_stop_timing(struct sid_info *si);
 extern int sid_next_timeout(void);
 extern void check_timed_out_requests(void);
 extern void process_sid_info_response(struct sid_info *si, struct ber *e);
+extern void oid_done(struct sid_info *si, struct oid_info *oi, struct ber *val);
+extern void all_oids_done(struct sid_info *si, struct ber *val);
 
 /* oid_info.c */
 extern int allocate_oid_info_list(struct oid_info_head *oi, msgpack_object *o, struct cid_info *ci);

@@ -286,10 +286,43 @@ check_timed_out_requests(void)
 			resend_query_with_new_sid(si);
 			continue;
 		}
-		/* XXX mark si->oids_being_queried as timed out, move them to cid_info->oids_done */
 		fprintf(stderr, "sid %u is timed out, cleaning up\n", si->sid);
+		all_oids_done(si, &BER_TIMEOUT);
 		TAILQ_REMOVE(&si->cri->sid_infos, si, sid_list);
 		free_sid_info(si);
+	}
+}
+
+void
+oid_done(struct sid_info *si, struct oid_info *oi, struct ber *val)
+{
+	struct client_requests_info *cri;
+	struct cid_info *ci;
+
+	cri = si->cri;
+	ci = get_cid_info(cri, oi->cid);
+	if (!ci || ci->n_oids == 0)
+		croakx(2, "process_sid_info_response: cid_info unexpectedly missing");
+	/* XXX free old value? */
+	oi->value = ber_dup(val);
+	oi->sid = 0;
+	TAILQ_REMOVE(&si->oids_being_queried, oi, oid_list);
+	TAILQ_INSERT_TAIL(&ci->oids_done, oi, oid_list);
+	ci->n_oids_being_queried--;
+	ci->n_oids_done++;
+	if (ci->n_oids_done == ci->n_oids) {
+		fprintf(stderr, "HAHA, cid %u is ready for dispatch\n", ci->cid);
+		/* TODO: dispatch reply */
+	}
+}
+
+void
+all_oids_done(struct sid_info *si, struct ber *val)
+{
+	struct oid_info *oi, *oi_temp;
+
+	TAILQ_FOREACH_SAFE(oi, &si->oids_being_queried, oid_list, oi_temp) {
+		oid_done(si, oi, val);
 	}
 }
 
@@ -302,12 +335,9 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 	int oids_stop;
 	struct ber oid, val;
 	struct oid_info *oi;
-	struct client_requests_info *cri;
-	struct cid_info *ci;
 
 	/* SNMP packet must be positioned past request id field */
 
-	cri = si->cri;
 	#define CHECK(prob, val) if ((val) < 0) { trace = prob; goto bad_snmp_packet; }
 	CHECK("decoding error status", decode_integer(e, -1, &error_status));
 	CHECK("decoding error index", decode_integer(e, -1, &error_index));
@@ -317,26 +347,15 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 		CHECK("oid", decode_oid(e, &oid));
 		CHECK("value", decode_any(e, &val));
 		TAILQ_FOREACH(oi, &si->oids_being_queried, oid_list) {
-			if (!ber_equal(&oid, &oi->oid))
-				continue;
-
-			ci = get_cid_info(cri, oi->cid);
-			if (!ci || ci->n_oids == 0)
-				croakx(2, "process_sid_info_response: cid_info unexpectedly missing");
-			oi->value = ber_dup(&val);
-			oi->sid = 0;
-			TAILQ_REMOVE(&si->oids_being_queried, oi, oid_list);
-			TAILQ_INSERT_TAIL(&ci->oids_done, oi, oid_list);
-			ci->n_oids_being_queried--;
-			ci->n_oids_done++;
-			if (ci->n_oids_done == ci->n_oids) {
-				fprintf(stderr, "HAHA, cid %u is ready for dispatch\n", ci->cid);
+			if (ber_equal(&oid, &oi->oid)) {
+				oid_done(si, oi, &val);
+				break;
 			}
-			break;
 		}
 	}
 	if (!TAILQ_EMPTY(&si->oids_being_queried)) {
 		fprintf(stderr, "SID %u: unexpectedly, not all oids are accounted for!\n", si->sid);
+		all_oids_done(si, &BER_MISSING);
 	}
 	#undef CHECK
 

@@ -6,8 +6,12 @@
 #define EXTEND2 EXTEND(2)
 #define OENDCHECK if (o >= oend) { errno = EINVAL; return -1; }
 
-static unsigned char BUF_NULL[] = "\x05\x00";
+static unsigned char BUF_NULL[] = "\x05";
 struct ber BER_NULL = { BUF_NULL, BUF_NULL+2, 2, 2 };
+static unsigned char BUF_TIMEOUT[] = "\x8a";
+struct ber BER_TIMEOUT = { BUF_TIMEOUT, BUF_TIMEOUT+2, 2, 2 };
+static unsigned char BUF_MISSING[] = "\x8b";
+struct ber BER_MISSING = { BUF_MISSING, BUF_MISSING+2, 2, 2 };
 
 struct ber ber_init(void *buf, int size)
 {
