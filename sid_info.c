@@ -310,10 +310,8 @@ oid_done(struct sid_info *si, struct oid_info *oi, struct ber *val)
 	TAILQ_INSERT_TAIL(&ci->oids_done, oi, oid_list);
 	ci->n_oids_being_queried--;
 	ci->n_oids_done++;
-	if (ci->n_oids_done == ci->n_oids) {
-		fprintf(stderr, "HAHA, cid %u is ready for dispatch\n", ci->cid);
-		/* TODO: dispatch reply */
-	}
+	if (ci->n_oids_done == ci->n_oids)
+		cid_reply(ci);
 }
 
 void

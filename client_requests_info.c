@@ -98,7 +98,7 @@ fprintf(stderr, "   oids_to_query, fd %d\n", cri->fd);
 	cid = 0;
 	JLF(ci_slot, cri->cid_info, cid);
 	while (ci_slot) {
-		free_cid_info(*ci_slot, cri->dest);
+		free_cid_info(*ci_slot);
 		JLN(ci_slot, cri->cid_info, cid);
 	}
 	JLFA(rc, cri->cid_info);

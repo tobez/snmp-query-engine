@@ -151,6 +151,7 @@ struct cid_info
 {
 	unsigned cid;
 	int fd;
+	struct client_requests_info *cri;
 	int n_oids;
 	int n_oids_being_queried;
 	int n_oids_done;
@@ -261,7 +262,8 @@ extern int free_all_client_request_info_for_fd(int fd);
 
 /* cid_info.c */
 extern struct cid_info *get_cid_info(struct client_requests_info *cri, unsigned cid);
-extern int free_cid_info(struct cid_info *ci, struct destination *dest);
+extern int free_cid_info(struct cid_info *ci);
+extern void cid_reply(struct cid_info *ci);
 
 /* sid_info.c */
 extern struct sid_info *new_sid_info(struct client_requests_info *cri);
