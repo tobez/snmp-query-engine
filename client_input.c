@@ -13,8 +13,7 @@ error_reply(struct socket_info *si, unsigned code, unsigned cid, char *error)
 	msgpack_pack_raw(pk, l);
 	msgpack_pack_raw_body(pk, error, l);
 
-	if (write(si->fd, buffer->data, buffer->size) < 0)
-		croak(1, "error_reply: write");
+	tcp_send(si->fd, buffer->data, buffer->size);
 	msgpack_sbuffer_free(buffer);
 	msgpack_packer_free(pk);
 	return -1;
@@ -159,7 +158,12 @@ void new_client_connection(int fd)
 {
 	struct socket_info *si;
 	struct client_connection *c;
+	int flags;
 
+	if ( (flags = fcntl(fd, F_GETFL, 0)) < 0)
+		croak(1, "new_client_connection: fcntl(F_GETFL)");
+	if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
+		croak(1, "new_client_connection: fcntl(F_SETFL)");
 	si = new_socket_info(fd);
 	c = malloc(sizeof(*c));
 	if (!c)

@@ -19,6 +19,7 @@ new_socket_info(int fd)
 		croak(1, "new_socket_info: malloc(socket_info)");
 	bzero(si, sizeof(*si));
 	si->fd = fd;
+	TAILQ_INIT(&si->send_bufs);
 	JLI(slot, socks, fd);
 	if (slot == PJERR)
 		croak(2, "new_socket_info: JLI failed");
@@ -26,6 +27,17 @@ new_socket_info(int fd)
 		croak(3, "new_socket_info: assertion failed, fd %d is already there", fd);
 	*slot = si;
 	return si;
+}
+
+void
+tcp_send(int fd, void *buf, int size)
+{
+	//struct send_buf *sb;
+	/* XXX in reality, try to send something right away */
+	//sb = malloc(sizeof(*sb));
+	//if (!sb
+	if (write(fd, buf, size) < 0)
+		croak(1, "tcp_send: write");
 }
 
 void

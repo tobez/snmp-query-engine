@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <limits.h>
+#include <fcntl.h>
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/time.h>
@@ -97,7 +98,13 @@ struct packet_builder
 	struct ber e;
 };
 
-struct socket_info;
+struct send_buf
+{
+	TAILQ_ENTRY(send_buf) send_list;
+	void *buf;
+	int size;
+	int offset;
+};
 
 struct socket_info
 {
@@ -105,6 +112,7 @@ struct socket_info
 	void *udata;
 	void (*read_handler)(struct socket_info *si);
 	void (*write_handler)(struct socket_info *si);
+	TAILQ_HEAD(send_buf_head, send_buf) send_bufs;
 };
 
 struct client_connection
@@ -226,11 +234,14 @@ extern int finalize_snmp_packet(struct packet_builder *pb, struct ber *encoded_p
 const char *thisprogname(void);
 void croak(int exit_code, const char *fmt, ...);
 void croakx(int exit_code, const char *fmt, ...);
+
+/* event_loop.c */
 struct socket_info *new_socket_info(int fd);
 void delete_socket_info(struct socket_info *si);
 void on_read(struct socket_info *si, void (*read_handler)(struct socket_info *si));
 void on_write(struct socket_info *si, void (*write_handler)(struct socket_info *si));
 void event_loop(void);
+void tcp_send(int fd, void *buf, int size);
 
 /* client_listen.c */
 extern void create_listening_socket(int port);
