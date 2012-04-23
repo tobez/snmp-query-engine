@@ -101,7 +101,7 @@ struct packet_builder
 struct send_buf
 {
 	TAILQ_ENTRY(send_buf) send_list;
-	void *buf;
+	unsigned char *buf;
 	int size;
 	int offset;
 };
@@ -112,6 +112,7 @@ struct socket_info
 	void *udata;
 	void (*read_handler)(struct socket_info *si);
 	void (*write_handler)(struct socket_info *si);
+	int n_send_bufs;
 	TAILQ_HEAD(send_buf_head, send_buf) send_bufs;
 };
 
@@ -241,7 +242,7 @@ void delete_socket_info(struct socket_info *si);
 void on_read(struct socket_info *si, void (*read_handler)(struct socket_info *si));
 void on_write(struct socket_info *si, void (*write_handler)(struct socket_info *si));
 void event_loop(void);
-void tcp_send(int fd, void *buf, int size);
+void tcp_send(struct socket_info *si, void *buf, int size);
 
 /* client_listen.c */
 extern void create_listening_socket(int port);

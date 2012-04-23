@@ -29,21 +29,88 @@ new_socket_info(int fd)
 	return si;
 }
 
-void
-tcp_send(int fd, void *buf, int size)
+static void
+flush_buffers(struct socket_info *si)
 {
-	//struct send_buf *sb;
+	struct iovec *io;
+	struct send_buf *sb;
+	int i, n;
+
+	/* XXX handle cases where there is nothing, and where there is only one */
+	io = malloc(sizeof(*io) * si->n_send_bufs);
+	if (!io)
+		croak(1, "flush_buffers: malloc(iovec)");
+	i = 0;
+	TAILQ_FOREACH(sb, &si->send_bufs, send_list) {
+		io[i].iov_base = sb->buf + sb->offset;
+		io[i].iov_len  = sb->size;
+		i++;
+	}
+fprintf(stderr, "writeving %d iovectors to fd %d\n", i, si->fd);
+	if ( (n = writev(si->fd, io, i)) < 0)
+		croak(1, "flush_buffers: writev");
+fprintf(stderr, "writev: %d bytes\n", n);
+	free(io);
+	while (n > 0) {
+		sb = TAILQ_FIRST(&si->send_bufs);
+		if (!sb)
+			croakx(2, "flush_buffers: send_bufs queue unexpectedly empty");
+		if (n >= sb->size) {
+			TAILQ_REMOVE(&si->send_bufs, sb, send_list);
+			n -= sb->size;
+			free(sb->buf);
+			free(sb);
+			si->n_send_bufs--;
+		} else {
+			sb->size   -= n;
+			sb->offset += n;
+			n = 0;
+		}
+	}
+	if (TAILQ_EMPTY(&si->send_bufs)) {
+		on_write(si, NULL);
+	}
+	//if (write(fd, buf, size) < 0)
+	//	croak(1, "tcp_send: write");
+}
+
+void
+tcp_send(struct socket_info *si, void *buf, int size)
+{
+	struct send_buf *sb;
 	/* XXX in reality, try to send something right away */
-	//sb = malloc(sizeof(*sb));
-	//if (!sb
-	if (write(fd, buf, size) < 0)
-		croak(1, "tcp_send: write");
+	sb = malloc(sizeof(*sb));
+	if (!sb)
+		croak(1, "tcp_send: malloc(send_buf)");
+	bzero(sb, sizeof(*sb));
+	sb->buf = malloc(size);
+	if (!sb->buf)
+		croak(1, "tcp_send: malloc(sb->buf)");
+	sb->size = size;
+	sb->offset = 0;
+	memcpy(sb->buf, buf, size);
+	if (TAILQ_EMPTY(&si->send_bufs)) {
+		on_write(si, flush_buffers);
+	}
+	TAILQ_INSERT_TAIL(&si->send_bufs, sb, send_list);
+	si->n_send_bufs++;
 }
 
 void
 delete_socket_info(struct socket_info *si)
 {
 	int rc;
+	struct send_buf *n1, *n2;
+
+	n1 = TAILQ_FIRST(&si->send_bufs);
+	while (n1 != NULL) {
+		n2 = TAILQ_NEXT(n1, send_list);
+		free(n1->buf);
+		free(n1);
+		n1 = n2;
+	}
+	TAILQ_INIT(&si->send_bufs);
+	si->n_send_bufs = 0;
 
 	JLD(rc, socks, si->fd);
 	close(si->fd);
@@ -127,7 +194,7 @@ on_read(struct socket_info *si, void (*read_handler)(struct socket_info *si))
 		int nev;
 		unsigned flags = EV_ADD | EV_RECEIPT;
 
-		if (!read_handler) flags |= EV_DISABLE;
+		flags |= read_handler ? EV_ENABLE : EV_DISABLE;
 		EV_SET(&set_ke, si->fd, EVFILT_READ, flags, 0, 0, 0);
 
 		nev = kevent(kq, &set_ke, 1, &get_ke, 1, NULL);
@@ -162,7 +229,7 @@ on_write(struct socket_info *si, void (*write_handler)(struct socket_info *si))
 		int nev;
 		unsigned flags = EV_ADD | EV_RECEIPT;
 
-		if (!write_handler) flags |= EV_DISABLE;
+		flags |= write_handler ? EV_ENABLE : EV_DISABLE;
 		EV_SET(&set_ke, si->fd, EVFILT_WRITE, flags, 0, 0, 0);
 
 		nev = kevent(kq, &set_ke, 1, &get_ke, 1, NULL);

@@ -13,7 +13,7 @@ error_reply(struct socket_info *si, unsigned code, unsigned cid, char *error)
 	msgpack_pack_raw(pk, l);
 	msgpack_pack_raw_body(pk, error, l);
 
-	tcp_send(si->fd, buffer->data, buffer->size);
+	tcp_send(si, buffer->data, buffer->size);
 	msgpack_sbuffer_free(buffer);
 	msgpack_packer_free(pk);
 	return -1;
