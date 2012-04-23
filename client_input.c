@@ -79,6 +79,23 @@ handle_get_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 }
 
 static void
+client_gone(struct socket_info *si)
+{
+	struct client_connection *c = si->udata;
+
+	si->udata = NULL;
+	free_all_client_request_info_for_fd(si->fd);
+	delete_socket_info(si);
+	if (c) {
+		msgpack_unpacked_destroy(&c->input);
+		msgpack_unpacker_destroy(&c->unpacker);
+		free(c);
+	}
+	if (!opt_quiet)
+		fprintf(stderr, "client disconnect\n");
+}
+
+static void
 client_input(struct socket_info *si)
 {
 	struct client_connection *c = si->udata;
@@ -88,17 +105,19 @@ client_input(struct socket_info *si)
 
 	if (!c)
 		croak(1, "client_input: no client_connection information");
-	if ( (n = read(si->fd, buf, 1500)) == -1)
+	if ( (n = read(si->fd, buf, 1500)) == -1) {
+		switch (errno) {
+		case EPIPE:
+			fprintf(stderr, "flush_buffers: EPIPE during read\n");
+			return;
+		case ECONNRESET:
+			fprintf(stderr, "flush_buffers: ECONNRESET during read\n");
+			return;
+		}
 		croak(1, "client_input: read error");
+	}
 	if (n == 0) {
-		si->udata = NULL;
-		free_all_client_request_info_for_fd(si->fd);
-		delete_socket_info(si);
-		msgpack_unpacked_destroy(&c->input);
-		msgpack_unpacker_destroy(&c->unpacker);
-		free(c);
-		if (!opt_quiet)
-			fprintf(stderr, "client disconnect\n");
+		client_gone(si);
 		return;
 	}
 
@@ -112,11 +131,11 @@ client_input(struct socket_info *si)
 		uint32_t type;
 
 		got = 1;
-		if (!opt_quiet) {
-			printf("got client input: ");
-			msgpack_object_print(stdout, c->input.data);
-			printf("\n");
-		}
+		//if (!opt_quiet) {
+		//	printf("got client input: ");
+		//	msgpack_object_print(stdout, c->input.data);
+		//	printf("\n");
+		//}
 		o = &c->input.data;
 		if (o->type != MSGPACK_OBJECT_ARRAY) {
 			error_reply(si, 30, 0, "Request is not an array");
@@ -159,11 +178,14 @@ void new_client_connection(int fd)
 	struct socket_info *si;
 	struct client_connection *c;
 	int flags;
+	int no_sigpipe = 1;
 
 	if ( (flags = fcntl(fd, F_GETFL, 0)) < 0)
 		croak(1, "new_client_connection: fcntl(F_GETFL)");
 	if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
 		croak(1, "new_client_connection: fcntl(F_SETFL)");
+	if (setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &no_sigpipe, sizeof (no_sigpipe)) < 0)
+		croak(1, "new_client_connection: setsockopt of SO_NOSIGPIPE error");
 	si = new_socket_info(fd);
 	c = malloc(sizeof(*c));
 	if (!c)
@@ -172,5 +194,6 @@ void new_client_connection(int fd)
 	si->udata = c;
 	msgpack_unpacker_init(&c->unpacker, MSGPACK_UNPACKER_INIT_BUFFER_SIZE);
 	msgpack_unpacked_init(&c->input);
+	on_eof(si, client_gone);
 	on_read(si, client_input);
 }

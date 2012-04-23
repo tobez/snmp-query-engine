@@ -29,40 +29,56 @@ new_socket_info(int fd)
 	return si;
 }
 
+static struct iovec io_buf[IOV_MAX];
+
 static void
 flush_buffers(struct socket_info *si)
 {
-	struct iovec *io;
 	struct send_buf *sb;
-	int i, n;
+	int i, n, tot;
 
-	/* XXX handle cases where there is nothing, and where there is only one */
-	io = malloc(sizeof(*io) * si->n_send_bufs);
-	if (!io)
-		croak(1, "flush_buffers: malloc(iovec)");
-	i = 0;
-	TAILQ_FOREACH(sb, &si->send_bufs, send_list) {
-		io[i].iov_base = sb->buf + sb->offset;
-		io[i].iov_len  = sb->size;
-		i++;
+	if (!si->n_send_bufs) {
+		fprintf(stderr, "flush_buffers: fd %d: unexpectedly nothing to flush\n", si->fd);
+		on_write(si, NULL);
+		return;
 	}
-fprintf(stderr, "writeving %d iovectors to fd %d\n", i, si->fd);
-	if ( (n = writev(si->fd, io, i)) < 0)
+	/* XXX handle case where there is only one specially */
+	i = 0;
+	tot = 0;
+	TAILQ_FOREACH(sb, &si->send_bufs, send_list) {
+		io_buf[i].iov_base = sb->buf + sb->offset;
+		io_buf[i].iov_len  = sb->size - sb->offset;
+		tot += sb->size - sb->offset;
+		i++;
+		if (i >= IOV_MAX)
+			break;
+	}
+fprintf(stderr, "writeving %d iovectors, total size %d to fd %d\n", i, tot, si->fd);
+	if ( (n = writev(si->fd, io_buf, i)) < 0) {
+		switch (errno) {
+		case EPIPE:
+			fprintf(stderr, "flush_buffers: EPIPE during writev\n");
+			return;
+		case ECONNRESET:
+			fprintf(stderr, "flush_buffers: ECONNRESET during writev\n");
+			return;
+		}
 		croak(1, "flush_buffers: writev");
-fprintf(stderr, "writev: %d bytes\n", n);
-	free(io);
+	}
+fprintf(stderr, "flush_buffers: writev: %d bytes written\n", n);
+if (tot != n)
+	fprintf(stderr, "flush_buffers: fd %d: short write\n", si->fd);
 	while (n > 0) {
 		sb = TAILQ_FIRST(&si->send_bufs);
 		if (!sb)
 			croakx(2, "flush_buffers: send_bufs queue unexpectedly empty");
-		if (n >= sb->size) {
+		if (n >= sb->size - sb->offset) {
 			TAILQ_REMOVE(&si->send_bufs, sb, send_list);
-			n -= sb->size;
+			n -= sb->size - sb->offset;
 			free(sb->buf);
 			free(sb);
 			si->n_send_bufs--;
 		} else {
-			sb->size   -= n;
 			sb->offset += n;
 			n = 0;
 		}
@@ -78,15 +94,26 @@ void
 tcp_send(struct socket_info *si, void *buf, int size)
 {
 	struct send_buf *sb;
+	int buf_size;
+
+	sb = TAILQ_LAST(&si->send_bufs, send_buf_head);
+	if (sb && sb->buf_size - sb->size >= size) {
+		//fprintf(stderr, "adding to the last buf (%d/%d) %d more bytes\n", sb->size, sb->buf_size, size);
+		memcpy(sb->buf + sb->size, buf, size);
+		sb->size += size;
+		return;
+	}
 	/* XXX in reality, try to send something right away */
 	sb = malloc(sizeof(*sb));
 	if (!sb)
 		croak(1, "tcp_send: malloc(send_buf)");
 	bzero(sb, sizeof(*sb));
-	sb->buf = malloc(size);
+	buf_size = size > 4096 ? size : 4096;
+	sb->buf = malloc(buf_size);
 	if (!sb->buf)
 		croak(1, "tcp_send: malloc(sb->buf)");
 	sb->size = size;
+	sb->buf_size = buf_size;
 	sb->offset = 0;
 	memcpy(sb->buf, buf, size);
 	if (TAILQ_EMPTY(&si->send_bufs)) {
@@ -181,6 +208,12 @@ binary_dump(FILE *f, void *buf, int len)
 }
 
 void
+on_eof(struct socket_info *si, void (*eof_handler)(struct socket_info *si))
+{
+	si->eof_handler = eof_handler;
+}
+
+void
 on_read(struct socket_info *si, void (*read_handler)(struct socket_info *si))
 {
 #ifdef WITH_KQUEUE
@@ -271,25 +304,37 @@ event_loop(void)
 				JLG(slot, socks, ke[i].ident);
 				if (slot && *slot) {
 					si = *slot;
-					if (si->read_handler) {
-						si->read_handler(si);
+					if (ke[i].flags & EV_EOF) {
+						if (si->eof_handler) {
+							si->eof_handler(si);
+						} else {
+							fprintf(stderr, "event_loop: EVFILT_READ: ident %u - socket does not have an eof handler\n", (unsigned)ke[i].ident);
+						}
 					} else {
-						fprintf(stderr, "event_loop: EVFILT_READ: ident %u - socket does not have a read handler\n", (unsigned)ke[i].ident);
+						if (si->read_handler) {
+							si->read_handler(si);
+						} else {
+							fprintf(stderr, "event_loop: EVFILT_READ: ident %u - socket does not have a read handler\n", (unsigned)ke[i].ident);
+						}
 					}
-				} else {
-					fprintf(stderr, "event_loop: EVFILT_READ: ident %u - no FD found in socks\n", (unsigned)ke[i].ident);
 				}
 			} else if (ke[i].filter == EVFILT_WRITE) {
 				JLG(slot, socks, ke[i].ident);
 				if (slot && *slot) {
 					si = *slot;
-					if (si->write_handler) {
-						si->write_handler(si);
+					if (ke[i].flags & EV_EOF) {
+						if (si->eof_handler) {
+							si->eof_handler(si);
+						} else {
+							fprintf(stderr, "event_loop: EVFILT_WRITE: ident %u - socket does not have an eof handler\n", (unsigned)ke[i].ident);
+						}
 					} else {
-						fprintf(stderr, "event_loop: EVFILT_WRITE: ident %u - socket does not have a write handler\n", (unsigned)ke[i].ident);
+						if (si->write_handler) {
+							si->write_handler(si);
+						} else {
+							fprintf(stderr, "event_loop: EVFILT_WRITE: ident %u - socket does not have a write handler\n", (unsigned)ke[i].ident);
+						}
 					}
-				} else {
-					fprintf(stderr, "event_loop: EVFILT_WRITE: ident %u - no FD found in socks\n", (unsigned)ke[i].ident);
 				}
 			} else {
 				fprintf(stderr, "event_loop: unexpected filter value %d, ident %u\n", ke[i].filter, (unsigned)ke[i].ident);
