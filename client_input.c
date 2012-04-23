@@ -178,14 +178,18 @@ void new_client_connection(int fd)
 	struct socket_info *si;
 	struct client_connection *c;
 	int flags;
-	int no_sigpipe = 1;
 
 	if ( (flags = fcntl(fd, F_GETFL, 0)) < 0)
 		croak(1, "new_client_connection: fcntl(F_GETFL)");
 	if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
 		croak(1, "new_client_connection: fcntl(F_SETFL)");
-	if (setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &no_sigpipe, sizeof (no_sigpipe)) < 0)
-		croak(1, "new_client_connection: setsockopt of SO_NOSIGPIPE error");
+	#if defined(SO_NOSIGPIPE)
+	{
+		int no_sigpipe = 1;
+		if (setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &no_sigpipe, sizeof (no_sigpipe)) < 0)
+			croak(1, "new_client_connection: setsockopt of SO_NOSIGPIPE error");
+	}
+	#endif
 	si = new_socket_info(fd);
 	c = malloc(sizeof(*c));
 	if (!c)

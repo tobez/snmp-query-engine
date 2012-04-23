@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <ctype.h>
+#define __USE_XOPEN
 #include <limits.h>
 #include <fcntl.h>
 #include <sys/param.h>
