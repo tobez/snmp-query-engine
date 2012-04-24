@@ -53,7 +53,7 @@ flush_buffers(struct socket_info *si)
 		if (i >= IOV_MAX)
 			break;
 	}
-fprintf(stderr, "writeving %d iovectors, total size %d to fd %d\n", i, tot, si->fd);
+//fprintf(stderr, "writeving %d iovectors, total size %d to fd %d\n", i, tot, si->fd);
 	if ( (n = writev(si->fd, io_buf, i)) < 0) {
 		switch (errno) {
 		case EPIPE:
@@ -67,9 +67,9 @@ fprintf(stderr, "writeving %d iovectors, total size %d to fd %d\n", i, tot, si->
 		}
 		croak(1, "flush_buffers: writev");
 	}
-fprintf(stderr, "flush_buffers: writev: %d bytes written\n", n);
-if (tot != n)
-	fprintf(stderr, "flush_buffers: fd %d: short write\n", si->fd);
+//fprintf(stderr, "flush_buffers: writev: %d bytes written\n", n);
+//if (tot != n)
+//	fprintf(stderr, "flush_buffers: fd %d: short write\n", si->fd);
 	while (n > 0) {
 		sb = TAILQ_FIRST(&si->send_bufs);
 		if (!sb)

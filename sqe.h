@@ -157,6 +157,7 @@ TAILQ_HEAD(sid_info_head, sid_info);
 struct client_requests_info
 {
 	struct destination *dest;
+	struct socket_info *si;
 	int fd;
 	JudyL cid_info; /* JudyL of struct cid_info ("cid" = client id) indexed by cid */
 	struct oid_info_head oids_to_query;

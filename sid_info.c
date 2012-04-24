@@ -67,8 +67,8 @@ build_snmp_query(struct client_requests_info *cri)
 	}
 	if ( (si->sid_offset_in_a_packet = finalize_snmp_packet(&si->pb, &si->packet)) < 0)
 		croak(2, "build_snmp_query: finalize_snmp_packet");
-	fprintf(stderr, "see packet we are sending (sid %u):\n", si->sid);
-	ber_dump(stderr, &si->packet);
+	// fprintf(stderr, "see packet we are sending (sid %u):\n", si->sid);
+	// ber_dump(stderr, &si->packet);
 	sid_start_timing(si);
 	si->retries_left--;
 	snmp_send(dest, &si->packet);
@@ -269,8 +269,8 @@ void resend_query_with_new_sid(struct sid_info *si)
 		croak(2, "resend_query_with_new_sid: sid_info must not be there");
 	*si_slot = si;
 
-	fprintf(stderr, "see packet we are resending (sid %u, retries left %d):\n", si->sid, si->retries_left);
-	ber_dump(stderr, &si->packet);
+	// fprintf(stderr, "see packet we are resending (sid %u, retries left %d):\n", si->sid, si->retries_left);
+	// ber_dump(stderr, &si->packet);
 	sid_start_timing(si);
 	si->retries_left--;
 	snmp_send(si->cri->dest, &si->packet);

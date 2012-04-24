@@ -8,7 +8,7 @@ free_oid_info_list(struct oid_info_head *list)
 	n1 = TAILQ_FIRST(list);
 	while (n1 != NULL) {
 		n2 = TAILQ_NEXT(n1, oid_list);
-{
+if (0){
 char buf[4096];
 if (!decode_string_oid(n1->oid.buf, n1->oid.len, buf, 4096))
 	strcpy(buf, "buf-too-short");

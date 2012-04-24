@@ -37,19 +37,29 @@ fprintf(stderr, "     oids_done, fd %d, cid %u\n", ci->fd, ci->cid);
 void
 cid_reply(struct cid_info *ci)
 {
+	msgpack_sbuffer* buffer = msgpack_sbuffer_new();
+	msgpack_packer* pk = msgpack_packer_new(buffer, msgpack_sbuffer_write);
+	struct oid_info *oi;
+	char buf[4096];
+	int l;
+
+	msgpack_pack_array(pk, 3);
+	msgpack_pack_int(pk, RT_GET|RT_REPLY);
+	msgpack_pack_int(pk, ci->cid);
+	msgpack_pack_array(pk, ci->n_oids_done);
+	TAILQ_FOREACH(oi, &ci->oids_done, oid_list) {
+		msgpack_pack_array(pk, 2);
+		if (!decode_string_oid(oi->oid.buf, oi->oid.len, buf, 4096))
+			strcpy(buf, "oid-too-long");
+		l = strlen(buf);
+		msgpack_pack_raw(pk, l);
+		msgpack_pack_raw_body(pk, buf, l);
+		msgpack_pack_raw(pk, 5);
+		msgpack_pack_raw_body(pk, "value", 5);
+	}
+
 	fprintf(stderr, "cid %u reply\n", ci->cid);
-	//msgpack_sbuffer* buffer = msgpack_sbuffer_new();
-	//msgpack_packer* pk = msgpack_packer_new(buffer, msgpack_sbuffer_write);
-	//int l = strlen(error);
-
-	//msgpack_pack_array(pk, 3);
-	//msgpack_pack_int(pk, code);
-	//msgpack_pack_int(pk, cid);
-	//msgpack_pack_raw(pk, l);
-	//msgpack_pack_raw_body(pk, error, l);
-
-	//tcp_send(si, buffer->data, buffer->size);
-	//msgpack_sbuffer_free(buffer);
-	//msgpack_packer_free(pk);
-	//return -1;
+	tcp_send(ci->cri->si, buffer->data, buffer->size);
+	msgpack_sbuffer_free(buffer);
+	msgpack_packer_free(pk);
 }

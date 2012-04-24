@@ -22,8 +22,8 @@ snmp_receive(struct socket_info *snmp)
 	len = sizeof(from);
 	if ( (n = recvfrom(snmp->fd, buf, 65000, 0, (struct sockaddr *)&from, &len)) < 0)
 		croak(1, "snmp_receive: recvfrom");
-fprintf(stderr, "got UDP datagram (%d bytes) from %s:%d\n", n, inet_ntoa(from.sin_addr), ntohs(from.sin_port));
-dump_buf(stderr, buf, n);
+//fprintf(stderr, "got UDP datagram (%d bytes) from %s:%d\n", n, inet_ntoa(from.sin_addr), ntohs(from.sin_port));
+//dump_buf(stderr, buf, n);
 
 	dest = find_destination(&from.sin_addr, ntohs(from.sin_port));
 	if (!dest) {
@@ -53,7 +53,7 @@ dump_buf(stderr, buf, n);
 		return;
 	}
 
-	fprintf(stderr, "this packet appears to be legit, sid %u(%u)\n", sid, si->sid);
+//	fprintf(stderr, "this packet appears to be legit, sid %u(%u)\n", sid, si->sid);
 	process_sid_info_response(si, e);
 
 	return;
@@ -88,5 +88,5 @@ void snmp_send(struct destination *dest, struct ber *packet)
 {
 	if (sendto(snmp->fd, packet->buf, packet->len, 0, (struct sockaddr *)&dest->dest_addr, sizeof(dest->dest_addr)) != packet->len)
 		croak(1, "snmp_send: sendto");
-fprintf(stderr, "UDP datagram of %d bytes sent to %s:%d\n", packet->len, inet_ntoa(dest->dest_addr.sin_addr), ntohs(dest->dest_addr.sin_port));
+//fprintf(stderr, "UDP datagram of %d bytes sent to %s:%d\n", packet->len, inet_ntoa(dest->dest_addr.sin_addr), ntohs(dest->dest_addr.sin_port));
 }

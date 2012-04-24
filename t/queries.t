@@ -5,7 +5,7 @@ use warnings;
 
 use Data::MessagePack;
 use IO::Socket::INET;
-use Data::Dump;
+use Data::Dump qw(dd pp);
 use Time::HiRes;
 use FindBin;
 use Socket ':all';
@@ -54,15 +54,25 @@ request_match("oids is an empty array", [1,27,"127.0.0.1",161, 2, "meow", []], [
 
 my $target = $^O eq "linux" ? "172.24.253.189" : "127.0.0.1";
 
-request_match("fails for now", [1,41,$target,161, 2, "meow", ["1.3.6.1.2.1.1.5.0"]],
-			  [0x21,41,qr/not implemented/i]);
+my $r;
+$r = request_match("fails for now", [1,41,$target,161, 2, "meow", ["1.3.6.1.2.1.1.5.0"]],
+			  [0x11,41,[["1.3.6.1.2.1.1.5.0","value"]]]);
+print STDERR pp $r;
 #sleep 7;
-request_match("fails for now", [1,42,$target,161, 2, "public", ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0", "1.3.66"]],
-			  [0x21,42,qr/not implemented/i]);
+$r = request_match("fails for now", [1,42,$target,161, 2, "public", ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0", "1.3.66"]],
+			  [0x11,42,[
+			  ["1.3.6.1.2.1.1.5.0","value"],
+			  ["1.3.6.1.2.1.25.1.1.0","value"],
+			  ["1.3.66","value"]]]);
+print STDERR pp $r;
 
 # version 1
-request_match("fails for now", [1,43,$target,161, 1, "public", ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0", "1.3.66"]],
-			  [0x21,43,qr/not implemented/i]);
+$r = request_match("fails for now", [1,43,$target,161, 1, "public", ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0", "1.3.66"]],
+			  [0x11,43,[
+			  ["1.3.6.1.2.1.1.5.0","value"],
+			  ["1.3.6.1.2.1.25.1.1.0","value"],
+			  ["1.3.66","value"]]]);
+print STDERR pp $r;
 
 Time::HiRes::sleep(0.2);
 close $conn;
@@ -74,7 +84,9 @@ done_testing;
 sub request_match
 {
 	my ($t, $req, $mat) = @_;
-	match($t, request($req), $mat);
+	my $res = request($req);
+	match($t, $res, $mat);
+	return $res;
 }
 
 sub request

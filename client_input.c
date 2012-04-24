@@ -61,6 +61,7 @@ handle_get_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 		return error_reply(si, RT_GET|RT_ERROR, cid, "oids is an empty array");
 
 	cri = get_client_requests_info(&ip, port, si->fd);
+	cri->si = si;
 	strcpy(cri->dest->community, community);
 	cri->dest->version = ver - 1;
 	ci = get_cid_info(cri, cid);
@@ -75,7 +76,7 @@ handle_get_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	TAILQ_CONCAT(&cri->oids_to_query, &oi, oid_list);
 
 	maybe_query_destination(cri->dest);
-	return error_reply(si, RT_GET|RT_ERROR, cid, "not implemented");
+	return 0;
 }
 
 static void
