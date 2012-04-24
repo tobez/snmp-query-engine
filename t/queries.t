@@ -56,7 +56,7 @@ my $target = $^O eq "linux" ? "172.24.253.189" : "127.0.0.1";
 
 request_match("fails for now", [1,41,$target,161, 2, "meow", ["1.3.6.1.2.1.1.5.0"]],
 			  [0x21,41,qr/not implemented/i]);
-sleep 7;
+#sleep 7;
 request_match("fails for now", [1,42,$target,161, 2, "public", ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0", "1.3.66"]],
 			  [0x21,42,qr/not implemented/i]);
 
@@ -64,6 +64,7 @@ request_match("fails for now", [1,42,$target,161, 2, "public", ["1.3.6.1.2.1.1.5
 request_match("fails for now", [1,43,$target,161, 1, "public", ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0", "1.3.66"]],
 			  [0x21,43,qr/not implemented/i]);
 
+Time::HiRes::sleep(0.2);
 close $conn;
 Time::HiRes::sleep(0.2);
 kill 15, $daemon_pid;

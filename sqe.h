@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <ctype.h>
+#define __USE_XOPEN
 #include <limits.h>
 #include <fcntl.h>
 #include <sys/param.h>
@@ -107,6 +108,7 @@ struct send_buf
 	TAILQ_ENTRY(send_buf) send_list;
 	unsigned char *buf;
 	int size;
+	int buf_size;
 	int offset;
 };
 
@@ -116,6 +118,7 @@ struct socket_info
 	void *udata;
 	void (*read_handler)(struct socket_info *si);
 	void (*write_handler)(struct socket_info *si);
+	void (*eof_handler)(struct socket_info *si);
 	int n_send_bufs;
 	TAILQ_HEAD(send_buf_head, send_buf) send_bufs;
 };
@@ -243,6 +246,7 @@ void croakx(int exit_code, const char *fmt, ...);
 /* event_loop.c */
 struct socket_info *new_socket_info(int fd);
 void delete_socket_info(struct socket_info *si);
+void on_eof(struct socket_info *si, void (*eof_handler)(struct socket_info *si));
 void on_read(struct socket_info *si, void (*read_handler)(struct socket_info *si));
 void on_write(struct socket_info *si, void (*write_handler)(struct socket_info *si));
 void event_loop(void);
