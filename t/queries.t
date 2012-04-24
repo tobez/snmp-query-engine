@@ -53,8 +53,14 @@ request_match("oids is not an array 2", [1,25,"127.0.0.1",161, 2, "meow", {}], [
 request_match("oids is not an array 3", [1,26,"127.0.0.1",161, 2, "meow", "oids"], [0x21,26,qr/oids must be an array/i]);
 request_match("oids is an empty array", [1,27,"127.0.0.1",161, 2, "meow", []], [0x21,27,qr/oids is an empty array/i]);
 
-my $target   = $^O eq "linux" ? "172.24.253.189" : "127.0.0.1";
-my $hostname = $^O eq "linux" ? qr/ryv/ : hostname;
+my $target   = "127.0.0.1";
+my $hostname = hostname;
+my $uptime   = ["unsupported"];
+if ($^O eq "linux") {
+	$target   = "172.24.253.189";
+	$hostname = qr/ryv/;
+	$uptime   = ["no-such-object"];
+}
 
 my $r;
 $r = request_match("fails for now", [1,41,$target,161, 2, "meow", ["1.3.6.1.2.1.1.5.0"]],
@@ -64,7 +70,7 @@ print STDERR pp $r;
 $r = request_match("fails for now", [1,42,$target,161, 2, "public", ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0", "1.3.66"]],
 			  [0x11,42,[
 			  ["1.3.6.1.2.1.1.5.0",$hostname],
-			  ["1.3.6.1.2.1.25.1.1.0",["unsupported"]],
+			  ["1.3.6.1.2.1.25.1.1.0",$uptime],
 			  ["1.3.66",["no-such-object"]]]]);
 print STDERR pp $r;
 
