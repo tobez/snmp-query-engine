@@ -312,23 +312,41 @@ decode_integer(struct ber *e, int l, unsigned *value)
 		return 0;
 	}
 	*value = 0;
-	switch (l) {
-	case 4:
+	while (l) {
 		*value = *value << 8  | e->b[0];
 		EXTEND(1);
-	case 3:
+		l--;
+	}
+	return 0;
+}
+
+int
+decode_counter64(struct ber *e, int l, unsigned long long *value)
+{
+	unsigned char t;
+	unsigned len;
+	if (l < 0) {
+		if (decode_type_len(e, &t, &len) < 0)	return -1;
+		if (t != AT_COUNTER64) {
+			errno = EINVAL;
+			return -1;
+		}
+		if (len > INT_MAX) {
+			errno = ERANGE;
+			return -1;
+		}
+		l = (int)len;
+	}
+	SPACECHECK(l);
+	if (!value) {
+		EXTEND(l);
+		return 0;
+	}
+	*value = 0;
+	while (l) {
 		*value = *value << 8  | e->b[0];
 		EXTEND(1);
-	case 2:
-		*value = *value << 8  | e->b[0];
-		EXTEND(1);
-	case 1:
-		*value = *value << 8  | e->b[0];
-		EXTEND(1);
-		break;
-	default:
-		errno = ERANGE;
-		return -1;
+		l--;
 	}
 	return 0;
 }

@@ -53,6 +53,7 @@ cid_reply(struct cid_info *ci)
 	int l;
 	unsigned char t;
 	unsigned len, int_val;
+	unsigned long long counter64_val;
 
 	msgpack_pack_array(pk, 3);
 	msgpack_pack_int(pk, RT_GET|RT_REPLY);
@@ -78,6 +79,10 @@ cid_reply(struct cid_info *ci)
 			break;
 		case AT_NULL:
 			msgpack_pack_nil(pk);
+			break;
+		case AT_COUNTER64:
+			if (decode_counter64(&oi->value, len, &counter64_val) < 0)	goto decode_error;
+			msgpack_pack_uint64(pk, counter64_val);
 			break;
 		case AT_NO_SUCH_OBJECT:
 			pack_error(pk, "no-such-object");
