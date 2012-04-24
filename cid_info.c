@@ -51,6 +51,8 @@ cid_reply(struct cid_info *ci)
 	struct oid_info *oi;
 	char buf[4096];
 	int l;
+	unsigned char t;
+	unsigned len, int_val;
 
 	msgpack_pack_array(pk, 3);
 	msgpack_pack_int(pk, RT_GET|RT_REPLY);
@@ -63,7 +65,17 @@ cid_reply(struct cid_info *ci)
 		l = strlen(buf);
 		msgpack_pack_raw(pk, l);
 		msgpack_pack_raw_body(pk, buf, l);
-		switch (oi->value.buf[0]) {
+		if (decode_type_len(&oi->value, &t, &len) < 0)
+			t = VAL_DECODE_ERROR;
+		switch (t) {
+		case AT_INTEGER:
+			if (decode_integer(&oi->value, len, &int_val) < 0)	goto decode_error;
+			msgpack_pack_uint64(pk, int_val);
+			break;
+		case AT_STRING:
+			msgpack_pack_raw(pk, len);
+			msgpack_pack_raw_body(pk, oi->value.b, len);
+			break;
 		case AT_NULL:
 			msgpack_pack_nil(pk);
 			break;
@@ -81,6 +93,10 @@ cid_reply(struct cid_info *ci)
 			break;
 		case VAL_MISSING:
 			pack_error(pk, "missing");
+			break;
+decode_error:
+		case VAL_DECODE_ERROR:
+			pack_error(pk, "decode-error");
 			break;
 		default:
 			pack_error(pk, "unsupported");

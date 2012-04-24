@@ -76,6 +76,8 @@
 /* Our own "ASN" types, used internally */
 #define VAL_TIMEOUT          0x8a
 #define VAL_MISSING          0x8b
+#define VAL_UNSUPPORTED      0x8c
+#define VAL_DECODE_ERROR     0x8d
 
 #define MAX_OID 268435455  /* 2^28-1 to fit into 4 bytes */
 

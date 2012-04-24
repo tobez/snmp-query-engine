@@ -305,6 +305,7 @@ oid_done(struct sid_info *si, struct oid_info *oi, struct ber *val)
 		croakx(2, "process_sid_info_response: cid_info unexpectedly missing");
 	/* XXX free old value? */
 	oi->value = ber_dup(val);
+	oi->value.b = oi->value.buf;   oi->value.len = 0;  /* XXX reset - better way? */
 	oi->sid = 0;
 	TAILQ_REMOVE(&si->oids_being_queried, oi, oid_list);
 	TAILQ_INSERT_TAIL(&ci->oids_done, oi, oid_list);
