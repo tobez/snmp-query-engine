@@ -58,9 +58,11 @@ fprintf(stderr, "writeving %d iovectors, total size %d to fd %d\n", i, tot, si->
 		switch (errno) {
 		case EPIPE:
 			fprintf(stderr, "flush_buffers: EPIPE during writev\n");
+			if (si->eof_handler)	si->eof_handler(si);
 			return;
 		case ECONNRESET:
 			fprintf(stderr, "flush_buffers: ECONNRESET during writev\n");
+			if (si->eof_handler)	si->eof_handler(si);
 			return;
 		}
 		croak(1, "flush_buffers: writev");
@@ -367,8 +369,6 @@ event_loop(void)
 					} else {
 						fprintf(stderr, "event_loop: EPOLLIN: fd %u - socket does not have a read handler\n", (unsigned)ev[i].data.fd);
 					}
-				} else {
-					fprintf(stderr, "event_loop: EPOLLIN: fd %u - no FD found in socks\n", (unsigned)ev[i].data.fd);
 				}
 			}
 			if ((ev[i].events & EPOLLOUT)) {
@@ -380,8 +380,6 @@ event_loop(void)
 					} else {
 						fprintf(stderr, "event_loop: EPOLLOUT: fd %u - socket does not have a write handler\n", (unsigned)ev[i].data.fd);
 					}
-				} else {
-					fprintf(stderr, "event_loop: EPOLLOUT: fd %u - no FD found in socks\n", (unsigned)ev[i].data.fd);
 				}
 			}
 			if (!(ev[i].events & (EPOLLIN|EPOLLOUT))) {

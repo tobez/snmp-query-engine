@@ -109,9 +109,11 @@ client_input(struct socket_info *si)
 		switch (errno) {
 		case EPIPE:
 			fprintf(stderr, "flush_buffers: EPIPE during read\n");
+			client_gone(si);
 			return;
 		case ECONNRESET:
 			fprintf(stderr, "flush_buffers: ECONNRESET during read\n");
+			client_gone(si);
 			return;
 		}
 		croak(1, "client_input: read error");
