@@ -220,6 +220,7 @@ extern int encode_store_length(struct ber *e, unsigned char *s);
 extern int decode_type_len(struct ber *e, unsigned char *type, unsigned *len);
 extern int decode_integer(struct ber *e, int int_len, unsigned *value);
 extern int decode_counter64(struct ber *e, int int_len, unsigned long long *value);
+extern int decode_timeticks(struct ber *e, int int_len, unsigned long long *value);
 extern unsigned char *decode_string_oid(unsigned char *s, int l, char *buf, int buf_size);
 extern int decode_composite(struct ber *e, unsigned char comp_type, int *composite_end_pos);
 #define decode_sequence(e,seq_end_pos) decode_composite(e,AT_SEQUENCE,seq_end_pos)

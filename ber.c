@@ -321,6 +321,26 @@ decode_integer(struct ber *e, int l, unsigned *value)
 }
 
 int
+decode_timeticks(struct ber *e, int l, unsigned long long *value)
+{
+	unsigned char t;
+	unsigned len;
+	if (l < 0) {
+		if (decode_type_len(e, &t, &len) < 0)	return -1;
+		if (t != AT_TIMETICKS) {
+			errno = EINVAL;
+			return -1;
+		}
+		if (len > INT_MAX) {
+			errno = ERANGE;
+			return -1;
+		}
+		l = (int)len;
+	}
+	return decode_counter64(e, l, value);
+}
+
+int
 decode_counter64(struct ber *e, int l, unsigned long long *value)
 {
 	unsigned char t;

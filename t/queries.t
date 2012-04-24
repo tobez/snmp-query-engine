@@ -55,7 +55,7 @@ request_match("oids is an empty array", [1,27,"127.0.0.1",161, 2, "meow", []], [
 
 my $target   = "127.0.0.1";
 my $hostname = hostname;
-my $uptime   = ["unsupported"];
+my $uptime   = qr/^\d+$/;
 if ($^O eq "linux") {
 	$target   = "172.24.253.189";
 	$hostname = qr/ryv/;
