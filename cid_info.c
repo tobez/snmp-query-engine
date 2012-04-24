@@ -34,6 +34,15 @@ fprintf(stderr, "     oids_done, fd %d, cid %u\n", ci->fd, ci->cid);
 	return 1;
 }
 
+void static inline
+pack_error(msgpack_packer *pk, char *error)
+{
+	int l = strlen(error);
+	msgpack_pack_array(pk, 1);
+	msgpack_pack_raw(pk, l);
+	msgpack_pack_raw_body(pk, error, l);
+}
+
 void
 cid_reply(struct cid_info *ci)
 {
@@ -54,8 +63,28 @@ cid_reply(struct cid_info *ci)
 		l = strlen(buf);
 		msgpack_pack_raw(pk, l);
 		msgpack_pack_raw_body(pk, buf, l);
-		msgpack_pack_raw(pk, 5);
-		msgpack_pack_raw_body(pk, "value", 5);
+		switch (oi->value.buf[0]) {
+		case AT_NULL:
+			msgpack_pack_nil(pk);
+			break;
+		case AT_NO_SUCH_OBJECT:
+			pack_error(pk, "no-such-object");
+			break;
+		case AT_NO_SUCH_INSTANCE:
+			pack_error(pk, "no-such-instance");
+			break;
+		case AT_END_OF_MIB_VIEW:
+			pack_error(pk, "end-of-mib");
+			break;
+		case VAL_TIMEOUT:
+			pack_error(pk, "timeout");
+			break;
+		case VAL_MISSING:
+			pack_error(pk, "missing");
+			break;
+		default:
+			pack_error(pk, "unsupported");
+		}
 	}
 
 	fprintf(stderr, "cid %u reply\n", ci->cid);
