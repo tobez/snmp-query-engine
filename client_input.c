@@ -37,45 +37,45 @@ handle_get_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	struct oid_info_head oi;
 
 	if (o->via.array.size < 7 || o->via.array.size > 8)
-		return error_reply(si, 20, cid, "bad request length");
+		return error_reply(si, RT_GET|RT_ERROR, cid, "bad request length");
 
 	if (o->via.array.ptr[RI_GET_SNMP_VER].type == MSGPACK_OBJECT_POSITIVE_INTEGER)
 		ver = o->via.array.ptr[RI_GET_SNMP_VER].via.u64;
 	if (ver != 1 && ver != 2)
-		return error_reply(si, 20, cid, "bad SNMP version");
+		return error_reply(si, RT_GET|RT_ERROR, cid, "bad SNMP version");
 
 	if (o->via.array.ptr[RI_GET_PORT].type == MSGPACK_OBJECT_POSITIVE_INTEGER)
 		port = o->via.array.ptr[RI_GET_PORT].via.u64;
 	if (port > 65535)
-		return error_reply(si, 20, cid, "bad port number");
+		return error_reply(si, RT_GET|RT_ERROR, cid, "bad port number");
 
 	if (!object2ip(&o->via.array.ptr[RI_GET_IP], &ip))
-		return error_reply(si, 20, cid, "bad IP");
+		return error_reply(si, RT_GET|RT_ERROR, cid, "bad IP");
 
 	if (!object2string(&o->via.array.ptr[RI_GET_COMMUNITY], community, 256))
-		return error_reply(si, 20, cid, "bad community");
+		return error_reply(si, RT_GET|RT_ERROR, cid, "bad community");
 
 	if (o->via.array.ptr[RI_GET_OIDS].type != MSGPACK_OBJECT_ARRAY)
-		return error_reply(si, 20, cid, "oids must be an array");
+		return error_reply(si, RT_GET|RT_ERROR, cid, "oids must be an array");
 	if (o->via.array.ptr[RI_GET_OIDS].via.array.size < 1)
-		return error_reply(si, 20, cid, "oids is an empty array");
+		return error_reply(si, RT_GET|RT_ERROR, cid, "oids is an empty array");
 
 	cri = get_client_requests_info(&ip, port, si->fd);
 	strcpy(cri->dest->community, community);
 	cri->dest->version = ver - 1;
 	ci = get_cid_info(cri, cid);
 	if (ci->n_oids != 0)
-		return error_reply(si, 20, cid, "duplicate request id");
+		return error_reply(si, RT_GET|RT_ERROR, cid, "duplicate request id");
 
 	TAILQ_INIT(&oi);
 	if ( (ci->n_oids = allocate_oid_info_list(&oi, &o->via.array.ptr[RI_GET_OIDS], ci)) == 0) {
 		// XXX free allocated objects
-		return error_reply(si, 20, cid, "bad oid list");
+		return error_reply(si, RT_GET|RT_ERROR, cid, "bad oid list");
 	}
 	TAILQ_CONCAT(&cri->oids_to_query, &oi, oid_list);
 
 	maybe_query_destination(cri->dest);
-	return error_reply(si, 20, cid, "not implemented");
+	return error_reply(si, RT_GET|RT_ERROR, cid, "not implemented");
 }
 
 static void
@@ -119,24 +119,24 @@ client_input(struct socket_info *si)
 		}
 		o = &c->input.data;
 		if (o->type != MSGPACK_OBJECT_ARRAY) {
-			error_reply(si, 30, 0, "Request is not an array");
+			error_reply(si, RT_ERROR, 0, "Request is not an array");
 			goto end;
 		}
 		if (o->via.array.size < 1) {
-			error_reply(si, 30, 0, "Request is an empty array");
+			error_reply(si, RT_ERROR, 0, "Request is an empty array");
 			goto end;
 		}
 		if (o->via.array.size < 2) {
-			error_reply(si, 30, 0, "Request without an id");
+			error_reply(si, RT_ERROR, 0, "Request without an id");
 			goto end;
 		}
 		if (o->via.array.ptr[RI_CID].type != MSGPACK_OBJECT_POSITIVE_INTEGER) {
-			error_reply(si, 30, 0, "Request id is not a positive integer");
+			error_reply(si, RT_ERROR, 0, "Request id is not a positive integer");
 			goto end;
 		}
 		cid = o->via.array.ptr[RI_CID].via.u64;
 		if (o->via.array.ptr[RI_TYPE].type != MSGPACK_OBJECT_POSITIVE_INTEGER) {
-			error_reply(si, 30, cid, "Request type is not a positive integer");
+			error_reply(si, RT_ERROR, cid, "Request type is not a positive integer");
 			goto end;
 		}
 		type = o->via.array.ptr[RI_TYPE].via.u64;
@@ -145,7 +145,7 @@ client_input(struct socket_info *si)
 			handle_get_request(si, cid, o);
 			break;
 		default:
-			error_reply(si, type+20, cid, "Unknown request type");
+			error_reply(si, type|RT_ERROR, cid, "Unknown request type");
 		}
 end:;
 	}

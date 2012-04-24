@@ -39,7 +39,11 @@
 #define RI_GET_OIDS      6
 #define RI_GET_PARAMS    7
 
-#define RT_GET 0
+#define RT_UNKNOWN  0
+#define RT_GET      1
+
+#define RT_REPLY  0x10           /* ORed with RT type */
+#define RT_ERROR  0x20           /* ORed with RT type */
 
 #define AT_INTEGER          2
 #define AT_STRING           4
