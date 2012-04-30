@@ -541,7 +541,7 @@ decode_string_oid(unsigned char *s, int l, char *buf, int buf_size)
 		x <<= 7;
 		x |= *s & 0x7f;
 		s++;  l--;
-		if (n_bytes > 3) {
+		if (n_bytes > 4) {
 			errno = EINVAL;
 			return NULL;
 		}
@@ -651,7 +651,7 @@ encode_string_oid(const char *oid, int oid_len, struct ber *e)
 			*s++ = 0x80 | ((n >> 7) & 0x7f);
 			*s++ = n & 0x7f;
 			l += 3;
-		} else {
+		} else if (n <= 268435456) {
 			if (e->len + l + 4 > e->max_len) {
 				errno = EMSGSIZE;
 				return -1;
@@ -661,6 +661,17 @@ encode_string_oid(const char *oid, int oid_len, struct ber *e)
 			*s++ = 0x80 | ((n >> 7) & 0x7f);
 			*s++ = n & 0x7f;
 			l += 4;
+		} else {
+			if (e->len + l + 5 > e->max_len) {
+				errno = EMSGSIZE;
+				return -1;
+			}
+			*s++ = 0x80 | (n >> 28);
+			*s++ = 0x80 | ((n >> 21) & 0x7f);
+			*s++ = 0x80 | ((n >> 14) & 0x7f);
+			*s++ = 0x80 | ((n >> 7) & 0x7f);
+			*s++ = n & 0x7f;
+			l += 5;
 		}
 		if (o == oend)  break;
 		if (*o++ != '.') {

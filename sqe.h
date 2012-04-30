@@ -79,7 +79,7 @@
 #define VAL_UNSUPPORTED      0x8c
 #define VAL_DECODE_ERROR     0x8d
 
-#define MAX_OID 268435455  /* 2^28-1 to fit into 4 bytes */
+#define MAX_OID 4294967295u  /* 2^35-1 to fit into 5 bytes, but we limit that to 2^32-1 */
 
 typedef void* JudyL;
 typedef void* JudyHS;
