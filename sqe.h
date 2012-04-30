@@ -41,7 +41,11 @@
 #define RI_GET_PARAMS    7
 
 #define RT_UNKNOWN  0
-#define RT_GET      1
+#define RT_SETOPT   1
+#define RT_GETOPT   2
+#define RT_INFO     3
+#define RT_GET      4
+#define RT_GETTABLE 5
 
 #define RT_REPLY  0x10           /* ORed with RT type */
 #define RT_ERROR  0x20           /* ORed with RT type */
@@ -306,5 +310,23 @@ extern void all_oids_done(struct sid_info *si, struct ber *val);
 /* oid_info.c */
 extern int allocate_oid_info_list(struct oid_info_head *oi, msgpack_object *o, struct cid_info *ci);
 extern int free_oid_info_list(struct oid_info_head *list);
+
+/* request_common.c */
+extern int error_reply(struct socket_info *si, unsigned code, unsigned cid, char *error);
+
+/* request_setopt.c */
+extern int handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o);
+
+/* request_getopt.c */
+extern int handle_getopt_request(struct socket_info *si, unsigned cid, msgpack_object *o);
+
+/* request_info.c */
+extern int handle_info_request(struct socket_info *si, unsigned cid, msgpack_object *o);
+
+/* request_get.c */
+extern int handle_get_request(struct socket_info *si, unsigned cid, msgpack_object *o);
+
+/* request_gettable.c */
+extern int handle_gettable_request(struct socket_info *si, unsigned cid, msgpack_object *o);
 
 #endif

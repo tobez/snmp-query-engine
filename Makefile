@@ -8,7 +8,9 @@ all: snmp-query-engine test_ber test_msgpack
 
 STDOBJ=event_loop.o carp.o client_input.o client_listen.o opts.o util.o destination.o \
 	client_requests_info.o cid_info.o ber.o oid_info.o sid_info.o \
-	snmp.o
+	snmp.o request_common.o request_setopt.o request_getopt.o \
+	request_info.o request_get.o request_gettable.o
+
 STDLINK=$(STDOBJ) $(LIBPATH) -lJudy -lmsgpack
 
 clean:
@@ -58,6 +60,24 @@ snmp.o: snmp.c sqe.h
 
 oid_info.o: oid_info.c sqe.h
 	$(CC) -c $(CFLAGS) -o oid_info.o oid_info.c
+
+request_common.o: request_common.c sqe.h
+	$(CC) -c $(CFLAGS) -o request_common.o request_common.c
+
+request_setopt.o: request_setopt.c sqe.h
+	$(CC) -c $(CFLAGS) -o request_setopt.o request_setopt.c
+
+request_getopt.o: request_getopt.c sqe.h
+	$(CC) -c $(CFLAGS) -o request_getopt.o request_getopt.c
+
+request_info.o: request_info.c sqe.h
+	$(CC) -c $(CFLAGS) -o request_info.o request_info.c
+
+request_get.o: request_get.c sqe.h
+	$(CC) -c $(CFLAGS) -o request_get.o request_get.c
+
+request_gettable.o: request_gettable.c sqe.h
+	$(CC) -c $(CFLAGS) -o request_gettable.o request_gettable.c
 
 test_ber: test_ber.c $(STDOBJ)
 	$(CC) $(CFLAGS) -o test_ber test_ber.c $(STDLINK)

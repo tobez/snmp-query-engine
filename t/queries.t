@@ -12,6 +12,10 @@ use Socket ':all';
 use Test::More;
 use Sys::Hostname;
 
+use constant RT_GET => 4;
+use constant RT_REPLY => 0x10;
+use constant RT_ERROR => 0x20;
+
 sub THERE () { return bless \my $dummy, 't::Present' }
 
 my $daemon_pid;
@@ -25,33 +29,33 @@ our $mp = Data::MessagePack->new()->prefer_integer;
 our $conn = IO::Socket::INET->new(PeerAddr => "127.0.0.1:7668", Proto => "tcp")
 	or die "cannot connect to snmp-query-engine daemon: $!\n";
 
-request_match("bad request: not an array 1", {x=>1}, [0x20,0,qr/not an array/]);
-request_match("bad request: not an array 2", 55, [0x20,0,qr/not an array/]);
-request_match("bad request: not an array 3", "hello", [0x20,0,qr/not an array/]);
-request_match("bad request: empty array", [], [0x20,0,qr/empty array/]);
-request_match("bad request: no id", [1], [0x20,0,qr/without an id/]);
-request_match("bad request: bad id 1", [1,-1], [0x20,0,qr/id is not a positive integer/]);
-request_match("bad request: bad id 2", [1,"heps"], [0x20,0,qr/id is not a positive integer/]);
-request_match("bad request: bad type 1", [-1,12], [0x20,12,qr/type is not a positive integer/]);
-request_match("bad request: bad type 2", ["heps",13], [0x20,13,qr/type is not a positive integer/]);
-request_match("bad request: unknown type", [9,14], [0x29,14,qr/unknown request type/i]);
-request_match("bad request length 1", [1,15,"127.0.0.1",161, 2], [0x21,15,qr/bad request length/i]);
-request_match("bad request length 2", [1,16,"127.0.0.1",161, 2, "public", ["1.3.6.1.2.1.1.5.0"], "heh", "heh"],
-			  [0x21,16,qr/bad request length/i]);
-request_match("bad SNMP version #1", [1,17,"127.0.0.1",161, 0, "public", ["1.3.6.1.2.1.1.5.0"]], [0x21,17,qr/bad SNMP version/i]);
-request_match("bad SNMP version #2", [1,18,"127.0.0.1",161, 3, "public", ["1.3.6.1.2.1.1.5.0"]], [0x21,18,qr/bad SNMP version/i]);
-request_match("bad SNMP version #3", [1,19,"127.0.0.1",161, "meow", "public", ["1.3.6.1.2.1.1.5.0"]], [0x21,19,qr/bad SNMP version/i]);
-request_match("bad port number #1", [1,17,"127.0.0.1",-2, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [0x21,17,qr/bad port number/i]);
-request_match("bad port number #2", [1,18,"127.0.0.1",[], 1, "public", ["1.3.6.1.2.1.1.5.0"]], [0x21,18,qr/bad port number/i]);
-request_match("bad port number #3", [1,19,"127.0.0.1",66666, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [0x21,19,qr/bad port number/i]);
-request_match("bad community", [1,20,"127.0.0.1",161, 1, [], ["1.3.6.1.2.1.1.5.0"]], [0x21,20,qr/bad community/i]);
-request_match("bad IP 1", [1,21,666,161, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [0x21,21,qr/bad IP/i]);
-request_match("bad IP 2", [1,22,[],161, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [0x21,22,qr/bad IP/i]);
-request_match("bad IP 3", [1,23,"257.12.22.13",161, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [0x21,23,qr/bad IP/i]);
-request_match("oids is not an array 1", [1,24,"127.0.0.1",161, 2, "meow", 42], [0x21,24,qr/oids must be an array/i]);
-request_match("oids is not an array 2", [1,25,"127.0.0.1",161, 2, "meow", {}], [0x21,25,qr/oids must be an array/i]);
-request_match("oids is not an array 3", [1,26,"127.0.0.1",161, 2, "meow", "oids"], [0x21,26,qr/oids must be an array/i]);
-request_match("oids is an empty array", [1,27,"127.0.0.1",161, 2, "meow", []], [0x21,27,qr/oids is an empty array/i]);
+request_match("bad request: not an array 1", {x=>1}, [RT_ERROR,0,qr/not an array/]);
+request_match("bad request: not an array 2", 55, [RT_ERROR,0,qr/not an array/]);
+request_match("bad request: not an array 3", "hello", [RT_ERROR,0,qr/not an array/]);
+request_match("bad request: empty array", [], [RT_ERROR,0,qr/empty array/]);
+request_match("bad request: no id", [RT_GET], [RT_ERROR,0,qr/without an id/]);
+request_match("bad request: bad id 1", [RT_GET,-1], [RT_ERROR,0,qr/id is not a positive integer/]);
+request_match("bad request: bad id 2", [RT_GET,"heps"], [RT_ERROR,0,qr/id is not a positive integer/]);
+request_match("bad request: bad type 1", [-1,12], [RT_ERROR,12,qr/type is not a positive integer/]);
+request_match("bad request: bad type 2", ["heps",13], [RT_ERROR,13,qr/type is not a positive integer/]);
+request_match("bad request: unknown type", [9,14], [RT_ERROR|9,14,qr/unknown request type/i]);
+request_match("bad request length 1", [RT_GET,15,"127.0.0.1",161, 2], [RT_GET|RT_ERROR,15,qr/bad request length/i]);
+request_match("bad request length 2", [RT_GET,16,"127.0.0.1",161, 2, "public", ["1.3.6.1.2.1.1.5.0"], "heh", "heh"],
+			  [RT_GET|RT_ERROR,16,qr/bad request length/i]);
+request_match("bad SNMP version #1", [RT_GET,17,"127.0.0.1",161, 0, "public", ["1.3.6.1.2.1.1.5.0"]], [RT_GET|RT_ERROR,17,qr/bad SNMP version/i]);
+request_match("bad SNMP version #2", [RT_GET,18,"127.0.0.1",161, 3, "public", ["1.3.6.1.2.1.1.5.0"]], [RT_GET|RT_ERROR,18,qr/bad SNMP version/i]);
+request_match("bad SNMP version #3", [RT_GET,19,"127.0.0.1",161, "meow", "public", ["1.3.6.1.2.1.1.5.0"]], [RT_GET|RT_ERROR,19,qr/bad SNMP version/i]);
+request_match("bad port number #1", [RT_GET,17,"127.0.0.1",-2, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [RT_GET|RT_ERROR,17,qr/bad port number/i]);
+request_match("bad port number #2", [RT_GET,18,"127.0.0.1",[], 1, "public", ["1.3.6.1.2.1.1.5.0"]], [RT_GET|RT_ERROR,18,qr/bad port number/i]);
+request_match("bad port number #3", [RT_GET,19,"127.0.0.1",66666, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [RT_GET|RT_ERROR,19,qr/bad port number/i]);
+request_match("bad community", [RT_GET,20,"127.0.0.1",161, 1, [], ["1.3.6.1.2.1.1.5.0"]], [RT_GET|RT_ERROR,20,qr/bad community/i]);
+request_match("bad IP 1", [RT_GET,21,666,161, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [RT_GET|RT_ERROR,21,qr/bad IP/i]);
+request_match("bad IP 2", [RT_GET,22,[],161, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [RT_GET|RT_ERROR,22,qr/bad IP/i]);
+request_match("bad IP 3", [RT_GET,23,"257.12.22.13",161, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [RT_GET|RT_ERROR,23,qr/bad IP/i]);
+request_match("oids is not an array 1", [RT_GET,24,"127.0.0.1",161, 2, "meow", 42], [RT_GET|RT_ERROR,24,qr/oids must be an array/i]);
+request_match("oids is not an array 2", [RT_GET,25,"127.0.0.1",161, 2, "meow", {}], [RT_GET|RT_ERROR,25,qr/oids must be an array/i]);
+request_match("oids is not an array 3", [RT_GET,26,"127.0.0.1",161, 2, "meow", "oids"], [RT_GET|RT_ERROR,26,qr/oids must be an array/i]);
+request_match("oids is an empty array", [RT_GET,27,"127.0.0.1",161, 2, "meow", []], [RT_GET|RT_ERROR,27,qr/oids is an empty array/i]);
 
 my $target   = "127.0.0.1";
 my $hostname = hostname;
@@ -63,20 +67,20 @@ if ($^O eq "linux") {
 }
 
 my $r;
-$r = request_match("fails for now", [1,41,$target,161, 2, "meow", ["1.3.6.1.2.1.1.5.0"]],
-			  [0x11,41,[["1.3.6.1.2.1.1.5.0",["timeout"]]]]);
+$r = request_match("fails for now", [RT_GET,41,$target,161, 2, "meow", ["1.3.6.1.2.1.1.5.0"]],
+			  [RT_GET|RT_REPLY,41,[["1.3.6.1.2.1.1.5.0",["timeout"]]]]);
 print STDERR pp $r;
 #sleep 7;
-$r = request_match("fails for now", [1,42,$target,161, 2, "public", ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0", "1.3.66"]],
-			  [0x11,42,[
+$r = request_match("fails for now", [RT_GET,42,$target,161, 2, "public", ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0", "1.3.66"]],
+			  [RT_GET|RT_REPLY,42,[
 			  ["1.3.6.1.2.1.1.5.0",$hostname],
 			  ["1.3.6.1.2.1.25.1.1.0",$uptime],
 			  ["1.3.66",["no-such-object"]]]]);
 print STDERR pp $r;
 
 # version 1
-$r = request_match("fails for now", [1,43,$target,161, 1, "public", ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0", "1.3.66"]],
-			  [0x11,43,[
+$r = request_match("fails for now", [RT_GET,43,$target,161, 1, "public", ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0", "1.3.66"]],
+			  [RT_GET|RT_REPLY,43,[
 			  ["1.3.6.1.2.1.1.5.0",undef],
 			  ["1.3.6.1.2.1.25.1.1.0",undef],
 			  ["1.3.66",undef]]]);
