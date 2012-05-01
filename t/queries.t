@@ -12,6 +12,7 @@ use Socket ':all';
 use Test::More;
 use Sys::Hostname;
 
+use constant RT_GETOPT => 2;
 use constant RT_GET => 4;
 use constant RT_REPLY => 0x10;
 use constant RT_ERROR => 0x20;
@@ -29,6 +30,8 @@ our $mp = Data::MessagePack->new()->prefer_integer;
 our $conn = IO::Socket::INET->new(PeerAddr => "127.0.0.1:7668", Proto => "tcp")
 	or die "cannot connect to snmp-query-engine daemon: $!\n";
 
+request_match("defaults", [RT_GETOPT,2000,"127.0.0.1",161], [RT_GETOPT|RT_REPLY,2000,
+	{ip=>"127.0.0.1", port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 2000, retries => 3}]);
 request_match("bad request: not an array 1", {x=>1}, [RT_ERROR,0,qr/not an array/]);
 request_match("bad request: not an array 2", 55, [RT_ERROR,0,qr/not an array/]);
 request_match("bad request: not an array 3", "hello", [RT_ERROR,0,qr/not an array/]);

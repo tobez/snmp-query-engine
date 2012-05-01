@@ -2,12 +2,64 @@
 
 /*
  * getopt request:
- * [ 0, $cid, $ip, $port ]
+ * [ RT_GETOPT, $cid, $ip, $port ]
+ *
+ * reply:
+ * [ RT_GETOPT|RT_REPLY, $cid, { options } ]
+ * where options has the following keys:
+ * - ip: same as $ip in the request
+ * - port: same as $port in the request
+ * - community: snmp community
+ * - version: snmp version (1 or 2)
+ * - max_packets: max packets on the wire to this destination
+ * - max_req_size: max request packet size, in bytes, including IP & UDP header
+ * - timeout: timeout waiting for reply in milliseconds
+ * - retries: number of times to send a request before giving up
+ * - XXX more stuff
  *
  */
 
 int
 handle_getopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 {
-	return error_reply(si, RT_GETOPT|RT_ERROR, cid, "not implemented yet");
+	unsigned port = 65536;
+	struct in_addr ip;
+	struct client_requests_info *cri;
+	struct destination *d;
+	msgpack_sbuffer* buffer;
+	msgpack_packer* pk;
+
+	if (o->via.array.size != 4)
+		return error_reply(si, RT_GETOPT|RT_ERROR, cid, "bad request length");
+
+	if (o->via.array.ptr[RI_GETOPT_PORT].type == MSGPACK_OBJECT_POSITIVE_INTEGER)
+		port = o->via.array.ptr[RI_GETOPT_PORT].via.u64;
+	if (port > 65535)
+		return error_reply(si, RT_GETOPT|RT_ERROR, cid, "bad port number");
+
+	if (!object2ip(&o->via.array.ptr[RI_GETOPT_IP], &ip))
+		return error_reply(si, RT_GETOPT|RT_ERROR, cid, "bad IP");
+
+	cri = get_client_requests_info(&ip, port, si->fd);
+	d = cri->dest;
+
+	buffer = msgpack_sbuffer_new();
+	pk = msgpack_packer_new(buffer, msgpack_sbuffer_write);
+	msgpack_pack_array(pk, 3);
+	msgpack_pack_int(pk, RT_GETOPT|RT_REPLY);
+	msgpack_pack_int(pk, cid);
+	msgpack_pack_map(pk, 8);
+	msgpack_pack_named_string(pk, "ip", inet_ntoa(d->ip));
+	msgpack_pack_named_int(pk, "port", d->port);
+	msgpack_pack_named_string(pk, "community", d->community);
+	msgpack_pack_named_int(pk, "version", d->version + 1);
+	msgpack_pack_named_int(pk, "max_packets", d->max_packets_on_the_wire);
+	msgpack_pack_named_int(pk, "max_req_size", d->max_request_packet_size);
+	msgpack_pack_named_int(pk, "timeout", d->timeout);
+	msgpack_pack_named_int(pk, "retries", d->retries);
+
+	tcp_send(si, buffer->data, buffer->size);
+	msgpack_sbuffer_free(buffer);
+	msgpack_packer_free(pk);
+	return 0;
 }

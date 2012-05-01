@@ -20,6 +20,8 @@ struct destination *get_destination(struct in_addr *ip, unsigned port)
 		bzero(d, sizeof(*d));
 		d->ip                      = *ip;
 		d->port                    = port;
+		d->version                 = 1; /* 2c is the default */
+		strcpy(d->community, "public");
 		d->dest_addr.sin_family    = PF_INET;
 		d->dest_addr.sin_addr      = *ip;
 		d->dest_addr.sin_port      = htons(port);

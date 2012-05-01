@@ -19,3 +19,24 @@ error_reply(struct socket_info *si, unsigned code, unsigned cid, char *error)
 	return -1;
 }
 
+int
+msgpack_pack_named_int(msgpack_packer *pk, char *name, int val)
+{
+	int l = strlen(name);
+	msgpack_pack_raw(pk, l);
+	msgpack_pack_raw_body(pk, name, l);
+	msgpack_pack_int(pk, val);
+	return 0;
+}
+
+int
+msgpack_pack_named_string(msgpack_packer *pk, char *name, char *val)
+{
+	int l = strlen(name);
+	msgpack_pack_raw(pk, l);
+	msgpack_pack_raw_body(pk, name, l);
+	l = strlen(val);
+	msgpack_pack_raw(pk, l);
+	msgpack_pack_raw_body(pk, val, l);
+	return 0;
+}

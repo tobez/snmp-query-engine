@@ -31,15 +31,6 @@
 #include <msgpack.h>
 #include "bsdqueue.h"
 
-#define RI_TYPE          0
-#define RI_CID           1
-#define RI_GET_IP        2
-#define RI_GET_PORT      3
-#define RI_GET_SNMP_VER  4
-#define RI_GET_COMMUNITY 5
-#define RI_GET_OIDS      6
-#define RI_GET_PARAMS    7
-
 #define RT_UNKNOWN  0
 #define RT_SETOPT   1
 #define RT_GETOPT   2
@@ -49,6 +40,19 @@
 
 #define RT_REPLY  0x10           /* ORed with RT type */
 #define RT_ERROR  0x20           /* ORed with RT type */
+
+#define RI_TYPE          0
+#define RI_CID           1
+
+#define RI_GETOPT_IP     2
+#define RI_GETOPT_PORT   3
+
+#define RI_GET_IP        2
+#define RI_GET_PORT      3
+#define RI_GET_SNMP_VER  4
+#define RI_GET_COMMUNITY 5
+#define RI_GET_OIDS      6
+#define RI_GET_PARAMS    7
 
 #define AT_INTEGER          2
 #define AT_STRING           4
@@ -313,6 +317,8 @@ extern int free_oid_info_list(struct oid_info_head *list);
 
 /* request_common.c */
 extern int error_reply(struct socket_info *si, unsigned code, unsigned cid, char *error);
+extern int msgpack_pack_named_int(msgpack_packer *pk, char *name, int val);
+extern int msgpack_pack_named_string(msgpack_packer *pk, char *name, char *val);
 
 /* request_setopt.c */
 extern int handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o);
