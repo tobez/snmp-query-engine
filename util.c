@@ -28,6 +28,16 @@ object2string(msgpack_object *o, char s[], int bufsize)
 }
 
 int
+object_string_eq(msgpack_object *o, char *s)
+{
+	int l;
+	if (o->type != MSGPACK_OBJECT_RAW) return 0;
+	l = strlen(s);
+	if (o->via.raw.size != l) return 0;
+	return strncmp(o->via.raw.ptr, s, l) == 0;
+}
+
+int
 object2ip(msgpack_object *o, struct in_addr *ip)
 {
 	char buf[16];

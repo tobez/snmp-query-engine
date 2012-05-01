@@ -48,15 +48,7 @@ handle_getopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	msgpack_pack_array(pk, 3);
 	msgpack_pack_int(pk, RT_GETOPT|RT_REPLY);
 	msgpack_pack_int(pk, cid);
-	msgpack_pack_map(pk, 8);
-	msgpack_pack_named_string(pk, "ip", inet_ntoa(d->ip));
-	msgpack_pack_named_int(pk, "port", d->port);
-	msgpack_pack_named_string(pk, "community", d->community);
-	msgpack_pack_named_int(pk, "version", d->version + 1);
-	msgpack_pack_named_int(pk, "max_packets", d->max_packets_on_the_wire);
-	msgpack_pack_named_int(pk, "max_req_size", d->max_request_packet_size);
-	msgpack_pack_named_int(pk, "timeout", d->timeout);
-	msgpack_pack_named_int(pk, "retries", d->retries);
+	msgpack_pack_options(pk, d);
 
 	tcp_send(si, buffer->data, buffer->size);
 	msgpack_sbuffer_free(buffer);

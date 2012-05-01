@@ -47,6 +47,10 @@
 #define RI_GETOPT_IP     2
 #define RI_GETOPT_PORT   3
 
+#define RI_SETOPT_IP     2
+#define RI_SETOPT_PORT   3
+#define RI_SETOPT_OPT    4
+
 #define RI_GET_IP        2
 #define RI_GET_PORT      3
 #define RI_GET_SNMP_VER  4
@@ -278,6 +282,7 @@ extern void new_client_connection(int fd);
 /* util.c */
 extern char *object_strdup(msgpack_object *o);
 extern char *object2string(msgpack_object *o, char s[], int bufsize);
+extern int object_string_eq(msgpack_object *o, char *s);
 extern int object2ip(msgpack_object *o, struct in_addr *ip); /* 1 = success, 0 = failure */
 extern unsigned next_sid(void);
 extern void dump_buf(FILE *f, void *buf, int len);
@@ -319,6 +324,7 @@ extern int free_oid_info_list(struct oid_info_head *list);
 extern int error_reply(struct socket_info *si, unsigned code, unsigned cid, char *error);
 extern int msgpack_pack_named_int(msgpack_packer *pk, char *name, int val);
 extern int msgpack_pack_named_string(msgpack_packer *pk, char *name, char *val);
+extern int msgpack_pack_options(msgpack_packer *pk, struct destination *d);
 
 /* request_setopt.c */
 extern int handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o);
