@@ -1,5 +1,6 @@
 #include "sqe.h"
 
+struct program_stats PS;
 void *socks = NULL;
 
 #ifdef WITH_KQUEUE
@@ -18,6 +19,10 @@ new_socket_info(int fd)
 	if (!si)
 		croak(1, "new_socket_info: malloc(socket_info)");
 	bzero(si, sizeof(*si));
+
+	si->PS.active_client_connections = -42;
+	si->PS.total_client_connections = -42;
+
 	si->fd = fd;
 	TAILQ_INIT(&si->send_bufs);
 	JLI(slot, socks, fd);

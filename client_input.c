@@ -5,6 +5,8 @@ client_gone(struct socket_info *si)
 {
 	struct client_connection *c = si->udata;
 
+	PS.active_client_connections--;
+
 	si->udata = NULL;
 	free_all_client_request_info_for_fd(si->fd);
 	delete_socket_info(si);
@@ -24,6 +26,7 @@ client_input(struct socket_info *si)
 	char buf[1500];
 	int n;
 	int got = 0;
+	int ok;
 
 	if (!c)
 		croak(1, "client_input: no client_connection information");
@@ -55,6 +58,10 @@ client_input(struct socket_info *si)
 		uint32_t type;
 
 		got = 1;
+		ok = -1;
+		PS.client_requests++;
+		si->PS.client_requests++;
+
 		//if (!opt_quiet) {
 		//	printf("got client input: ");
 		//	msgpack_object_print(stdout, c->input.data);
@@ -85,24 +92,28 @@ client_input(struct socket_info *si)
 		type = o->via.array.ptr[RI_TYPE].via.u64;
 		switch (type) {
 		case RT_SETOPT:
-			handle_setopt_request(si, cid, o);
+			ok = handle_setopt_request(si, cid, o);
 			break;
 		case RT_GETOPT:
-			handle_getopt_request(si, cid, o);
+			ok = handle_getopt_request(si, cid, o);
 			break;
 		case RT_INFO:
-			handle_info_request(si, cid, o);
+			ok = handle_info_request(si, cid, o);
 			break;
 		case RT_GET:
-			handle_get_request(si, cid, o);
+			ok = handle_get_request(si, cid, o);
 			break;
 		case RT_GETTABLE:
-			handle_gettable_request(si, cid, o);
+			ok = handle_gettable_request(si, cid, o);
 			break;
 		default:
 			error_reply(si, type|RT_ERROR, cid, "Unknown request type");
 		}
-end:;
+end:
+		if (ok < 0) {
+			PS.invalid_requests++;
+			si->PS.invalid_requests++;
+		}
 	}
 	if (got) {
 		msgpack_unpacker_expand_buffer(&c->unpacker, 0);
@@ -132,6 +143,10 @@ void new_client_connection(int fd)
 		croak(1, "new_client_connection: malloc(client_connection)");
 	bzero(c, sizeof(*c));
 	si->udata = c;
+
+	PS.active_client_connections++;
+	PS.total_client_connections++;
+
 	msgpack_unpacker_init(&c->unpacker, MSGPACK_UNPACKER_INIT_BUFFER_SIZE);
 	msgpack_unpacked_init(&c->input);
 	on_eof(si, client_gone);

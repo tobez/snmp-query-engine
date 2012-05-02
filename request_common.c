@@ -20,7 +20,7 @@ error_reply(struct socket_info *si, unsigned code, unsigned cid, char *error)
 }
 
 int
-msgpack_pack_named_int(msgpack_packer *pk, char *name, int val)
+msgpack_pack_named_int(msgpack_packer *pk, char *name, int64_t val)
 {
 	int l = strlen(name);
 	msgpack_pack_raw(pk, l);

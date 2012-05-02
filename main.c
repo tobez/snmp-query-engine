@@ -21,6 +21,8 @@ main(int argc, char **argv)
 	int o;
 	int port = 7667;
 
+	bzero(&PS, sizeof(PS));
+
 	while ( (o = getopt(argc, argv, "hp:q")) != -1) {
 		switch (o) {
 		case 'h':

@@ -93,6 +93,21 @@
 typedef void* JudyL;
 typedef void* JudyHS;
 
+struct program_stats
+{
+	int64_t	active_client_connections;
+	int64_t total_client_connections;
+	int64_t client_requests;
+	int64_t invalid_requests;
+	int64_t setopt_requests;
+	int64_t getopt_requests;
+	int64_t info_requests;
+	int64_t get_requests;
+	int64_t gettable_requests;
+};
+
+extern struct program_stats PS;
+
 struct ber
 {
 	unsigned char *buf;
@@ -132,6 +147,7 @@ struct socket_info
 	void (*eof_handler)(struct socket_info *si);
 	int n_send_bufs;
 	TAILQ_HEAD(send_buf_head, send_buf) send_bufs;
+	struct program_stats PS;
 };
 
 struct client_connection
@@ -319,7 +335,7 @@ extern int free_oid_info_list(struct oid_info_head *list);
 
 /* request_common.c */
 extern int error_reply(struct socket_info *si, unsigned code, unsigned cid, char *error);
-extern int msgpack_pack_named_int(msgpack_packer *pk, char *name, int val);
+extern int msgpack_pack_named_int(msgpack_packer *pk, char *name, int64_t val);
 extern int msgpack_pack_named_string(msgpack_packer *pk, char *name, char *val);
 extern int msgpack_pack_options(msgpack_packer *pk, struct destination *d);
 
