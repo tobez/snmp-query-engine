@@ -53,10 +53,7 @@
 
 #define RI_GET_IP        2
 #define RI_GET_PORT      3
-#define RI_GET_SNMP_VER  4
-#define RI_GET_COMMUNITY 5
-#define RI_GET_OIDS      6
-#define RI_GET_PARAMS    7
+#define RI_GET_OIDS      4
 
 #define AT_INTEGER          2
 #define AT_STRING           4

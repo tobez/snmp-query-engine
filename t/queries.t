@@ -73,23 +73,19 @@ request_match("bad request: bad id 2", [RT_GET,"heps"], [RT_ERROR,0,qr/id is not
 request_match("bad request: bad type 1", [-1,12], [RT_ERROR,12,qr/type is not a positive integer/]);
 request_match("bad request: bad type 2", ["heps",13], [RT_ERROR,13,qr/type is not a positive integer/]);
 request_match("bad request: unknown type", [9,14], [RT_ERROR|9,14,qr/unknown request type/i]);
-request_match("bad request length 1", [RT_GET,15,"127.0.0.1",161, 2], [RT_GET|RT_ERROR,15,qr/bad request length/i]);
+request_match("bad request length 1", [RT_GET,15,"127.0.0.1",161, 2, "public"], [RT_GET|RT_ERROR,15,qr/bad request length/i]);
 request_match("bad request length 2", [RT_GET,16,"127.0.0.1",161, 2, "public", ["1.3.6.1.2.1.1.5.0"], "heh", "heh"],
 			  [RT_GET|RT_ERROR,16,qr/bad request length/i]);
-request_match("bad SNMP version #1", [RT_GET,17,"127.0.0.1",161, 0, "public", ["1.3.6.1.2.1.1.5.0"]], [RT_GET|RT_ERROR,17,qr/bad SNMP version/i]);
-request_match("bad SNMP version #2", [RT_GET,18,"127.0.0.1",161, 3, "public", ["1.3.6.1.2.1.1.5.0"]], [RT_GET|RT_ERROR,18,qr/bad SNMP version/i]);
-request_match("bad SNMP version #3", [RT_GET,19,"127.0.0.1",161, "meow", "public", ["1.3.6.1.2.1.1.5.0"]], [RT_GET|RT_ERROR,19,qr/bad SNMP version/i]);
-request_match("bad port number #1", [RT_GET,17,"127.0.0.1",-2, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [RT_GET|RT_ERROR,17,qr/bad port number/i]);
-request_match("bad port number #2", [RT_GET,18,"127.0.0.1",[], 1, "public", ["1.3.6.1.2.1.1.5.0"]], [RT_GET|RT_ERROR,18,qr/bad port number/i]);
-request_match("bad port number #3", [RT_GET,19,"127.0.0.1",66666, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [RT_GET|RT_ERROR,19,qr/bad port number/i]);
-request_match("bad community", [RT_GET,20,"127.0.0.1",161, 1, [], ["1.3.6.1.2.1.1.5.0"]], [RT_GET|RT_ERROR,20,qr/bad community/i]);
-request_match("bad IP 1", [RT_GET,21,666,161, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [RT_GET|RT_ERROR,21,qr/bad IP/i]);
-request_match("bad IP 2", [RT_GET,22,[],161, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [RT_GET|RT_ERROR,22,qr/bad IP/i]);
-request_match("bad IP 3", [RT_GET,23,"257.12.22.13",161, 1, "public", ["1.3.6.1.2.1.1.5.0"]], [RT_GET|RT_ERROR,23,qr/bad IP/i]);
-request_match("oids is not an array 1", [RT_GET,24,"127.0.0.1",161, 2, "meow", 42], [RT_GET|RT_ERROR,24,qr/oids must be an array/i]);
-request_match("oids is not an array 2", [RT_GET,25,"127.0.0.1",161, 2, "meow", {}], [RT_GET|RT_ERROR,25,qr/oids must be an array/i]);
-request_match("oids is not an array 3", [RT_GET,26,"127.0.0.1",161, 2, "meow", "oids"], [RT_GET|RT_ERROR,26,qr/oids must be an array/i]);
-request_match("oids is an empty array", [RT_GET,27,"127.0.0.1",161, 2, "meow", []], [RT_GET|RT_ERROR,27,qr/oids is an empty array/i]);
+request_match("bad port number #1", [RT_GET,17,"127.0.0.1",-2, ["1.3.6.1.2.1.1.5.0"]], [RT_GET|RT_ERROR,17,qr/bad port number/i]);
+request_match("bad port number #2", [RT_GET,18,"127.0.0.1",[], ["1.3.6.1.2.1.1.5.0"]], [RT_GET|RT_ERROR,18,qr/bad port number/i]);
+request_match("bad port number #3", [RT_GET,19,"127.0.0.1",66666, ["1.3.6.1.2.1.1.5.0"]], [RT_GET|RT_ERROR,19,qr/bad port number/i]);
+request_match("bad IP 1", [RT_GET,21,666,161, ["1.3.6.1.2.1.1.5.0"]], [RT_GET|RT_ERROR,21,qr/bad IP/i]);
+request_match("bad IP 2", [RT_GET,22,[],161, ["1.3.6.1.2.1.1.5.0"]], [RT_GET|RT_ERROR,22,qr/bad IP/i]);
+request_match("bad IP 3", [RT_GET,23,"257.12.22.13",161, ["1.3.6.1.2.1.1.5.0"]], [RT_GET|RT_ERROR,23,qr/bad IP/i]);
+request_match("oids is not an array 1", [RT_GET,24,"127.0.0.1",161, 42], [RT_GET|RT_ERROR,24,qr/oids must be an array/i]);
+request_match("oids is not an array 2", [RT_GET,25,"127.0.0.1",161, {}], [RT_GET|RT_ERROR,25,qr/oids must be an array/i]);
+request_match("oids is not an array 3", [RT_GET,26,"127.0.0.1",161, "oids"], [RT_GET|RT_ERROR,26,qr/oids must be an array/i]);
+request_match("oids is an empty array", [RT_GET,27,"127.0.0.1",161, []], [RT_GET|RT_ERROR,27,qr/oids is an empty array/i]);
 
 my $target   = "127.0.0.1";
 my $hostname = hostname;
@@ -100,25 +96,33 @@ if ($^O eq "linux") {
 	$uptime   = ["no-such-object"];
 }
 
+request_match("change community to a bad one", [RT_SETOPT,3000,$target,161, {community=>"meow", timeout => 1500, retries => 2}], [RT_SETOPT|RT_REPLY,3000,
+	{ip=>$target, port=>161, community=>"meow", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2}]);
+
 my $r;
-$r = request_match("fails for now", [RT_GET,41,$target,161, 2, "meow", ["1.3.6.1.2.1.1.5.0"]],
+$r = request_match("times out", [RT_GET,41,$target,161, ["1.3.6.1.2.1.1.5.0"]],
 			  [RT_GET|RT_REPLY,41,[["1.3.6.1.2.1.1.5.0",["timeout"]]]]);
-print STDERR pp $r;
-#sleep 7;
-$r = request_match("fails for now", [RT_GET,42,$target,161, 2, "public", ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0", "1.3.66"]],
+
+request_match("change community to a good one", [RT_SETOPT,3001,$target,161, {community=>"public"}], [RT_SETOPT|RT_REPLY,3001,
+	{ip=>$target, port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2}]);
+
+request_match("all is good", [RT_GET,42,$target,161, ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0", "1.3.66"]],
 			  [RT_GET|RT_REPLY,42,[
 			  ["1.3.6.1.2.1.1.5.0",$hostname],
 			  ["1.3.6.1.2.1.25.1.1.0",$uptime],
 			  ["1.3.66",["no-such-object"]]]]);
-print STDERR pp $r;
 
-# version 1
-$r = request_match("fails for now", [RT_GET,43,$target,161, 1, "public", ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0", "1.3.66"]],
+request_match("change version to SNMP v1", [RT_SETOPT,3002,$target,161, {version=>1}], [RT_SETOPT|RT_REPLY,3002,
+	{ip=>$target, port=>161, community=>"public", version=>1, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2}]);
+
+request_match("try request SNMP v1", [RT_GET,43,$target,161, ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0", "1.3.66"]],
 			  [RT_GET|RT_REPLY,43,[
 			  ["1.3.6.1.2.1.1.5.0",undef],
 			  ["1.3.6.1.2.1.25.1.1.0",undef],
 			  ["1.3.66",undef]]]);
-print STDERR pp $r;
+
+request_match("change version back to SNMP v2", [RT_SETOPT,3003,$target,161, {version=>2}], [RT_SETOPT|RT_REPLY,3003,
+	{ip=>$target, port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2}]);
 
 Time::HiRes::sleep(0.2);
 close $conn;
