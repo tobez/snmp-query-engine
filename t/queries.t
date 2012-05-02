@@ -112,6 +112,13 @@ request_match("all is good", [RT_GET,42,$target,161, ["1.3.6.1.2.1.1.5.0", ".1.3
 			  ["1.3.6.1.2.1.25.1.1.0",$uptime],
 			  ["1.3.66",["no-such-object"]]]]);
 
+request_match("3rd time lucky", [RT_GET,110,$target,161, ["1.3.6.1.2.1.1.5.0", "1.3.6.1.2.1.1.5.0", "1.3.6.1.2.1.1.5.0"]],
+			  [RT_GET|RT_REPLY,110,[
+			  ["1.3.6.1.2.1.1.5.0",$hostname],
+			  ["1.3.6.1.2.1.1.5.0",$hostname],
+			  ["1.3.6.1.2.1.1.5.0",$hostname],
+			  ]]);
+
 request_match("change version to SNMP v1", [RT_SETOPT,3002,$target,161, {version=>1}], [RT_SETOPT|RT_REPLY,3002,
 	{ip=>$target, port=>161, community=>"public", version=>1, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2}]);
 
