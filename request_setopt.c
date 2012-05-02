@@ -54,6 +54,8 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	struct destination d;
 	msgpack_sbuffer* buffer;
 	msgpack_packer* pk;
+	msgpack_object *h, *v;
+	msgpack_object_type t;
 	int i;
 
 	if (o->via.array.size != 5)
@@ -75,34 +77,54 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 
 	if (!option2index)
 		build_option2index();
-	o = &o->via.array.ptr[RI_SETOPT_OPT];
-	for (i = 0; i < o->via.map.size; i++) {
+	h = &o->via.array.ptr[RI_SETOPT_OPT];
+	for (i = 0; i < h->via.map.size; i++) {
 		char name[256];
 		Word_t *val;
 
-		if (!object2string(&o->via.map.ptr[i].key, name, 256))
+		if (!object2string(&h->via.map.ptr[i].key, name, 256))
 			return error_reply(si, RT_SETOPT|RT_ERROR, cid, "bad option key");
 		JSLG(val, option2index, (unsigned char *)name);
 		if (!val)
 			return error_reply(si, RT_SETOPT|RT_ERROR, cid, "bad option key");
+		v = &h->via.map.ptr[i].val;
+		t = v->type;
 		switch (*val) {
 		case OPT_VERSION:
+			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || (v->via.u64 != 1 && v->via.u64 != 2))
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid SNMP version");
+			d.version = v->via.u64 - 1;
 			break;
 		case OPT_COMMUNITY:
+			if (!object2string(v, d.community, 256))
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid SNMP community");
 			break;
 		case OPT_MAX_PACKETS:
+			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 < 1 || v->via.u64 > 1000)
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid max packets");
+			d.max_packets_on_the_wire = v->via.u64;
 			break;
 		case OPT_MAX_REQ_SIZE:
+			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 < 500 || v->via.u64 > 50000)
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid max request size");
+			d.max_request_packet_size = v->via.u64;
 			break;
 		case OPT_TIMEOUT:
+			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 > 30000)
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid timeout");
+			d.timeout = v->via.u64;
 			break;
 		case OPT_RETRIES:
+			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 < 1 || v->via.u64 > 10)
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid retries");
+			d.retries = v->via.u64;
 			break;
 		default:
 			return error_reply(si, RT_SETOPT|RT_ERROR, cid, "bad option key");
 		}
 	}
 
+	memcpy(cri->dest, &d, sizeof(d)); /* This is safe to do, I am sure */
 	buffer = msgpack_sbuffer_new();
 	pk = msgpack_packer_new(buffer, msgpack_sbuffer_write);
 	msgpack_pack_array(pk, 3);

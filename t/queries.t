@@ -12,6 +12,7 @@ use Socket ':all';
 use Test::More;
 use Sys::Hostname;
 
+use constant RT_SETOPT => 1;
 use constant RT_GETOPT => 2;
 use constant RT_GET => 4;
 use constant RT_REPLY => 0x10;
@@ -30,8 +31,38 @@ our $mp = Data::MessagePack->new()->prefer_integer;
 our $conn = IO::Socket::INET->new(PeerAddr => "127.0.0.1:7668", Proto => "tcp")
 	or die "cannot connect to snmp-query-engine daemon: $!\n";
 
-request_match("defaults", [RT_GETOPT,2000,"127.0.0.1",161], [RT_GETOPT|RT_REPLY,2000,
+request_match("defaults via getopt", [RT_GETOPT,2000,"127.0.0.1",161], [RT_GETOPT|RT_REPLY,2000,
 	{ip=>"127.0.0.1", port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 2000, retries => 3}]);
+request_match("defaults via setopt", [RT_SETOPT,2001,"127.0.0.1",161, {}], [RT_SETOPT|RT_REPLY,2001,
+	{ip=>"127.0.0.1", port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 2000, retries => 3}]);
+request_match("setopt bad length", [RT_SETOPT,2002,"127.0.0.1",161], [RT_SETOPT|RT_ERROR,2002,qr/bad request length/]);
+request_match("setopt bad port 1", [RT_SETOPT,2003,"127.0.0.1","x",{}], [RT_SETOPT|RT_ERROR,2003,qr/bad port number/]);
+request_match("setopt bad port 2", [RT_SETOPT,2004,"127.0.0.1",80000,{}], [RT_SETOPT|RT_ERROR,2004,qr/bad port number/]);
+request_match("setopt bad IP", [RT_SETOPT,2005,"127.260.0.1",161,{}], [RT_SETOPT|RT_ERROR,2005,qr/bad IP/]);
+request_match("setopt opt not map 1", [RT_SETOPT,2006,"127.0.0.1",161,[]], [RT_SETOPT|RT_ERROR,2006,qr/not a map/]);
+request_match("setopt opt not map 2", [RT_SETOPT,2007,"127.0.0.1",161,42], [RT_SETOPT|RT_ERROR,2007,qr/not a map/]);
+request_match("setopt bad option key", [RT_SETOPT,2008,"127.0.0.1",161,{meow=>1}], [RT_SETOPT|RT_ERROR,2008,qr/bad option key/]);
+request_match("setopt bad version 1", [RT_SETOPT,2009,"127.0.0.1",161,{version=>42}], [RT_SETOPT|RT_ERROR,2009,qr/invalid SNMP version/]);
+request_match("setopt bad version 2", [RT_SETOPT,2010,"127.0.0.1",161,{version=>"x"}], [RT_SETOPT|RT_ERROR,2010,qr/invalid SNMP version/]);
+request_match("setopt bad community", [RT_SETOPT,2011,"127.0.0.1",161,{community=>[]}], [RT_SETOPT|RT_ERROR,2011,qr/invalid SNMP community/]);
+request_match("setopt bad max_packets 1", [RT_SETOPT,2012,"127.0.0.1",161,{max_packets=>"meow"}], [RT_SETOPT|RT_ERROR,2012,qr/invalid max packets/]);
+request_match("setopt bad max_packets 2", [RT_SETOPT,2013,"127.0.0.1",161,{max_packets=>0}], [RT_SETOPT|RT_ERROR,2013,qr/invalid max packets/]);
+request_match("setopt bad max_packets 3", [RT_SETOPT,2014,"127.0.0.1",161,{max_packets=>30000}], [RT_SETOPT|RT_ERROR,2014,qr/invalid max packets/]);
+request_match("setopt bad max req size 1", [RT_SETOPT,2015,"127.0.0.1",161,{max_req_size=>"foo"}], [RT_SETOPT|RT_ERROR,2015,qr/invalid max request size/]);
+request_match("setopt bad max req size 2", [RT_SETOPT,2016,"127.0.0.1",161,{max_req_size=>480}], [RT_SETOPT|RT_ERROR,2016,qr/invalid max request size/]);
+request_match("setopt bad max req size 3", [RT_SETOPT,2017,"127.0.0.1",161,{max_req_size=>52000}], [RT_SETOPT|RT_ERROR,2017,qr/invalid max request size/]);
+request_match("setopt bad timeout 1", [RT_SETOPT,2018,"127.0.0.1",161,{timeout=>"st"}], [RT_SETOPT|RT_ERROR,2018,qr/invalid timeout/]);
+request_match("setopt bad timeout 2", [RT_SETOPT,2019,"127.0.0.1",161,{timeout=>31000}], [RT_SETOPT|RT_ERROR,2019,qr/invalid timeout/]);
+request_match("setopt bad retries 1", [RT_SETOPT,2020,"127.0.0.1",161,{retries=>"foo"}], [RT_SETOPT|RT_ERROR,2020,qr/invalid retries/]);
+request_match("setopt bad retries 2", [RT_SETOPT,2021,"127.0.0.1",161,{retries=>0}], [RT_SETOPT|RT_ERROR,2021,qr/invalid retries/]);
+request_match("setopt bad retries 3", [RT_SETOPT,2022,"127.0.0.1",161,{retries=>12}], [RT_SETOPT|RT_ERROR,2022,qr/invalid retries/]);
+request_match("defaults unchanged", [RT_SETOPT,2023,"127.0.0.1",161, {}], [RT_SETOPT|RT_REPLY,2023,
+	{ip=>"127.0.0.1", port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 2000, retries => 3}]);
+request_match("change timeout", [RT_SETOPT,2024,"127.0.0.1",161, {timeout=>1500}], [RT_SETOPT|RT_REPLY,2024,
+	{ip=>"127.0.0.1", port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 3}]);
+request_match("correct timeout via getopt", [RT_GETOPT,2025,"127.0.0.1",161], [RT_GETOPT|RT_REPLY,2025,
+	{ip=>"127.0.0.1", port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 3}]);
+
 request_match("bad request: not an array 1", {x=>1}, [RT_ERROR,0,qr/not an array/]);
 request_match("bad request: not an array 2", 55, [RT_ERROR,0,qr/not an array/]);
 request_match("bad request: not an array 3", "hello", [RT_ERROR,0,qr/not an array/]);

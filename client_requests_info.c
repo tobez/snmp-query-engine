@@ -14,7 +14,6 @@ get_client_requests_info(struct in_addr *ip, unsigned port, int fd)
 	JLI(fd_slot, dest_by_fd, fd);
 	if (fd_slot == PJERR)
 		croak(2, "get_client_requests_info: JLI(fd) failed");
-fprintf(stderr, "insert fd %d\n", fd);
 	JLI(ip_slot, *fd_slot, ip->s_addr);
 	if (ip_slot == PJERR)
 		croak(2, "get_client_requests_info: JLI(ip) failed");
@@ -22,7 +21,6 @@ fprintf(stderr, "insert fd %d\n", fd);
 	if (cri_slot == PJERR)
 		croak(2, "get_client_requests_info: JLI(port) failed");
 	if (!*cri_slot) {
-fprintf(stderr, "insert new cri %d-%d-%d\n", fd, ip->s_addr, port);
 		cri = malloc(sizeof(*cri));
 		if (!cri)
 			croak(2, "get_client_requests_info: malloc(cri)");
