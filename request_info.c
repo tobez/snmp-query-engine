@@ -27,6 +27,8 @@ pack_stats(struct program_stats *PS, msgpack_packer *pk)
 	STAT(snmp_sends);
 	STAT(snmp_retries);
 	STAT(oids_requested);
+	STAT(oids_returned_from_snmp);
+	STAT(oids_returned_to_client);
 
 	#undef STAT
 	return n;

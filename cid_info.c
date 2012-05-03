@@ -110,6 +110,8 @@ decode_error:
 		default:
 			pack_error(pk, "unsupported");
 		}
+		PS.oids_returned_to_client++;
+		ci->cri->si->PS.oids_returned_to_client++;
 	}
 
 	fprintf(stderr, "cid %u reply\n", ci->cid);

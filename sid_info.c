@@ -413,6 +413,8 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 		CHECK("bindvar", decode_sequence(e, NULL));
 		CHECK("oid", decode_oid(e, &oid));
 		CHECK("value", decode_any(e, &val));
+		PS.oids_returned_from_snmp++;
+		si->cri->si->PS.oids_returned_from_snmp++;
 		if (si->table_oid) {
 			if (oid_belongs_to_table(&oid, &si->table_oid->oid)) {
 				got_table_oid(si, si->table_oid, &oid, &val);

@@ -137,10 +137,11 @@ request_match("change version back to SNMP v2", [RT_SETOPT,3003,$target,161, {ve
 $r = request_match("ifDescr table", [RT_GETTABLE,3200,$target,161,"1.3.6.1.2.1.2.2.1.2"], [RT_GETTABLE|RT_REPLY,3200,THERE]);
 print STDERR pp $r;
 
-request_match("stats", [RT_INFO,5000], [RT_INFO|RT_REPLY,5000,
+$r = request_match("stats", [RT_INFO,5000], [RT_INFO|RT_REPLY,5000,
 	{ connection => { client_requests => $NUMBER, invalid_requests => $NUMBER },
 	  global => { client_requests => $NUMBER, invalid_requests => $NUMBER,
 	  	active_client_connections => 1, total_client_connections => 1 }}]);
+print STDERR "OIDS requested: $r->[2]{connection}{oids_requested}\n";
 
 Time::HiRes::sleep(0.2);
 close $conn;
