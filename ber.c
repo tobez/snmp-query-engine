@@ -36,6 +36,13 @@ struct ber ber_dup(struct ber *eo)
 	return en;
 }
 
+struct ber ber_rewind(struct ber o)
+{
+	o.b = o.buf;
+	o.len = 0;
+	return o;
+}
+
 int
 ber_equal(struct ber *b1, struct ber *b2)
 {
@@ -104,8 +111,8 @@ build_get_request_packet(int version, const char *community,
 }
 
 int
-start_snmp_get_packet(struct packet_builder *pb, int version, const char *community,
-					  unsigned request_id)
+start_snmp_packet(struct packet_builder *pb, int version, const char *community,
+				  unsigned request_id)
 {
 	unsigned char *packet_buf;
 	struct ber *e;
@@ -138,6 +145,7 @@ start_snmp_get_packet(struct packet_builder *pb, int version, const char *commun
 	pb->sid_offset = e->b - e->buf - 4;
 	if (encode_integer(0, e, 0) < 0)	return -1; /* error-status */
 	if (encode_integer(0, e, 0) < 0)	return -1; /* error-index */
+	pb->max_repetitions  = e->b - 1;
 
 	SPACECHECK2;
 	pb->oid_sequence = e->b;
@@ -171,7 +179,7 @@ add_encoded_oid_to_snmp_packet(struct packet_builder *pb, struct ber *oid)
 }
 
 int
-finalize_snmp_packet(struct packet_builder *pb, struct ber *encoded_packet)
+finalize_snmp_packet(struct packet_builder *pb, struct ber *encoded_packet, unsigned char type, int max_repetitions)
 {
 	struct ber *e;
 	int l;
@@ -180,6 +188,14 @@ finalize_snmp_packet(struct packet_builder *pb, struct ber *encoded_packet)
 	if ( (l = encode_store_length(e, pb->oid_sequence)) < 0)	return -1;
 	pb->sid_offset += l;
 	if (encode_store_length(e, pb->pdu) < 0)	return -1;
+	pb->pdu[0] = type;
+	if (type == PDU_GET_BULK_REQUEST) {
+		if (max_repetitions <= 0)
+			max_repetitions = 10;
+		if (max_repetitions > 255)
+			max_repetitions = 255;
+		pb->max_repetitions[0] = (unsigned char)max_repetitions;
+	}
 	if (encode_store_length(e, pb->packet_sequence) < 0)	return -1;
 	*encoded_packet = ber_dup(e);
 	free(e->buf);
@@ -721,4 +737,22 @@ void
 ber_dump(FILE *f, struct ber *e)
 {
 	dump_buf(f, e->buf, e->len);
+}
+
+int
+oid_belongs_to_table(struct ber *oo, struct ber *tt)
+{
+	unsigned char otype, ttype;
+	unsigned olen, tlen;
+	struct ber o = ber_init(oo->buf, oo->max_len);
+	struct ber t = ber_init(tt->buf, tt->max_len);
+
+	if (decode_type_len(&o, &otype, &olen) < 0)	return 0;
+	if (decode_type_len(&t, &ttype, &tlen) < 0)	return 0;
+
+	if (olen < tlen) return 0;
+	if (otype != AT_OID || ttype != AT_OID) return 0;
+
+	if (memcmp(o.b, t.b, tlen) != 0) return 0;
+	return 1;
 }

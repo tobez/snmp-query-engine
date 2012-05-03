@@ -22,7 +22,7 @@ new_sid_info(struct client_requests_info *cri)
 	si->cri = cri;
 	si->retries_left = dest->retries;
 	TAILQ_INIT(&si->oids_being_queried);
-	if (start_snmp_get_packet(&si->pb, dest->version, dest->community, sid) < 0)
+	if (start_snmp_packet(&si->pb, dest->version, dest->community, sid) < 0)
 		croak(2, "new_sid_info: start_snmp_get_packet");
 	*si_slot = si;
 	TAILQ_INSERT_TAIL(&cri->sid_infos, si, sid_list);
@@ -52,10 +52,10 @@ build_snmp_query(struct client_requests_info *cri)
 	dest = cri->dest;
 	si = new_sid_info(cri);
 
-	TAILQ_FOREACH_SAFE(oi, &cri->oids_to_query, oid_list, oi_temp) {
-		if (si->pb.e.len + oi->oid.len >= dest->max_request_packet_size)
-			break;
-		if (add_encoded_oid_to_snmp_packet(&si->pb, &oi->oid) < 0)
+	oi = TAILQ_FIRST(&cri->oids_to_query);
+	if (oi->last_known_table_entry) {
+		/* GETTABLE */
+		if (add_encoded_oid_to_snmp_packet(&si->pb, &oi->last_known_table_entry->oid) < 0)
 			croak(2, "build_snmp_query: add_encoded_oid_to_snmp_packet");
 		TAILQ_REMOVE(&cri->oids_to_query, oi, oid_list);
 		oi->sid = si->sid;
@@ -63,12 +63,32 @@ build_snmp_query(struct client_requests_info *cri)
 		if (!ci || ci->n_oids == 0)
 			croakx(2, "build_snmp_query: cid_info unexpectedly missing");
 		ci->n_oids_being_queried++;
-		TAILQ_INSERT_TAIL(&si->oids_being_queried, oi, oid_list);
+
+		si->table_oid = oi;
+
+		if ( (si->sid_offset_in_a_packet = finalize_snmp_packet(&si->pb, &si->packet, PDU_GET_BULK_REQUEST, 10)) < 0)
+			croak(2, "build_snmp_query: finalize_snmp_packet");
+
+		fprintf(stderr, "see gettable packet we are sending (sid %u):\n", si->sid);
+		ber_dump(stderr, &si->packet);
+	} else {
+		TAILQ_FOREACH_SAFE(oi, &cri->oids_to_query, oid_list, oi_temp) {
+			if (oi->last_known_table_entry) continue; /* Skip GETTABLE requests */
+			if (si->pb.e.len + oi->oid.len >= dest->max_request_packet_size)
+				break;
+			if (add_encoded_oid_to_snmp_packet(&si->pb, &oi->oid) < 0)
+				croak(2, "build_snmp_query: add_encoded_oid_to_snmp_packet");
+			TAILQ_REMOVE(&cri->oids_to_query, oi, oid_list);
+			oi->sid = si->sid;
+			ci = get_cid_info(cri, oi->cid);
+			if (!ci || ci->n_oids == 0)
+				croakx(2, "build_snmp_query: cid_info unexpectedly missing");
+			ci->n_oids_being_queried++;
+			TAILQ_INSERT_TAIL(&si->oids_being_queried, oi, oid_list);
+		}
+		if ( (si->sid_offset_in_a_packet = finalize_snmp_packet(&si->pb, &si->packet, PDU_GET_REQUEST, 0)) < 0)
+			croak(2, "build_snmp_query: finalize_snmp_packet");
 	}
-	if ( (si->sid_offset_in_a_packet = finalize_snmp_packet(&si->pb, &si->packet)) < 0)
-		croak(2, "build_snmp_query: finalize_snmp_packet");
-	// fprintf(stderr, "see packet we are sending (sid %u):\n", si->sid);
-	// ber_dump(stderr, &si->packet);
 	sid_start_timing(si);
 	si->retries_left--;
 	snmp_send(dest, &si->packet);
@@ -302,10 +322,9 @@ oid_done(struct sid_info *si, struct oid_info *oi, struct ber *val)
 	cri = si->cri;
 	ci = get_cid_info(cri, oi->cid);
 	if (!ci || ci->n_oids == 0)
-		croakx(2, "process_sid_info_response: cid_info unexpectedly missing");
+		croakx(2, "oid_done: cid_info unexpectedly missing");
 	/* XXX free old value? */
-	oi->value = ber_dup(val);
-	oi->value.b = oi->value.buf;   oi->value.len = 0;  /* XXX reset - better way? */
+	oi->value = ber_rewind(ber_dup(val));
 	oi->sid = 0;
 	TAILQ_REMOVE(&si->oids_being_queried, oi, oid_list);
 	TAILQ_INSERT_TAIL(&ci->oids_done, oi, oid_list);
@@ -316,10 +335,45 @@ oid_done(struct sid_info *si, struct oid_info *oi, struct ber *val)
 }
 
 void
+got_table_oid(struct sid_info *si, struct oid_info *table_oi, struct ber *oid, struct ber *val)
+{
+	struct client_requests_info *cri;
+	struct cid_info *ci;
+	struct oid_info *oi;
+
+fprintf(stderr, "MEOW\n");
+	cri = si->cri;
+	ci = get_cid_info(cri, table_oi->cid);
+	if (!ci || ci->n_oids == 0)
+		croakx(2, "got_table_oid: cid_info unexpectedly missing");
+
+	oi = malloc(sizeof(*oi));
+	if (!oi)
+		croak(2, "got_table_oid: malloc(oid_info)");
+	bzero(oi, sizeof(*oi));
+	oi->cid = table_oi->cid;
+	oi->fd  = ci->fd;
+	oi->oid = ber_dup(oid);
+	oi->value = ber_rewind(ber_dup(val));
+	oi->sid = 0;
+	table_oi->last_known_table_entry = oi;
+
+	TAILQ_INSERT_TAIL(&ci->oids_done, oi, oid_list);
+	ci->n_oids_done++;
+	ci->n_oids++;
+}
+/*
+	ci->n_oids_being_queried--;
+	if (ci->n_oids_done == ci->n_oids)
+		cid_reply(ci);
+*/
+
+void
 all_oids_done(struct sid_info *si, struct ber *val)
 {
 	struct oid_info *oi, *oi_temp;
 
+	/* XXX handle si->table_oid stuff as well */
 	TAILQ_FOREACH_SAFE(oi, &si->oids_being_queried, oid_list, oi_temp) {
 		oid_done(si, oi, val);
 	}
@@ -334,8 +388,12 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 	int oids_stop;
 	struct ber oid, val;
 	struct oid_info *oi;
+	int table_done = 0;
+	struct cid_info *ci;
 
 	/* SNMP packet must be positioned past request id field */
+	fprintf(stderr, "GOT packet\n");
+	ber_dump(stderr, e);
 
 	#define CHECK(prob, val) if ((val) < 0) { trace = prob; goto bad_snmp_packet; }
 	CHECK("decoding error status", decode_integer(e, -1, &error_status));
@@ -345,16 +403,40 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 		CHECK("bindvar", decode_sequence(e, NULL));
 		CHECK("oid", decode_oid(e, &oid));
 		CHECK("value", decode_any(e, &val));
-		TAILQ_FOREACH(oi, &si->oids_being_queried, oid_list) {
-			if (ber_equal(&oid, &oi->oid)) {
-				oid_done(si, oi, &val);
-				break;
+		if (si->table_oid) {
+			if (oid_belongs_to_table(&oid, &si->table_oid->oid)) {
+				got_table_oid(si, si->table_oid, &oid, &val);
+			} else {
+				table_done = 1;
+			}
+		} else {
+			TAILQ_FOREACH(oi, &si->oids_being_queried, oid_list) {
+				if (ber_equal(&oid, &oi->oid)) {
+					oid_done(si, oi, &val);
+					break;
+				}
 			}
 		}
 	}
-	if (!TAILQ_EMPTY(&si->oids_being_queried)) {
-		fprintf(stderr, "SID %u: unexpectedly, not all oids are accounted for!\n", si->sid);
-		all_oids_done(si, &BER_MISSING);
+	if (si->table_oid) {
+		ci = get_cid_info(si->cri, si->table_oid->cid);
+		ci->n_oids_being_queried--;
+		if (table_done) {
+			fprintf(stderr, "TABLE IS DONE!\n");
+			ci->n_oids--;
+			fprintf(stderr, "done table, stats: N%d, Q%d, D%d\n", ci->n_oids, ci->n_oids_being_queried, ci->n_oids_done);
+			if (ci->n_oids_done == ci->n_oids)
+				cid_reply(ci);
+		} else {
+			TAILQ_INSERT_TAIL(&si->cri->oids_to_query, si->table_oid, oid_list);
+			si->table_oid = NULL;
+			maybe_query_destination(si->cri->dest);
+		}
+	} else {
+		if (!TAILQ_EMPTY(&si->oids_being_queried)) {
+			fprintf(stderr, "SID %u: unexpectedly, not all oids are accounted for!\n", si->sid);
+			all_oids_done(si, &BER_MISSING);
+		}
 	}
 	#undef CHECK
 

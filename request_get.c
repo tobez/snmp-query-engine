@@ -2,7 +2,7 @@
 
 /*
  * get request:
- * [ 0, $cid, $ip, $port, $version, $community, [$oids], {other parameters} ]
+ * [ 0, $cid, $ip, $port, [$oids] ]
  *
  */
 

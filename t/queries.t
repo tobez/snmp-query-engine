@@ -12,12 +12,13 @@ use Socket ':all';
 use Test::More;
 use Sys::Hostname;
 
-use constant RT_SETOPT => 1;
-use constant RT_GETOPT => 2;
-use constant RT_INFO   => 3;
-use constant RT_GET => 4;
-use constant RT_REPLY => 0x10;
-use constant RT_ERROR => 0x20;
+use constant RT_SETOPT   => 1;
+use constant RT_GETOPT   => 2;
+use constant RT_INFO     => 3;
+use constant RT_GET      => 4;
+use constant RT_GETTABLE => 5;
+use constant RT_REPLY    => 0x10;
+use constant RT_ERROR    => 0x20;
 
 sub THERE () { return bless \my $dummy, 't::Present' }
 our $NUMBER = qr/^\d+$/;
@@ -132,6 +133,9 @@ request_match("try request SNMP v1", [RT_GET,43,$target,161, ["1.3.6.1.2.1.1.5.0
 
 request_match("change version back to SNMP v2", [RT_SETOPT,3003,$target,161, {version=>2}], [RT_SETOPT|RT_REPLY,3003,
 	{ip=>$target, port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2}]);
+
+$r = request_match("ifDescr table", [RT_GETTABLE,3200,$target,161,"1.3.6.1.2.1.2.2.1.2"], [RT_GETTABLE|RT_REPLY,3200,THERE]);
+print STDERR pp $r;
 
 request_match("stats", [RT_INFO,5000], [RT_INFO|RT_REPLY,5000,
 	{ connection => { client_requests => $NUMBER, invalid_requests => $NUMBER },

@@ -55,6 +55,10 @@
 #define RI_GET_PORT      3
 #define RI_GET_OIDS      4
 
+#define RI_GETTABLE_IP   2
+#define RI_GETTABLE_PORT 3
+#define RI_GETTABLE_OID  4
+
 #define AT_INTEGER          2
 #define AT_STRING           4
 #define AT_NULL		        5
@@ -125,6 +129,7 @@ struct packet_builder
 	unsigned char *packet_sequence;
 	unsigned char *pdu;
 	unsigned char *oid_sequence;
+	unsigned char *max_repetitions;
 	int sid_offset;
 	struct ber e;
 };
@@ -214,6 +219,10 @@ struct sid_info
 	struct packet_builder pb;
 	struct ber packet;
 	int sid_offset_in_a_packet;
+	/* For a given SNMP request, either table_oid is not NULL,
+	 * or oids_being_queried is non-empty.  This distinguishes
+	 * between table walks and normal gets. */
+	struct oid_info *table_oid; /* starting oid for GETTABLE */
 	struct oid_info_head oids_being_queried;
 };
 
@@ -223,7 +232,11 @@ struct oid_info
 	unsigned sid;
 	unsigned cid;
 	int fd;
-	// XXX some kind of distinguisher between table walk and get
+	/* If last_known_table_entry is not NULL, this structure
+	 * represents the requested table.  If it is NULL,
+	 * then this structure is just a normal OID being
+	 * requested. */
+	struct oid_info *last_known_table_entry;
 	struct ber oid;
 	struct ber value;
 };
@@ -233,6 +246,7 @@ extern int opt_quiet;
 /* ber.c */
 extern struct ber ber_init(void *buf, int size);
 extern struct ber ber_dup(struct ber *e);
+extern struct ber ber_rewind(struct ber o);
 extern void ber_dump(FILE *f, struct ber *e);
 extern int ber_equal(struct ber *b1, struct ber *b2);
 
@@ -263,10 +277,11 @@ extern int decode_oid(struct ber *src, struct ber *dst);
 extern int build_get_request_packet(int version, const char *community,
 									const char *oid_list,
 									unsigned request_id, struct ber *e);
-extern int start_snmp_get_packet(struct packet_builder *pb, int version, const char *community,
-								 unsigned request_id);
+extern int start_snmp_packet(struct packet_builder *pb, int version, const char *community,
+							 unsigned request_id);
 extern int add_encoded_oid_to_snmp_packet(struct packet_builder *pb, struct ber *oid);
-extern int finalize_snmp_packet(struct packet_builder *pb, struct ber *encoded_packet);
+extern int finalize_snmp_packet(struct packet_builder *pb, struct ber *encoded_packet, unsigned char type, int max_repetitions);
+extern int oid_belongs_to_table(struct ber *oid, struct ber *table);
 
 /* other locations */
 const char *thisprogname(void);
@@ -328,9 +343,11 @@ extern void check_timed_out_requests(void);
 extern void process_sid_info_response(struct sid_info *si, struct ber *e);
 extern void oid_done(struct sid_info *si, struct oid_info *oi, struct ber *val);
 extern void all_oids_done(struct sid_info *si, struct ber *val);
+extern void got_table_oid(struct sid_info *si, struct oid_info *table_oi, struct ber *oid, struct ber *val);
 
 /* oid_info.c */
 extern int allocate_oid_info_list(struct oid_info_head *oi, msgpack_object *o, struct cid_info *ci);
+extern struct oid_info *allocate_oid_info(msgpack_object *o, struct cid_info *ci);
 extern int free_oid_info_list(struct oid_info_head *list);
 
 /* request_common.c */
