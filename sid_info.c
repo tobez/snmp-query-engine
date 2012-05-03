@@ -331,7 +331,7 @@ oid_done(struct sid_info *si, struct oid_info *oi, struct ber *val)
 	ci->n_oids_being_queried--;
 	ci->n_oids_done++;
 	if (ci->n_oids_done == ci->n_oids)
-		cid_reply(ci);
+		cid_reply(ci, RT_GET);
 }
 
 void
@@ -362,11 +362,6 @@ fprintf(stderr, "MEOW\n");
 	ci->n_oids_done++;
 	ci->n_oids++;
 }
-/*
-	ci->n_oids_being_queried--;
-	if (ci->n_oids_done == ci->n_oids)
-		cid_reply(ci);
-*/
 
 void
 all_oids_done(struct sid_info *si, struct ber *val)
@@ -426,7 +421,7 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 			ci->n_oids--;
 			fprintf(stderr, "done table, stats: N%d, Q%d, D%d\n", ci->n_oids, ci->n_oids_being_queried, ci->n_oids_done);
 			if (ci->n_oids_done == ci->n_oids)
-				cid_reply(ci);
+				cid_reply(ci, RT_GETTABLE);
 		} else {
 			TAILQ_INSERT_TAIL(&si->cri->oids_to_query, si->table_oid, oid_list);
 			si->table_oid = NULL;

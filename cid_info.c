@@ -44,7 +44,7 @@ pack_error(msgpack_packer *pk, char *error)
 }
 
 void
-cid_reply(struct cid_info *ci)
+cid_reply(struct cid_info *ci, int type)
 {
 	msgpack_sbuffer* buffer = msgpack_sbuffer_new();
 	msgpack_packer* pk = msgpack_packer_new(buffer, msgpack_sbuffer_write);
@@ -56,7 +56,7 @@ cid_reply(struct cid_info *ci)
 	unsigned long long u64;
 
 	msgpack_pack_array(pk, 3);
-	msgpack_pack_int(pk, RT_GET|RT_REPLY);
+	msgpack_pack_int(pk, type|RT_REPLY);
 	msgpack_pack_int(pk, ci->cid);
 	msgpack_pack_array(pk, ci->n_oids_done);
 	TAILQ_FOREACH(oi, &ci->oids_done, oid_list) {
