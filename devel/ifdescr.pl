@@ -19,10 +19,12 @@ our $mp = Data::MessagePack->new()->prefer_integer;
 our $conn = IO::Socket::INET->new(PeerAddr => "127.0.0.1:7667", Proto => "tcp")
 or die "cannot connect to snmp-query-engine daemon: $!\n";
 
-dd request([RT_GET,3100,"127.0.0.1",161,["1.3.6.1.2.1.2.2.1.2.1"]]);
-dd request([RT_GETTABLE,3200,"127.0.0.1",161,"1.3.6.1.2.1.2.2.1.2"]);
-dd request([RT_SETOPT,3201,"127.0.0.1",161,{version=>1}]);
-dd request([RT_GETTABLE,3202,"127.0.0.1",161,"1.3.6.1.2.1.2.2.1.2"]);
+my $target = shift || "127.0.0.1";
+
+dd request([RT_GET,3100,$target,161,["1.3.6.1.2.1.2.2.1.2.1"]]);
+dd request([RT_GETTABLE,3200,$target,161,"1.3.6.1.2.1.2.2.1.2"]);
+dd request([RT_SETOPT,3201,$target,161,{version=>1}]);
+dd request([RT_GETTABLE,3202,$target,161,"1.3.6.1.2.1.2.2.1.2"]);
 dd request([RT_INFO,3203]);
 
 close $conn;
