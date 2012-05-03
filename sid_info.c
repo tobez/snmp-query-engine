@@ -65,6 +65,7 @@ build_snmp_query(struct client_requests_info *cri)
 		ci->n_oids_being_queried++;
 
 		si->table_oid = oi;
+fprintf(stderr, "REQT %s\n", oid2str(oi->last_known_table_entry->oid));
 		PS.oids_requested++;
 		cri->si->PS.oids_requested++;
 
@@ -74,13 +75,14 @@ build_snmp_query(struct client_requests_info *cri)
 								   10)) < 0)
 			croak(2, "build_snmp_query: finalize_snmp_packet");
 
-		fprintf(stderr, "see gettable packet we are sending (sid %u):\n", si->sid);
-		ber_dump(stderr, &si->packet);
+		// fprintf(stderr, "see gettable packet we are sending (sid %u):\n", si->sid);
+		// ber_dump(stderr, &si->packet);
 	} else {
 		TAILQ_FOREACH_SAFE(oi, &cri->oids_to_query, oid_list, oi_temp) {
 			if (oi->last_known_table_entry) continue; /* Skip GETTABLE requests */
 			if (si->pb.e.len + oi->oid.len >= dest->max_request_packet_size)
 				break;
+fprintf(stderr, "REQG %s\n", oid2str(oi->last_known_table_entry->oid));
 			PS.oids_requested++;
 			cri->si->PS.oids_requested++;
 			if (add_encoded_oid_to_snmp_packet(&si->pb, &oi->oid) < 0)
@@ -356,7 +358,7 @@ got_table_oid(struct sid_info *si, struct oid_info *table_oi, struct ber *oid, s
 	struct cid_info *ci;
 	struct oid_info *oi;
 
-fprintf(stderr, "MEOW\n");
+//fprintf(stderr, "MEOW\n");
 	cri = si->cri;
 	ci = get_cid_info(cri, table_oi->cid);
 	if (!ci || ci->n_oids == 0)
@@ -402,8 +404,8 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 	struct cid_info *ci;
 
 	/* SNMP packet must be positioned past request id field */
-	fprintf(stderr, "GOT packet\n");
-	ber_dump(stderr, e);
+	// fprintf(stderr, "GOT packet\n");
+	// ber_dump(stderr, e);
 
 	#define CHECK(prob, val) if ((val) < 0) { trace = prob; goto bad_snmp_packet; }
 	CHECK("decoding error status", decode_integer(e, -1, &error_status));

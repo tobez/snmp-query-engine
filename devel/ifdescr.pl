@@ -21,6 +21,7 @@ or die "cannot connect to snmp-query-engine daemon: $!\n";
 
 my $target = shift || "127.0.0.1";
 
+dd request([RT_SETOPT,3201,$target,161,{version=>2}]);
 dd request([RT_GETTABLE,3200,$target,161,"1.3.6.1.2.1.2.2.1.2"]);
 dd request([RT_SETOPT,3201,$target,161,{version=>1}]);
 dd request([RT_GETTABLE,3202,$target,161,"1.3.6.1.2.1.2.2.1.2"]);
