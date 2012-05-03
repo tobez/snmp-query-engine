@@ -38,6 +38,9 @@ handle_gettable_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	ci->n_oids++;
 
 	TAILQ_INSERT_TAIL(&cri->oids_to_query, oi, oid_list);
+
+	PS.gettable_requests++;
+	si->PS.gettable_requests++;
 	maybe_query_destination(cri->dest);
 	return 0;
 }

@@ -18,10 +18,15 @@ pack_stats(struct program_stats *PS, msgpack_packer *pk)
 
 	STAT(client_requests);
 	STAT(invalid_requests);
+	STAT(setopt_requests);
+	STAT(getopt_requests);
+	STAT(info_requests);
+	STAT(get_requests);
+	STAT(gettable_requests);
 
 	STAT(snmp_sends);
 	STAT(snmp_retries);
-
+	STAT(oids_requested);
 
 	#undef STAT
 	return n;
@@ -37,6 +42,9 @@ handle_info_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 
 	if (o->via.array.size != 2)
 		return error_reply(si, RT_INFO|RT_ERROR, cid, "bad request length");
+
+	PS.info_requests++;
+	si->PS.info_requests++;
 
 	buffer = msgpack_sbuffer_new();
 	pk = msgpack_packer_new(buffer, msgpack_sbuffer_write);

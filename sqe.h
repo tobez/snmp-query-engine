@@ -112,6 +112,7 @@ struct program_stats
 
 	int64_t snmp_sends;
 	int64_t snmp_retries;
+	int64_t oids_requested;
 };
 
 extern struct program_stats PS;

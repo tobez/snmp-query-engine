@@ -65,6 +65,8 @@ build_snmp_query(struct client_requests_info *cri)
 		ci->n_oids_being_queried++;
 
 		si->table_oid = oi;
+		PS.oids_requested++;
+		cri->si->PS.oids_requested++;
 
 		if ( (si->sid_offset_in_a_packet =
 			  finalize_snmp_packet(&si->pb, &si->packet,
@@ -79,6 +81,8 @@ build_snmp_query(struct client_requests_info *cri)
 			if (oi->last_known_table_entry) continue; /* Skip GETTABLE requests */
 			if (si->pb.e.len + oi->oid.len >= dest->max_request_packet_size)
 				break;
+			PS.oids_requested++;
+			cri->si->PS.oids_requested++;
 			if (add_encoded_oid_to_snmp_packet(&si->pb, &oi->oid) < 0)
 				croak(2, "build_snmp_query: add_encoded_oid_to_snmp_packet");
 			TAILQ_REMOVE(&cri->oids_to_query, oi, oid_list);
@@ -428,6 +432,7 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 		ci = get_cid_info(si->cri, si->table_oid->cid);
 		ci->n_oids_being_queried--;
 		if (table_done) {
+			si->table_oid = NULL;
 			fprintf(stderr, "TABLE IS DONE!\n");
 			ci->n_oids--;
 			fprintf(stderr, "done table, stats: N%d, Q%d, D%d\n", ci->n_oids, ci->n_oids_being_queried, ci->n_oids_done);

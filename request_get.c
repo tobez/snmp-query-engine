@@ -44,6 +44,8 @@ handle_get_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	}
 	TAILQ_CONCAT(&cri->oids_to_query, &oi, oid_list);
 
+	PS.get_requests++;
+	si->PS.get_requests++;
 	maybe_query_destination(cri->dest);
 	return 0;
 }

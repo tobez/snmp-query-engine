@@ -124,6 +124,9 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 		}
 	}
 
+	PS.setopt_requests++;
+	si->PS.setopt_requests++;
+
 	memcpy(cri->dest, &d, sizeof(d)); /* This is safe to do, I am sure */
 	buffer = msgpack_sbuffer_new();
 	pk = msgpack_packer_new(buffer, msgpack_sbuffer_write);

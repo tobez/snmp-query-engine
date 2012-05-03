@@ -40,6 +40,9 @@ handle_getopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	if (!object2ip(&o->via.array.ptr[RI_GETOPT_IP], &ip))
 		return error_reply(si, RT_GETOPT|RT_ERROR, cid, "bad IP");
 
+	PS.getopt_requests++;
+	si->PS.getopt_requests++;
+
 	cri = get_client_requests_info(&ip, port, si->fd);
 	d = cri->dest;
 
