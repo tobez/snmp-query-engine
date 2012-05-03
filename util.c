@@ -83,3 +83,14 @@ dump_buf(FILE *f, void *buf, int len)
 		fprintf(f, "%s\n", o);
 	}
 }
+
+static char oid2str_buf[4096];
+
+char *
+oid2str(struct ber o)
+{
+	if (!decode_string_oid(o.buf, o.max_len, oid2str_buf, 4096))
+		strcpy(oid2str_buf, "oid-too-long");
+	return oid2str_buf;
+}
+

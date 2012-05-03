@@ -49,7 +49,7 @@ cid_reply(struct cid_info *ci, int type)
 	msgpack_sbuffer* buffer = msgpack_sbuffer_new();
 	msgpack_packer* pk = msgpack_packer_new(buffer, msgpack_sbuffer_write);
 	struct oid_info *oi;
-	char buf[4096];
+	char *stroid;
 	int l;
 	unsigned char t;
 	unsigned len, u32;
@@ -61,11 +61,10 @@ cid_reply(struct cid_info *ci, int type)
 	msgpack_pack_array(pk, ci->n_oids_done);
 	TAILQ_FOREACH(oi, &ci->oids_done, oid_list) {
 		msgpack_pack_array(pk, 2);
-		if (!decode_string_oid(oi->oid.buf, oi->oid.len, buf, 4096))
-			strcpy(buf, "oid-too-long");
-		l = strlen(buf);
+		stroid = oid2str(oi->oid);
+		l = strlen(stroid);
 		msgpack_pack_raw(pk, l);
-		msgpack_pack_raw_body(pk, buf, l);
+		msgpack_pack_raw_body(pk, stroid, l);
 		if (decode_type_len(&oi->value, &t, &len) < 0)
 			t = VAL_DECODE_ERROR;
 		switch (t) {

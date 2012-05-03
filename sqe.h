@@ -321,6 +321,7 @@ extern int object_string_eq(msgpack_object *o, char *s);
 extern int object2ip(msgpack_object *o, struct in_addr *ip); /* 1 = success, 0 = failure */
 extern unsigned next_sid(void);
 extern void dump_buf(FILE *f, void *buf, int len);
+extern char *oid2str(struct ber o);
 
 /* destination.c */
 /* get_destination() cannot return NULL, it would rather die */

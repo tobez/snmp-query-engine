@@ -542,6 +542,7 @@ decode_string_oid(unsigned char *s, int l, char *buf, int buf_size)
 		return NULL;
 	}
 
+	l = n; /* so that garbage at the end is ok */
 	while (l > 0) {
 		x = 0; n_bytes = 0;
 		while (*s >= 0x80 && l > 0) {

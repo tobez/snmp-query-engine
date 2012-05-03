@@ -9,10 +9,7 @@ free_oid_info_list(struct oid_info_head *list)
 	while (n1 != NULL) {
 		n2 = TAILQ_NEXT(n1, oid_list);
 if (0){
-char buf[4096];
-if (!decode_string_oid(n1->oid.buf, n1->oid.len, buf, 4096))
-	strcpy(buf, "buf-too-short");
-fprintf(stderr, "       freeing an oid (C:%u,S:%u) %s\n", n1->cid, n1->sid, buf);
+fprintf(stderr, "       freeing an oid (C:%u,S:%u) %s\n", n1->cid, n1->sid, oid2str(n1->oid));
 }
 		free(n1->oid.buf);
 		free(n1->value.buf);
