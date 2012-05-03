@@ -82,7 +82,7 @@ fprintf(stderr, "REQT %s\n", oid2str(oi->last_known_table_entry->oid));
 			if (oi->last_known_table_entry) continue; /* Skip GETTABLE requests */
 			if (si->pb.e.len + oi->oid.len >= dest->max_request_packet_size)
 				break;
-fprintf(stderr, "REQG %s\n", oid2str(oi->last_known_table_entry->oid));
+fprintf(stderr, "REQG %s\n", oid2str(oi->oid));
 			PS.oids_requested++;
 			cri->si->PS.oids_requested++;
 			if (add_encoded_oid_to_snmp_packet(&si->pb, &oi->oid) < 0)
