@@ -101,6 +101,7 @@ struct program_stats
 {
 	int64_t	active_client_connections;
 	int64_t total_client_connections;
+
 	int64_t client_requests;
 	int64_t invalid_requests;
 	int64_t setopt_requests;
@@ -108,6 +109,9 @@ struct program_stats
 	int64_t info_requests;
 	int64_t get_requests;
 	int64_t gettable_requests;
+
+	int64_t snmp_sends;
+	int64_t snmp_retries;
 };
 
 extern struct program_stats PS;

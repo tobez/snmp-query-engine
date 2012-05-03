@@ -94,6 +94,9 @@ build_snmp_query(struct client_requests_info *cri)
 	}
 	sid_start_timing(si);
 	si->retries_left--;
+
+	PS.snmp_sends++;
+	si->cri->si->PS.snmp_sends++;
 	snmp_send(dest, &si->packet);
 }
 
@@ -296,6 +299,11 @@ void resend_query_with_new_sid(struct sid_info *si)
 	// ber_dump(stderr, &si->packet);
 	sid_start_timing(si);
 	si->retries_left--;
+
+	PS.snmp_sends++;
+	si->cri->si->PS.snmp_sends++;
+	PS.snmp_retries++;
+	si->cri->si->PS.snmp_retries++;
 	snmp_send(si->cri->dest, &si->packet);
 }
 

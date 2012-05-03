@@ -11,22 +11,19 @@ pack_stats(struct program_stats *PS, msgpack_packer *pk)
 {
 	int n = 0;
 
-	if (PS->active_client_connections >= 0) {
-		n++;
-		if (pk) msgpack_pack_named_int(pk, "active_client_connections", PS->active_client_connections);
-	}
-	if (PS->total_client_connections >= 0) {
-		n++;
-		if (pk) msgpack_pack_named_int(pk, "total_client_connections", PS->total_client_connections);
-	}
-	if (PS->client_requests >= 0) {
-		n++;
-		if (pk) msgpack_pack_named_int(pk, "client_requests", PS->client_requests);
-	}
-	if (PS->invalid_requests >= 0) {
-		n++;
-		if (pk) msgpack_pack_named_int(pk, "invalid_requests", PS->invalid_requests);
-	}
+	#define STAT(what) if (PS->what >= 0) { n++; if (pk) msgpack_pack_named_int(pk, #what, PS->what); }
+
+	STAT(active_client_connections);
+	STAT(total_client_connections);
+
+	STAT(client_requests);
+	STAT(invalid_requests);
+
+	STAT(snmp_sends);
+	STAT(snmp_retries);
+
+
+	#undef STAT
 	return n;
 }
 
