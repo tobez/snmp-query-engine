@@ -66,7 +66,10 @@ build_snmp_query(struct client_requests_info *cri)
 
 		si->table_oid = oi;
 
-		if ( (si->sid_offset_in_a_packet = finalize_snmp_packet(&si->pb, &si->packet, PDU_GET_BULK_REQUEST, 10)) < 0)
+		if ( (si->sid_offset_in_a_packet =
+			  finalize_snmp_packet(&si->pb, &si->packet,
+								   dest->version == 0 ? PDU_GET_NEXT_REQUEST : PDU_GET_BULK_REQUEST,
+								   10)) < 0)
 			croak(2, "build_snmp_query: finalize_snmp_packet");
 
 		fprintf(stderr, "see gettable packet we are sending (sid %u):\n", si->sid);
