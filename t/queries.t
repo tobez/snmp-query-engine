@@ -93,7 +93,7 @@ request_match("oids is an empty array", [RT_GET,27,"127.0.0.1",161, []], [RT_GET
 my $target   = "127.0.0.1";
 my $hostname = hostname;
 my $uptime   = qr/^\d+$/;
-if ($^O eq "linux") {
+if ($^O eq "linux" && !-f "/etc/redhat-release") {
 	$target   = "172.24.253.189";
 	$hostname = qr/ryv/;
 	$uptime   = ["no-such-object"];
