@@ -172,6 +172,8 @@ struct client_connection
 #define DEFAULT_MAX_REQUEST_PACKET_SIZE 1400
 #define DEFAULT_TIMEOUT 2000
 #define DEFAULT_RETRIES 3
+#define DEFAULT_MIN_INTERVAL 10
+#define DEFAULT_REQUEST_DELAY 20
 
 struct destination
 {
@@ -184,6 +186,8 @@ struct destination
 	int max_request_packet_size;
 	int timeout;
 	int retries;
+	int min_interval;
+	int request_delay;
 
 	int fd_of_last_query;
 	JudyL client_requests_info;   /* JudyL of struct client_requests_info indexed by fd */

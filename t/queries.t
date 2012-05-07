@@ -35,9 +35,9 @@ our $conn = IO::Socket::INET->new(PeerAddr => "127.0.0.1:7668", Proto => "tcp")
 	or die "cannot connect to snmp-query-engine daemon: $!\n";
 
 request_match("defaults via getopt", [RT_GETOPT,2000,"127.0.0.1",161], [RT_GETOPT|RT_REPLY,2000,
-	{ip=>"127.0.0.1", port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 2000, retries => 3}]);
+	{ip=>"127.0.0.1", port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 2000, retries => 3, min_interval => 10, request_delay => 20}]);
 request_match("defaults via setopt", [RT_SETOPT,2001,"127.0.0.1",161, {}], [RT_SETOPT|RT_REPLY,2001,
-	{ip=>"127.0.0.1", port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 2000, retries => 3}]);
+	{ip=>"127.0.0.1", port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 2000, retries => 3, min_interval => 10, request_delay => 20}]);
 request_match("setopt bad length", [RT_SETOPT,2002,"127.0.0.1",161], [RT_SETOPT|RT_ERROR,2002,qr/bad request length/]);
 request_match("setopt bad port 1", [RT_SETOPT,2003,"127.0.0.1","x",{}], [RT_SETOPT|RT_ERROR,2003,qr/bad port number/]);
 request_match("setopt bad port 2", [RT_SETOPT,2004,"127.0.0.1",80000,{}], [RT_SETOPT|RT_ERROR,2004,qr/bad port number/]);
@@ -59,12 +59,16 @@ request_match("setopt bad timeout 2", [RT_SETOPT,2019,"127.0.0.1",161,{timeout=>
 request_match("setopt bad retries 1", [RT_SETOPT,2020,"127.0.0.1",161,{retries=>"foo"}], [RT_SETOPT|RT_ERROR,2020,qr/invalid retries/]);
 request_match("setopt bad retries 2", [RT_SETOPT,2021,"127.0.0.1",161,{retries=>0}], [RT_SETOPT|RT_ERROR,2021,qr/invalid retries/]);
 request_match("setopt bad retries 3", [RT_SETOPT,2022,"127.0.0.1",161,{retries=>12}], [RT_SETOPT|RT_ERROR,2022,qr/invalid retries/]);
+request_match("setopt bad min interval 1", [RT_SETOPT,2120,"127.0.0.1",161,{min_interval=>"foo"}], [RT_SETOPT|RT_ERROR,2120,qr/invalid min interval/]);
+request_match("setopt bad min interval 2", [RT_SETOPT,2122,"127.0.0.1",161,{min_interval=>10002}], [RT_SETOPT|RT_ERROR,2122,qr/invalid min interval/]);
+request_match("setopt bad request delay 1", [RT_SETOPT,2220,"127.0.0.1",161,{request_delay=>"foo"}], [RT_SETOPT|RT_ERROR,2220,qr/invalid request delay/]);
+request_match("setopt bad request delay 2", [RT_SETOPT,2222,"127.0.0.1",161,{request_delay=>3005}], [RT_SETOPT|RT_ERROR,2222,qr/invalid request delay/]);
 request_match("defaults unchanged", [RT_SETOPT,2023,"127.0.0.1",161, {}], [RT_SETOPT|RT_REPLY,2023,
-	{ip=>"127.0.0.1", port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 2000, retries => 3}]);
+	{ip=>"127.0.0.1", port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 2000, retries => 3, min_interval => 10, request_delay => 20}]);
 request_match("change timeout", [RT_SETOPT,2024,"127.0.0.1",161, {timeout=>1500}], [RT_SETOPT|RT_REPLY,2024,
-	{ip=>"127.0.0.1", port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 3}]);
+	{ip=>"127.0.0.1", port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 3, min_interval => 10, request_delay => 20}]);
 request_match("correct timeout via getopt", [RT_GETOPT,2025,"127.0.0.1",161], [RT_GETOPT|RT_REPLY,2025,
-	{ip=>"127.0.0.1", port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 3}]);
+	{ip=>"127.0.0.1", port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 3, min_interval => 10, request_delay => 20}]);
 
 request_match("bad request: not an array 1", {x=>1}, [RT_ERROR,0,qr/not an array/]);
 request_match("bad request: not an array 2", 55, [RT_ERROR,0,qr/not an array/]);
@@ -100,14 +104,14 @@ if ($^O eq "linux" && !-f "/etc/redhat-release") {
 }
 
 request_match("change community to a bad one", [RT_SETOPT,3000,$target,161, {community=>"meow", timeout => 1500, retries => 2}], [RT_SETOPT|RT_REPLY,3000,
-	{ip=>$target, port=>161, community=>"meow", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2}]);
+	{ip=>$target, port=>161, community=>"meow", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2, min_interval => 10, request_delay => 20}]);
 
 my $r;
 $r = request_match("times out", [RT_GET,41,$target,161, ["1.3.6.1.2.1.1.5.0"]],
 			  [RT_GET|RT_REPLY,41,[["1.3.6.1.2.1.1.5.0",["timeout"]]]]);
 
 request_match("change community to a good one", [RT_SETOPT,3001,$target,161, {community=>"public"}], [RT_SETOPT|RT_REPLY,3001,
-	{ip=>$target, port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2}]);
+	{ip=>$target, port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2, min_interval => 10, request_delay => 20}]);
 
 request_match("all is good", [RT_GET,42,$target,161, ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0", "1.3.66"]],
 			  [RT_GET|RT_REPLY,42,[
@@ -123,7 +127,7 @@ request_match("3rd time lucky", [RT_GET,110,$target,161, ["1.3.6.1.2.1.1.5.0", "
 			  ]]);
 
 request_match("change version to SNMP v1", [RT_SETOPT,3002,$target,161, {version=>1}], [RT_SETOPT|RT_REPLY,3002,
-	{ip=>$target, port=>161, community=>"public", version=>1, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2}]);
+	{ip=>$target, port=>161, community=>"public", version=>1, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2, min_interval => 10, request_delay => 20}]);
 
 request_match("try request SNMP v1", [RT_GET,43,$target,161, ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0", "1.3.66"]],
 			  [RT_GET|RT_REPLY,43,[
@@ -132,7 +136,7 @@ request_match("try request SNMP v1", [RT_GET,43,$target,161, ["1.3.6.1.2.1.1.5.0
 			  ["1.3.66",undef]]]);
 
 request_match("change version back to SNMP v2", [RT_SETOPT,3003,$target,161, {version=>2}], [RT_SETOPT|RT_REPLY,3003,
-	{ip=>$target, port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2}]);
+	{ip=>$target, port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2, min_interval => 10, request_delay => 20}]);
 
 $r = request_match("ifDescr table", [RT_GETTABLE,3200,$target,161,"1.3.6.1.2.1.2.2.1.2"], [RT_GETTABLE|RT_REPLY,3200,THERE]);
 print STDERR pp $r;

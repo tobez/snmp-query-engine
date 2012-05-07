@@ -8,12 +8,14 @@
 
 static void *option2index; /* a JudySL tree */
 
-#define OPT_VERSION      1
-#define OPT_COMMUNITY    2
-#define OPT_MAX_PACKETS  3
-#define OPT_MAX_REQ_SIZE 4
-#define OPT_TIMEOUT      5
-#define OPT_RETRIES      6
+#define OPT_VERSION       1
+#define OPT_COMMUNITY     2
+#define OPT_MAX_PACKETS   3
+#define OPT_MAX_REQ_SIZE  4
+#define OPT_TIMEOUT       5
+#define OPT_RETRIES       6
+#define OPT_MIN_INTERVAL  7
+#define OPT_REQUEST_DELAY 8
 
 static void
 build_option2index(void)
@@ -43,6 +45,14 @@ build_option2index(void)
 	JSLI(val, option2index, (unsigned char *)"retries");
 	if (val == PJERR) croak(2, "build_option2index: JSLI(retries) failed");
 	*val = OPT_RETRIES;
+
+	JSLI(val, option2index, (unsigned char *)"min_interval");
+	if (val == PJERR) croak(2, "build_option2index: JSLI(min_interval) failed");
+	*val = OPT_MIN_INTERVAL;
+
+	JSLI(val, option2index, (unsigned char *)"request_delay");
+	if (val == PJERR) croak(2, "build_option2index: JSLI(request_delay) failed");
+	*val = OPT_REQUEST_DELAY;
 }
 
 int
@@ -118,6 +128,16 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 < 1 || v->via.u64 > 10)
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid retries");
 			d.retries = v->via.u64;
+			break;
+		case OPT_MIN_INTERVAL:
+			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 > 10000)
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid min interval");
+			d.min_interval = v->via.u64;
+			break;
+		case OPT_REQUEST_DELAY:
+			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 > 3000)
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid request delay");
+			d.request_delay = v->via.u64;
 			break;
 		default:
 			return error_reply(si, RT_SETOPT|RT_ERROR, cid, "bad option key");

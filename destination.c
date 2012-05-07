@@ -29,6 +29,8 @@ struct destination *get_destination(struct in_addr *ip, unsigned port)
 		d->max_request_packet_size = DEFAULT_MAX_REQUEST_PACKET_SIZE;
 		d->timeout                 = DEFAULT_TIMEOUT;
 		d->retries                 = DEFAULT_RETRIES;
+		d->min_interval            = DEFAULT_MIN_INTERVAL;
+		d->request_delay           = DEFAULT_REQUEST_DELAY;
 		*dest_slot = d;
 	}
 	return *dest_slot;

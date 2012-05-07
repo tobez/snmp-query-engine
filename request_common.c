@@ -46,7 +46,7 @@ msgpack_pack_named_string(msgpack_packer *pk, char *name, char *val)
 int
 msgpack_pack_options(msgpack_packer *pk, struct destination *d)
 {
-	msgpack_pack_map(pk, 8);
+	msgpack_pack_map(pk, 10);
 	msgpack_pack_named_string(pk, "ip", inet_ntoa(d->ip));
 	msgpack_pack_named_int(pk, "port", d->port);
 	msgpack_pack_named_string(pk, "community", d->community);
@@ -55,6 +55,8 @@ msgpack_pack_options(msgpack_packer *pk, struct destination *d)
 	msgpack_pack_named_int(pk, "max_req_size", d->max_request_packet_size);
 	msgpack_pack_named_int(pk, "timeout", d->timeout);
 	msgpack_pack_named_int(pk, "retries", d->retries);
+	msgpack_pack_named_int(pk, "min_interval", d->min_interval);
+	msgpack_pack_named_int(pk, "request_delay", d->request_delay);
 	/* XXX */
 	return 0;
 }
