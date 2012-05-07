@@ -209,6 +209,7 @@ struct client_requests_info
 	JudyL cid_info; /* JudyL of struct cid_info ("cid" = client id) indexed by cid */
 	struct oid_info_head oids_to_query;
 	struct sid_info_head sid_infos;
+	struct timeval can_send_at;
 };
 
 struct cid_info
@@ -327,6 +328,7 @@ extern int cleanup_timer(struct timer *t);  /* 0 - not cleaned, 1 - cleaned */
 extern struct timer *next_timer(void);
 extern int ms_to_next_timer(void);
 extern void trigger_timers(void);
+extern void set_timeout(struct timeval *tv, int timeout);  /* timeout in ms */
 
 /* client_listen.c */
 extern void create_listening_socket(int port);
@@ -359,6 +361,9 @@ extern struct client_requests_info *get_client_requests_info(struct in_addr *ip,
 extern int free_client_request_info(struct client_requests_info *cri);
 extern int free_all_client_request_info_for_fd(int fd);
 extern void client_request_timer(struct client_requests_info *cri);
+extern void cri_start_timing(struct client_requests_info *cri);
+extern void cri_stop_timing(struct client_requests_info *cri);
+extern int cri_can_send(struct client_requests_info *cri);
 
 /* cid_info.c */
 extern struct cid_info *get_cid_info(struct client_requests_info *cri, unsigned cid);

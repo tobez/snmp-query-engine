@@ -61,13 +61,20 @@ maybe_query_destination(struct destination *dest)
 	 * which has anything to send.   Be careful with when to stop.
 	 */
 	fd = dest->fd_of_last_query;
+again:
+fprintf(stderr, "maybe %d\n", (int)fd);
 	JLN(cri_slot, dest->client_requests_info, fd);
+	if (dest->fd_of_last_query == 0)
+		dest->fd_of_last_query = fd;
 	if (!cri_slot) {
 		fd = 0;
 		JLF(cri_slot, dest->client_requests_info, fd);
 		if (!cri_slot) return;  /* no clients for this destination */
 	}
-	build_snmp_query(*cri_slot);
+	if (cri_can_send(*cri_slot))
+		build_snmp_query(*cri_slot);
+	else if (fd != dest->fd_of_last_query)
+		goto again;
 	dest->fd_of_last_query = fd;
 	// XXX goto
 }

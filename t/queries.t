@@ -139,7 +139,19 @@ request_match("change version back to SNMP v2", [RT_SETOPT,3003,$target,161, {ve
 	{ip=>$target, port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2, min_interval => 10, request_delay => 20}]);
 
 $r = request_match("ifDescr table", [RT_GETTABLE,3200,$target,161,"1.3.6.1.2.1.2.2.1.2"], [RT_GETTABLE|RT_REPLY,3200,THERE]);
-print STDERR pp $r;
+
+request_match("larger delay", [RT_SETOPT,3212,"127.0.0.1",161, {request_delay => 200}], [RT_SETOPT|RT_REPLY,3212,
+	{ip=>"127.0.0.1", port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2, min_interval => 10, request_delay => 200}]);
+
+lone_request([RT_GET,3500,$target,161, ["1.3.6.1.2.1.1.5.0"]]);
+lone_request([RT_GET,3501,$target,161, [".1.3.6.1.2.1.25.1.1.0"]]);
+Time::HiRes::sleep(0.5);
+my ($r1,$r2) = bulk_response();
+if ($r1->[1] == 3501) {
+	($r1, $r2) = ($r2, $r1);
+}
+match("combined req1", $r1, [RT_GET|RT_REPLY,3500,[["1.3.6.1.2.1.1.5.0",$hostname]]]);
+match("combined req2", $r2, [RT_GET|RT_REPLY,3501,[["1.3.6.1.2.1.25.1.1.0",$uptime]]]);
 
 $r = request_match("stats", [RT_INFO,5000], [RT_INFO|RT_REPLY,5000,
 	{ connection => { client_requests => $NUMBER, invalid_requests => $NUMBER },
@@ -170,6 +182,30 @@ sub request
 	my $reply;
 	$conn->sysread($reply, 65536);
 	$mp->unpack($reply);
+}
+
+sub lone_request
+{
+	my $d = shift;
+	my $p = $mp->pack($d);
+	$conn->syswrite($p);
+}
+
+sub bulk_response
+{
+	my $reply;
+	$conn->sysread($reply, 65536);
+	my $up = Data::MessagePack::Unpacker->new;
+	my $offset = 0;
+	my @r;
+	while( $offset < length($reply) ) {
+		$offset = $up->execute($reply, $offset);
+		push @r, $up->data;
+		$up->reset;
+		$reply = substr($reply, $offset);
+		$offset = 0;
+	}
+	return @r;
 }
 
 sub match

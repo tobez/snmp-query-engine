@@ -42,6 +42,9 @@ handle_get_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 		// XXX free allocated objects
 		return error_reply(si, RT_GET|RT_ERROR, cid, "bad oid list");
 	}
+fprintf(stderr, "GET %u\n", cid);
+	if (TAILQ_EMPTY(&cri->oids_to_query))
+		cri_start_timing(cri);
 	TAILQ_CONCAT(&cri->oids_to_query, &oi, oid_list);
 
 	PS.get_requests++;

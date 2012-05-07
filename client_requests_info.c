@@ -101,6 +101,8 @@ fprintf(stderr, "   oids_to_query, fd %d\n", cri->fd);
 	}
 	JLFA(rc, cri->cid_info);
 	JLD(rc, cri->dest->client_requests_info, cri->fd);
+fprintf(stderr, "in free\n");
+	cri_stop_timing(cri);
 	free(cri);
 	return 1;
 }
@@ -108,7 +110,67 @@ fprintf(stderr, "   oids_to_query, fd %d\n", cri->fd);
 void
 client_request_timer(struct client_requests_info *cri)
 {
-	// XXX implement me
-	// client_request_stop_timing(cri);
-	free_client_request_info(cri);
+{
+struct timeval now;
+gettimeofday(&now, NULL);
+fprintf(stderr, "!!!! client_request_timer %u.%u\n", (unsigned)now.tv_sec, (unsigned)now.tv_usec);
+}
+	cri_stop_timing(cri);
+	maybe_query_destination(cri->dest);
+}
+
+int
+cri_can_send(struct client_requests_info *cri)
+{
+	struct timeval now;
+	if (TAILQ_EMPTY(&cri->oids_to_query))	return 0;
+	if (!cri->can_send_at.tv_sec)	return 1;
+
+	gettimeofday(&now, NULL);
+	if (cri->can_send_at.tv_sec > now.tv_sec)	return 0;
+	if (cri->can_send_at.tv_sec == now.tv_sec && cri->can_send_at.tv_usec > now.tv_usec)	return 0;
+{
+struct timeval now;
+gettimeofday(&now, NULL);
+fprintf(stderr, "in can send at %u.%u, now %u.%u\n", (unsigned)cri->can_send_at.tv_sec, (unsigned)cri->can_send_at.tv_usec, (unsigned)now.tv_sec, (unsigned)now.tv_usec);
+}
+	cri_stop_timing(cri);
+	return 1;
+}
+
+void
+cri_start_timing(struct client_requests_info *cri)
+{
+	struct timer *t;
+
+fprintf(stderr, "in start\n");
+	cri_stop_timing(cri);
+{
+struct timeval now;
+gettimeofday(&now, NULL);
+fprintf(stderr, "!!!! cri_start_timing %u.%u\n", (unsigned)now.tv_sec, (unsigned)now.tv_usec);
+}
+	set_timeout(&cri->can_send_at, cri->dest->request_delay);
+	t = new_timer(&cri->can_send_at);
+	TAILQ_INSERT_TAIL(&t->delayed_requests, cri, timer_chain);
+}
+
+void
+cri_stop_timing(struct client_requests_info *cri)
+{
+	struct timer *t;
+
+	if (!cri->can_send_at.tv_sec)
+		return;
+	t = find_timer(&cri->can_send_at);
+	if (t) {
+		TAILQ_REMOVE(&t->delayed_requests, cri, timer_chain);
+		cleanup_timer(t);
+	}
+	bzero(&cri->can_send_at, sizeof(cri->can_send_at));
+{
+struct timeval now;
+gettimeofday(&now, NULL);
+fprintf(stderr, "!!!! cri_stop_timing %u.%u\n", (unsigned)now.tv_sec, (unsigned)now.tv_usec);
+}
 }

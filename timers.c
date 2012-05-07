@@ -145,3 +145,16 @@ again:
 	goto again;
 }
 
+void
+set_timeout(struct timeval *tv, int timeout)
+{
+	struct timeval to;
+	gettimeofday(tv, NULL);
+	to.tv_sec = timeout / 1000;
+	to.tv_usec = 1000 * (timeout % 1000);
+	to.tv_usec += tv->tv_usec;
+	to.tv_sec  += tv->tv_sec;
+	to.tv_sec  += to.tv_usec / 1000000;
+	to.tv_usec %= 1000000;
+	*tv = to;
+}

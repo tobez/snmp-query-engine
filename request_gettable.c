@@ -37,6 +37,8 @@ handle_gettable_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	oi->last_known_table_entry = oi;
 	ci->n_oids++;
 
+	if (TAILQ_EMPTY(&cri->oids_to_query))
+		cri_start_timing(cri);
 	TAILQ_INSERT_TAIL(&cri->oids_to_query, oi, oid_list);
 
 	PS.gettable_requests++;

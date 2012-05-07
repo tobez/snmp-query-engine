@@ -101,6 +101,9 @@ fprintf(stderr, "REQG %s\n", oid2str(oi->oid));
 	sid_start_timing(si);
 	si->retries_left--;
 
+	if (!TAILQ_EMPTY(&cri->oids_to_query))
+		cri_start_timing(cri);
+
 	PS.snmp_sends++;
 	si->cri->si->PS.snmp_sends++;
 	snmp_send(dest, &si->packet);
@@ -109,21 +112,11 @@ fprintf(stderr, "REQG %s\n", oid2str(oi->oid));
 void
 sid_start_timing(struct sid_info *si)
 {
-	struct timeval timeout;
 	struct timer *t;
 
-	gettimeofday(&si->will_timeout_at, NULL);
-	timeout.tv_sec = si->cri->dest->timeout / 1000;
-	timeout.tv_usec = 1000 * (si->cri->dest->timeout % 1000);
-	timeout.tv_usec += si->will_timeout_at.tv_usec;
-	timeout.tv_sec  += si->will_timeout_at.tv_sec;
-	timeout.tv_sec  += timeout.tv_usec / 1000000;
-	timeout.tv_usec %= 1000000;
-	si->will_timeout_at = timeout;
-
-	t = new_timer(&timeout);
+	set_timeout(&si->will_timeout_at, si->cri->dest->timeout);
+	t = new_timer(&si->will_timeout_at);
 	TAILQ_INSERT_TAIL(&t->timed_out_sids, si, timer_chain);
-
 }
 
 void
