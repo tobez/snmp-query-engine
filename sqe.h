@@ -175,8 +175,14 @@ struct client_connection
 #define DEFAULT_MIN_INTERVAL 10
 #define DEFAULT_REQUEST_DELAY 20
 
+TAILQ_HEAD(oid_info_head, oid_info);
+TAILQ_HEAD(sid_info_head, sid_info);
+TAILQ_HEAD(client_requests_info_head, client_requests_info);
+TAILQ_HEAD(destination_head, destination);
+
 struct destination
 {
+	TAILQ_ENTRY(destination) timer_chain;
 	struct in_addr ip;
 	unsigned port;
 	unsigned version;
@@ -194,11 +200,9 @@ struct destination
 	JudyL sid_info;  /* JudyL of struct sid_info indexed by sid */
 };
 
-TAILQ_HEAD(oid_info_head, oid_info);
-TAILQ_HEAD(sid_info_head, sid_info);
-
 struct client_requests_info
 {
+	TAILQ_ENTRY(client_requests_info) timer_chain;
 	struct destination *dest;
 	struct socket_info *si;
 	int fd;
@@ -218,10 +222,18 @@ struct cid_info
 	struct oid_info_head oids_done;
 };
 
+struct timer
+{
+	struct timeval when;
+	struct sid_info_head            timed_out_sids;
+	struct client_requests_info_head delayed_requests;
+	struct destination_head         throttled_destinations;
+};
+
 struct sid_info
 {
 	TAILQ_ENTRY(sid_info) sid_list;
-	TAILQ_ENTRY(sid_info) same_timeout;
+	TAILQ_ENTRY(sid_info) timer_chain;
 	unsigned sid;
 	struct client_requests_info *cri;
 	struct timeval will_timeout_at;
@@ -308,6 +320,14 @@ void on_write(struct socket_info *si, void (*write_handler)(struct socket_info *
 void event_loop(void);
 void tcp_send(struct socket_info *si, void *buf, int size);
 
+/* timers.c */
+extern struct timer *new_timer(struct timeval *when);
+extern struct timer *find_timer(struct timeval *when);
+extern int cleanup_timer(struct timer *t);  /* 0 - not cleaned, 1 - cleaned */
+extern struct timer *next_timer(void);
+extern int ms_to_next_timer(void);
+extern void trigger_timers(void);
+
 /* client_listen.c */
 extern void create_listening_socket(int port);
 
@@ -332,11 +352,13 @@ extern char *oid2str(struct ber o);
 extern struct destination *get_destination(struct in_addr *ip, unsigned port);
 extern struct destination *find_destination(struct in_addr *ip, unsigned port);
 extern void maybe_query_destination(struct destination *dest);
+extern void destination_timer(struct destination *dest);
 
 /* client_requests_info.c */
 extern struct client_requests_info *get_client_requests_info(struct in_addr *ip, unsigned port, int fd);
 extern int free_client_request_info(struct client_requests_info *cri);
 extern int free_all_client_request_info_for_fd(int fd);
+extern void client_request_timer(struct client_requests_info *cri);
 
 /* cid_info.c */
 extern struct cid_info *get_cid_info(struct client_requests_info *cri, unsigned cid);
@@ -350,12 +372,12 @@ extern void free_sid_info(struct sid_info *si);
 extern void build_snmp_query(struct client_requests_info *cri);
 extern void sid_start_timing(struct sid_info *si);
 extern void sid_stop_timing(struct sid_info *si);
-extern int sid_next_timeout(void);
 extern void check_timed_out_requests(void);
 extern void process_sid_info_response(struct sid_info *si, struct ber *e);
 extern void oid_done(struct sid_info *si, struct oid_info *oi, struct ber *val);
 extern void all_oids_done(struct sid_info *si, struct ber *val);
 extern void got_table_oid(struct sid_info *si, struct oid_info *table_oi, struct ber *oid, struct ber *val);
+extern void sid_timer(struct sid_info *si);
 
 /* oid_info.c */
 extern int allocate_oid_info_list(struct oid_info_head *oi, msgpack_object *o, struct cid_info *ci);

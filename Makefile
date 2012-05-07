@@ -9,7 +9,7 @@ all: snmp-query-engine test_ber test_msgpack
 STDOBJ=event_loop.o carp.o client_input.o client_listen.o opts.o util.o destination.o \
 	client_requests_info.o cid_info.o ber.o oid_info.o sid_info.o \
 	snmp.o request_common.o request_setopt.o request_getopt.o \
-	request_info.o request_get.o request_gettable.o
+	request_info.o request_get.o request_gettable.o timers.o
 
 STDLINK=$(STDOBJ) $(LIBPATH) -lJudy -lmsgpack
 
@@ -78,6 +78,9 @@ request_get.o: request_get.c sqe.h
 
 request_gettable.o: request_gettable.c sqe.h
 	$(CC) -c $(CFLAGS) -o request_gettable.o request_gettable.c
+
+timers.o: timers.c sqe.h
+	$(CC) -c $(CFLAGS) -o timers.o timers.c
 
 test_ber: test_ber.c $(STDOBJ)
 	$(CC) $(CFLAGS) -o test_ber test_ber.c $(STDLINK)

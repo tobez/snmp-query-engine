@@ -298,7 +298,7 @@ event_loop(void)
 	int nev, i, ms;
 	struct timespec to;
 	while (1) {
-		ms = sid_next_timeout();
+		ms = ms_to_next_timer();
 		to.tv_sec = ms / 1000;
 		to.tv_nsec = (ms % 1000)*1000000;
 		nev = kevent(kq, NULL, 0, ke, 10, &to);
@@ -347,7 +347,7 @@ event_loop(void)
 				fprintf(stderr, "event_loop: unexpected filter value %d, ident %u\n", ke[i].filter, (unsigned)ke[i].ident);
 			}
 		}
-		check_timed_out_requests();
+		trigger_timers();
 	}
 }
 #endif
@@ -358,7 +358,7 @@ event_loop(void)
 	struct epoll_event ev[10];
 	int nev, i, ms;
 	while (1) {
-		ms = sid_next_timeout();
+		ms = ms_to_next_timer();
 		nev = epoll_wait(ep, ev, 10, ms);
 		if (nev < 0)
 			croak(1, "event_loop: epoll_wait");
@@ -391,7 +391,7 @@ event_loop(void)
 				fprintf(stderr, "event_loop: unexpected event 0x%x, fd %u\n", ev[i].events, (unsigned)ev[i].data.fd);
 			}
 		}
-		check_timed_out_requests();
+		trigger_timers();
 	}
 }
 #endif

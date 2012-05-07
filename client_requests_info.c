@@ -105,3 +105,10 @@ fprintf(stderr, "   oids_to_query, fd %d\n", cri->fd);
 	return 1;
 }
 
+void
+client_request_timer(struct client_requests_info *cri)
+{
+	// XXX implement me
+	// client_request_stop_timing(cri);
+	free_client_request_info(cri);
+}

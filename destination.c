@@ -72,3 +72,9 @@ maybe_query_destination(struct destination *dest)
 	// XXX goto
 }
 
+void
+destination_timer(struct destination *dest)
+{
+	// XXX implement me
+	// destination_stop_timing(dest);
+}
