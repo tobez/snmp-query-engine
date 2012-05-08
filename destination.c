@@ -30,7 +30,6 @@ struct destination *get_destination(struct in_addr *ip, unsigned port)
 		d->timeout                 = DEFAULT_TIMEOUT;
 		d->retries                 = DEFAULT_RETRIES;
 		d->min_interval            = DEFAULT_MIN_INTERVAL;
-		d->request_delay           = DEFAULT_REQUEST_DELAY;
 		*dest_slot = d;
 	}
 	return *dest_slot;
@@ -61,8 +60,7 @@ maybe_query_destination(struct destination *dest)
 	 * which has anything to send.   Be careful with when to stop.
 	 */
 	fd = dest->fd_of_last_query;
-again:
-fprintf(stderr, "maybe %d\n", (int)fd);
+//again:
 	JLN(cri_slot, dest->client_requests_info, fd);
 	if (dest->fd_of_last_query == 0)
 		dest->fd_of_last_query = fd;
@@ -71,10 +69,9 @@ fprintf(stderr, "maybe %d\n", (int)fd);
 		JLF(cri_slot, dest->client_requests_info, fd);
 		if (!cri_slot) return;  /* no clients for this destination */
 	}
-	if (cri_can_send(*cri_slot))
-		build_snmp_query(*cri_slot);
-	else if (fd != dest->fd_of_last_query)
-		goto again;
+	build_snmp_query(*cri_slot);
+	// else if (fd != dest->fd_of_last_query)
+	//	goto again;
 	dest->fd_of_last_query = fd;
 	// XXX goto
 }

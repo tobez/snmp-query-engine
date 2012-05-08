@@ -173,7 +173,6 @@ struct client_connection
 #define DEFAULT_TIMEOUT 2000
 #define DEFAULT_RETRIES 3
 #define DEFAULT_MIN_INTERVAL 10
-#define DEFAULT_REQUEST_DELAY 20
 
 TAILQ_HEAD(oid_info_head, oid_info);
 TAILQ_HEAD(sid_info_head, sid_info);
@@ -193,7 +192,6 @@ struct destination
 	int timeout;
 	int retries;
 	int min_interval;
-	int request_delay;
 
 	int fd_of_last_query;
 	JudyL client_requests_info;   /* JudyL of struct client_requests_info indexed by fd */
@@ -202,7 +200,6 @@ struct destination
 
 struct client_requests_info
 {
-	TAILQ_ENTRY(client_requests_info) timer_chain;
 	struct destination *dest;
 	struct socket_info *si;
 	int fd;
@@ -227,7 +224,6 @@ struct timer
 {
 	struct timeval when;
 	struct sid_info_head            timed_out_sids;
-	struct client_requests_info_head delayed_requests;
 	struct destination_head         throttled_destinations;
 };
 
@@ -360,10 +356,6 @@ extern void destination_timer(struct destination *dest);
 extern struct client_requests_info *get_client_requests_info(struct in_addr *ip, unsigned port, int fd);
 extern int free_client_request_info(struct client_requests_info *cri);
 extern int free_all_client_request_info_for_fd(int fd);
-extern void client_request_timer(struct client_requests_info *cri);
-extern void cri_start_timing(struct client_requests_info *cri);
-extern void cri_stop_timing(struct client_requests_info *cri);
-extern int cri_can_send(struct client_requests_info *cri);
 
 /* cid_info.c */
 extern struct cid_info *get_cid_info(struct client_requests_info *cri, unsigned cid);

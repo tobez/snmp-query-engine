@@ -8,51 +8,28 @@
 
 static void *option2index; /* a JudySL tree */
 
-#define OPT_VERSION       1
-#define OPT_COMMUNITY     2
-#define OPT_MAX_PACKETS   3
-#define OPT_MAX_REQ_SIZE  4
-#define OPT_TIMEOUT       5
-#define OPT_RETRIES       6
-#define OPT_MIN_INTERVAL  7
-#define OPT_REQUEST_DELAY 8
+#define OPT_version       1
+#define OPT_community     2
+#define OPT_max_packets   3
+#define OPT_max_req_size  4
+#define OPT_timeout       5
+#define OPT_retries       6
+#define OPT_min_interval  7
 
 static void
 build_option2index(void)
 {
 	Word_t *val;
 
-	JSLI(val, option2index, (unsigned char *)"version");
-	if (val == PJERR) croak(2, "build_option2index: JSLI(version) failed");
-	*val = OPT_VERSION;
-
-	JSLI(val, option2index, (unsigned char *)"community");
-	if (val == PJERR) croak(2, "build_option2index: JSLI(community) failed");
-	*val = OPT_COMMUNITY;
-
-	JSLI(val, option2index, (unsigned char *)"max_packets");
-	if (val == PJERR) croak(2, "build_option2index: JSLI(max_packets) failed");
-	*val = OPT_MAX_PACKETS;
-
-	JSLI(val, option2index, (unsigned char *)"max_req_size");
-	if (val == PJERR) croak(2, "build_option2index: JSLI(max_req_size) failed");
-	*val = OPT_MAX_REQ_SIZE;
-
-	JSLI(val, option2index, (unsigned char *)"timeout");
-	if (val == PJERR) croak(2, "build_option2index: JSLI(timeout) failed");
-	*val = OPT_TIMEOUT;
-
-	JSLI(val, option2index, (unsigned char *)"retries");
-	if (val == PJERR) croak(2, "build_option2index: JSLI(retries) failed");
-	*val = OPT_RETRIES;
-
-	JSLI(val, option2index, (unsigned char *)"min_interval");
-	if (val == PJERR) croak(2, "build_option2index: JSLI(min_interval) failed");
-	*val = OPT_MIN_INTERVAL;
-
-	JSLI(val, option2index, (unsigned char *)"request_delay");
-	if (val == PJERR) croak(2, "build_option2index: JSLI(request_delay) failed");
-	*val = OPT_REQUEST_DELAY;
+	#define ADD(var) JSLI(val, option2index, (unsigned char *)#var); if (val == PJERR) croak(2, "build_option2index: JSLI(" #var ") failed"); *val = OPT_##var;
+	ADD(version);
+	ADD(community);
+	ADD(max_packets);
+	ADD(max_req_size);
+	ADD(timeout);
+	ADD(retries);
+	ADD(min_interval);
+	#undef ADD
 }
 
 int
@@ -100,44 +77,39 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 		v = &h->via.map.ptr[i].val;
 		t = v->type;
 		switch (*val) {
-		case OPT_VERSION:
+		case OPT_version:
 			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || (v->via.u64 != 1 && v->via.u64 != 2))
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid SNMP version");
 			d.version = v->via.u64 - 1;
 			break;
-		case OPT_COMMUNITY:
+		case OPT_community:
 			if (!object2string(v, d.community, 256))
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid SNMP community");
 			break;
-		case OPT_MAX_PACKETS:
+		case OPT_max_packets:
 			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 < 1 || v->via.u64 > 1000)
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid max packets");
 			d.max_packets_on_the_wire = v->via.u64;
 			break;
-		case OPT_MAX_REQ_SIZE:
+		case OPT_max_req_size:
 			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 < 500 || v->via.u64 > 50000)
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid max request size");
 			d.max_request_packet_size = v->via.u64;
 			break;
-		case OPT_TIMEOUT:
+		case OPT_timeout:
 			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 > 30000)
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid timeout");
 			d.timeout = v->via.u64;
 			break;
-		case OPT_RETRIES:
+		case OPT_retries:
 			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 < 1 || v->via.u64 > 10)
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid retries");
 			d.retries = v->via.u64;
 			break;
-		case OPT_MIN_INTERVAL:
+		case OPT_min_interval:
 			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 > 10000)
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid min interval");
 			d.min_interval = v->via.u64;
-			break;
-		case OPT_REQUEST_DELAY:
-			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 > 3000)
-				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid request delay");
-			d.request_delay = v->via.u64;
 			break;
 		default:
 			return error_reply(si, RT_SETOPT|RT_ERROR, cid, "bad option key");

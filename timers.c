@@ -21,7 +21,6 @@ new_timer(struct timeval *when)
 		bzero(t, sizeof(*t));
 		t->when = *when;
 		TAILQ_INIT(&t->timed_out_sids);
-		TAILQ_INIT(&t->delayed_requests);
 		TAILQ_INIT(&t->throttled_destinations);
 		*usec_slot = t;
 	}
@@ -55,7 +54,6 @@ cleanup_timer(struct timer *t)
 
 	if (!t)	return 1;
 	if (!TAILQ_EMPTY(&t->timed_out_sids))	return 0;
-	if (!TAILQ_EMPTY(&t->delayed_requests))	return 0;
 	if (!TAILQ_EMPTY(&t->throttled_destinations))	return 0;
 	tv = t->when;
 	free(t);
@@ -131,10 +129,6 @@ again:
 	if (t->when.tv_sec == now.tv_sec && t->when.tv_usec > now.tv_usec)	return;
 	if (!TAILQ_EMPTY(&t->throttled_destinations)) {
 		destination_timer(TAILQ_FIRST(&t->throttled_destinations));
-		goto again;
-	}
-	if (!TAILQ_EMPTY(&t->delayed_requests)) {
-		client_request_timer(TAILQ_FIRST(&t->delayed_requests));
 		goto again;
 	}
 	if (!TAILQ_EMPTY(&t->timed_out_sids)) {

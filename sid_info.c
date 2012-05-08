@@ -101,9 +101,6 @@ fprintf(stderr, "REQG %s\n", oid2str(oi->oid));
 	sid_start_timing(si);
 	si->retries_left--;
 
-	if (!TAILQ_EMPTY(&cri->oids_to_query))
-		cri_start_timing(cri);
-
 	PS.snmp_sends++;
 	si->cri->si->PS.snmp_sends++;
 	snmp_send(dest, &si->packet);
