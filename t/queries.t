@@ -148,6 +148,15 @@ if ($r1->[1] == 3501) {
 match("combined req1", $r1, [RT_GET|RT_REPLY,3500,[["1.3.6.1.2.1.1.5.0",$hostname]]]);
 match("combined req2", $r2, [RT_GET|RT_REPLY,3501,[["1.3.6.1.2.1.25.1.1.0",$uptime]]]);
 
+multi_request([RT_GET,3502,$target,161, ["1.3.6.1.2.1.1.5.0"]], [RT_GET,3503,$target,161, [".1.3.6.1.2.1.25.1.1.0"]]);
+Time::HiRes::sleep(0.5);
+($r1,$r2) = bulk_response();
+if ($r1->[1] == 3503) {
+	($r1, $r2) = ($r2, $r1);
+}
+match("multi combined req1", $r1, [RT_GET|RT_REPLY,3502,[["1.3.6.1.2.1.1.5.0",$hostname]]]);
+match("multi combined req2", $r2, [RT_GET|RT_REPLY,3503,[["1.3.6.1.2.1.25.1.1.0",$uptime]]]);
+
 $r = request_match("stats", [RT_INFO,5000], [RT_INFO|RT_REPLY,5000,
 	{ connection => { client_requests => $NUMBER, invalid_requests => $NUMBER },
 	  global => { client_requests => $NUMBER, invalid_requests => $NUMBER,
@@ -183,6 +192,16 @@ sub lone_request
 {
 	my $d = shift;
 	my $p = $mp->pack($d);
+	$conn->syswrite($p);
+}
+
+sub multi_request
+{
+	my @d = @_;
+	my $p = "";
+	for my $d (@d) {
+		$p .= $mp->pack($d);
+	}
 	$conn->syswrite($p);
 }
 
