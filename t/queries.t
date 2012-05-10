@@ -133,10 +133,12 @@ request_match("try request SNMP v1", [RT_GET,43,$target,161, ["1.3.6.1.2.1.1.5.0
 			  ["1.3.6.1.2.1.25.1.1.0",undef],
 			  ["1.3.66",undef]]]);
 
+$r = request_match("ifDescr SNMPv1 table", [RT_GETTABLE,555,$target,161,"1.3.6.1.2.1.2.2.1.2"], [RT_GETTABLE|RT_REPLY,555,THERE]);
+
 request_match("change version back to SNMP v2", [RT_SETOPT,3003,$target,161, {version=>2}], [RT_SETOPT|RT_REPLY,3003,
 	{ip=>$target, port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2, min_interval => 10, }]);
 
-$r = request_match("ifDescr table", [RT_GETTABLE,3200,$target,161,"1.3.6.1.2.1.2.2.1.2"], [RT_GETTABLE|RT_REPLY,3200,THERE]);
+$r = request_match("ifDescr SNMPv2c table", [RT_GETTABLE,3200,$target,161,"1.3.6.1.2.1.2.2.1.2"], [RT_GETTABLE|RT_REPLY,3200,THERE]);
 
 lone_request([RT_GET,3500,$target,161, ["1.3.6.1.2.1.1.5.0"]]);
 lone_request([RT_GET,3501,$target,161, [".1.3.6.1.2.1.25.1.1.0"]]);
