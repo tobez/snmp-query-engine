@@ -139,6 +139,7 @@ request_match("change version back to SNMP v2", [RT_SETOPT,3003,$target,161, {ve
 	{ip=>$target, port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2, min_interval => 10, }]);
 
 $r = request_match("ifDescr SNMPv2c table", [RT_GETTABLE,3200,$target,161,"1.3.6.1.2.1.2.2.1.2"], [RT_GETTABLE|RT_REPLY,3200,THERE]);
+my $first_ifindex = $r->[2][0][0];  $first_ifindex =~ s/.*\.(\d+)$/$1/;
 
 lone_request([RT_GET,3500,$target,161, ["1.3.6.1.2.1.1.5.0"]]);
 lone_request([RT_GET,3501,$target,161, [".1.3.6.1.2.1.25.1.1.0"]]);
@@ -150,14 +151,22 @@ if ($r1->[1] == 3501) {
 match("combined req1", $r1, [RT_GET|RT_REPLY,3500,[["1.3.6.1.2.1.1.5.0",$hostname]]]);
 match("combined req2", $r2, [RT_GET|RT_REPLY,3501,[["1.3.6.1.2.1.25.1.1.0",$uptime]]]);
 
-multi_request([RT_GET,3502,$target,161, ["1.3.6.1.2.1.1.5.0"]], [RT_GET,3503,$target,161, [".1.3.6.1.2.1.25.1.1.0"]]);
+$r = request([RT_INFO,3555]);
+my $snmp_sends = $r->[2]{global}{snmp_sends};
+multi_request(
+	[RT_GET,3502,$target,161, ["1.3.6.1.2.1.1.5.0"]],
+	[RT_GET,3503,$target,161, [".1.3.6.1.2.1.25.1.1.0"]],
+	[RT_GET,3504,$target,161, ["1.3.6.1.2.1.2.1.0"]],
+	[RT_GET,3505,$target,161, ["1.3.6.1.2.1.2.2.1.1.$first_ifindex"]],
+);
 Time::HiRes::sleep(0.5);
-($r1,$r2) = bulk_response();
-if ($r1->[1] == 3503) {
-	($r1, $r2) = ($r2, $r1);
-}
-match("multi combined req1", $r1, [RT_GET|RT_REPLY,3502,[["1.3.6.1.2.1.1.5.0",$hostname]]]);
-match("multi combined req2", $r2, [RT_GET|RT_REPLY,3503,[["1.3.6.1.2.1.25.1.1.0",$uptime]]]);
+my @r = sort { $a->[1] <=> $b->[1] } bulk_response();
+match("multi combined req1", $r[0], [RT_GET|RT_REPLY,3502,[["1.3.6.1.2.1.1.5.0",$hostname]]]);
+match("multi combined req2", $r[1], [RT_GET|RT_REPLY,3503,[["1.3.6.1.2.1.25.1.1.0",$uptime]]]);
+match("multi combined req3", $r[2], [RT_GET|RT_REPLY,3504,[["1.3.6.1.2.1.2.1.0",$NUMBER]]]);
+match("multi combined req4", $r[3], [RT_GET|RT_REPLY,3505,[["1.3.6.1.2.1.2.2.1.1.$first_ifindex",$first_ifindex]]]);
+$r = request([RT_INFO,3556]);
+# TODO is($r->[2]{global}{snmp_sends}-$snmp_sends, 2, "4 client requests in 2 SNMP requests");
 
 $r = request_match("stats", [RT_INFO,5000], [RT_INFO|RT_REPLY,5000,
 	{ connection => { client_requests => $NUMBER, invalid_requests => $NUMBER },
