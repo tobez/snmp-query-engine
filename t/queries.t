@@ -23,6 +23,41 @@ use constant RT_ERROR    => 0x20;
 sub THERE () { return bless \my $dummy, 't::Present' }
 our $NUMBER = qr/^\d+$/;
 
+my @GLOBAL_STATS = qw(
+active_client_connections
+active_timers_sec
+active_timers_usec
+client_requests
+get_requests
+getopt_requests
+gettable_requests
+info_requests
+invalid_requests
+oids_requested
+oids_returned_from_snmp
+oids_returned_to_client
+setopt_requests
+snmp_retries
+snmp_sends
+total_client_connections
+total_timers_sec
+total_timers_usec);
+
+my @CLIENT_STATS = qw(
+client_requests
+get_requests
+getopt_requests
+gettable_requests
+info_requests
+invalid_requests
+oids_requested
+oids_returned_from_snmp
+oids_returned_to_client
+setopt_requests
+snmp_retries
+snmp_sends
+);
+
 my $daemon_pid;
 if (!($daemon_pid = fork)) {
 	exec("$FindBin::Bin/../snmp-query-engine", "-p7668", "-q");
@@ -172,9 +207,8 @@ print STDERR ">>>> SENDS 4 clients, ", $r->[2]{global}{snmp_sends}-$snmp_sends, 
 # TODO is($r->[2]{global}{snmp_sends}-$snmp_sends, 2, "4 client requests in 2 SNMP requests");
 
 $r = request_match("stats", [RT_INFO,5000], [RT_INFO|RT_REPLY,5000,
-	{ connection => { client_requests => $NUMBER, invalid_requests => $NUMBER },
-	  global => { client_requests => $NUMBER, invalid_requests => $NUMBER,
-	  	active_client_connections => 1, total_client_connections => 1 }}]);
+	{ connection => { map { $_ => $NUMBER } @CLIENT_STATS },
+	  global => { map { $_ => $NUMBER } @GLOBAL_STATS }}]);
 print STDERR "OIDS requested: $r->[2]{connection}{oids_requested}\n";
 
 bailout:

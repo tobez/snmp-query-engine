@@ -30,6 +30,11 @@ pack_stats(struct program_stats *PS, msgpack_packer *pk)
 	STAT(oids_returned_from_snmp);
 	STAT(oids_returned_to_client);
 
+	STAT(active_timers_sec);
+	STAT(active_timers_usec);
+	STAT(total_timers_sec);
+	STAT(total_timers_usec);
+
 	#undef STAT
 	return n;
 }

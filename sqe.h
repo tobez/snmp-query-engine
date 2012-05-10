@@ -115,6 +115,11 @@ struct program_stats
 	int64_t oids_requested;
 	int64_t oids_returned_from_snmp;
 	int64_t oids_returned_to_client;
+
+	int64_t active_timers_sec;
+	int64_t active_timers_usec;
+	int64_t total_timers_sec;
+	int64_t total_timers_usec;
 };
 
 extern struct program_stats PS;

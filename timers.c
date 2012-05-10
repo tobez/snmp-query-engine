@@ -11,10 +11,16 @@ new_timer(struct timeval *when)
 	JLI(sec_slot, timers, when->tv_sec);
 	if (sec_slot == PJERR)
 		croak(2, "new_timer: JLI(timers) failed");
+	if (!*sec_slot) {
+		PS.active_timers_sec++;
+		PS.total_timers_sec++;
+	}
 	JLI(usec_slot, *sec_slot, when->tv_usec);
 	if (usec_slot == PJERR)
 		croak(2, "new_timer: JLI(*sec_slot) failed");
 	if (!*usec_slot) {
+		PS.active_timers_usec++;
+		PS.total_timers_usec++;
 		t = malloc(sizeof(*t));
 		if (!t)
 			croak(2, "new_timer: malloc(timer)");
@@ -63,6 +69,7 @@ cleanup_timer(struct timer *t)
 		croak(2, "cleanup_timer: JLG(timers)#1 failed");
 	if (!sec_slot) return 1;
 	JLD(rc, *sec_slot, tv.tv_usec);
+	PS.active_timers_usec--;
 
 	JLG(sec_slot, timers, tv.tv_sec);
 	if (sec_slot == PJERR)
@@ -70,6 +77,7 @@ cleanup_timer(struct timer *t)
 	if (!sec_slot) return 1;
 	if (!*sec_slot) {
 		JLD(rc, timers, tv.tv_sec);
+		PS.active_timers_sec--;
 		fprintf(stderr, "cleanup_timer: deleting whole second %u timer\n", (unsigned)tv.tv_sec);
 	} else {
 		fprintf(stderr, "cleanup_timer: deleting %u.%u timer\n", (unsigned)tv.tv_sec, (unsigned)tv.tv_usec);
