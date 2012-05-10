@@ -51,10 +51,12 @@ static unsigned sid;
 unsigned
 next_sid(void)
 {
+	struct timeval tv;
 	if (!sid_initialized) {
 		sid_initialized = 1;
-		/* XXX use randomness here */
-		sid = 123456;
+		/* do we want better randomness than this - is it worth it? */
+		gettimeofday(&tv, NULL);
+		sid = (tv.tv_sec % 500009) + tv.tv_usec;
 	}
 	sid++;
 	sid &= 0xffffffff;
