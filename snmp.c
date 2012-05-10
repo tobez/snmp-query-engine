@@ -55,7 +55,7 @@ snmp_receive(struct socket_info *snmp)
 
 //	fprintf(stderr, "this packet appears to be legit, sid %u(%u)\n", sid, si->sid);
 	process_sid_info_response(si, e);
-	// free_sid_info(si);  XXX CAN WE FREE IT HERE?
+	free_sid_info(si);
 
 	return;
 

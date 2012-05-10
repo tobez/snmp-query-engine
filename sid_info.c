@@ -140,6 +140,7 @@ free_sid_info(struct sid_info *si)
 	 * efficiently and thus does not need to TAILQ_REMOVE.
 	 */
 fprintf(stderr, "   freeing sid_info %u\n", si->sid);
+	TAILQ_REMOVE(&si->cri->sid_infos, si, sid_list);
 	JLD(rc, si->cri->dest->sid_info, si->sid);
 	sid_stop_timing(si);
 	free(si->packet.buf);
@@ -193,7 +194,6 @@ sid_timer(struct sid_info *si)
 	}
 	fprintf(stderr, "sid %u is timed out, cleaning up\n", si->sid);
 	all_oids_done(si, &BER_TIMEOUT);
-	TAILQ_REMOVE(&si->cri->sid_infos, si, sid_list);
 	free_sid_info(si);
 }
 
