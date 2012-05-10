@@ -193,6 +193,7 @@ struct destination
 	int retries;
 	int min_interval;
 
+	struct timeval can_query_at;
 	int fd_of_last_query;
 	JudyL client_requests_info;   /* JudyL of struct client_requests_info indexed by fd */
 	JudyL sid_info;  /* JudyL of struct sid_info indexed by sid */
@@ -325,6 +326,7 @@ extern struct timer *next_timer(void);
 extern int ms_to_next_timer(void);
 extern void trigger_timers(void);
 extern void set_timeout(struct timeval *tv, int timeout);  /* timeout in ms */
+extern int ms_passed_since(struct timeval *tv);
 
 /* client_listen.c */
 extern void create_listening_socket(int port);
@@ -350,6 +352,8 @@ extern char *oid2str(struct ber o);
 extern struct destination *get_destination(struct in_addr *ip, unsigned port);
 extern struct destination *find_destination(struct in_addr *ip, unsigned port);
 extern void maybe_query_destination(struct destination *dest);
+extern void destination_start_timing(struct destination *dest);
+extern void destination_stop_timing(struct destination *dest);
 extern void destination_timer(struct destination *dest);
 
 /* client_requests_info.c */

@@ -152,3 +152,14 @@ set_timeout(struct timeval *tv, int timeout)
 	to.tv_usec %= 1000000;
 	*tv = to;
 }
+
+int
+ms_passed_since(struct timeval *tv)
+{
+	struct timeval now;
+
+	if (!tv->tv_sec)	return INT_MAX;
+	gettimeofday(&now, NULL);
+	return (now.tv_sec - tv->tv_sec) * 1000 + (now.tv_usec - tv->tv_usec) / 1000;
+}
+

@@ -168,6 +168,7 @@ match("multi combined req2", $r[1], [RT_GET|RT_REPLY,3503,[["1.3.6.1.2.1.25.1.1.
 match("multi combined req3", $r[2], [RT_GET|RT_REPLY,3504,[["1.3.6.1.2.1.2.1.0",$NUMBER]]]);
 match("multi combined req4", $r[3], [RT_GET|RT_REPLY,3505,[["1.3.6.1.2.1.2.2.1.1.$first_ifindex",$first_ifindex]]]);
 $r = request([RT_INFO,3556]);
+print STDERR ">>>> SENDS 4 clients, ", $r->[2]{global}{snmp_sends}-$snmp_sends, " SNMP\n";
 # TODO is($r->[2]{global}{snmp_sends}-$snmp_sends, 2, "4 client requests in 2 SNMP requests");
 
 $r = request_match("stats", [RT_INFO,5000], [RT_INFO|RT_REPLY,5000,

@@ -53,8 +53,14 @@ maybe_query_destination(struct destination *dest)
 {
 	struct client_requests_info **cri_slot;
 	Word_t fd;
+	struct timeval now;
 
 	/* XXX first check whether anything can be sent */
+	if (dest->can_query_at.tv_sec) {
+		gettimeofday(&now, NULL);
+		if (now.tv_sec < dest->can_query_at.tv_sec)	return;
+		if (now.tv_sec == dest->can_query_at.tv_sec && now.tv_usec < dest->can_query_at.tv_usec)	return;
+	}
 
 	/* Then find a client_requests_info, in a round-robin fashion,
 	 * which has anything to send.   Be careful with when to stop.
@@ -80,5 +86,31 @@ void
 destination_timer(struct destination *dest)
 {
 	// XXX implement me
-	// destination_stop_timing(dest);
+	destination_stop_timing(dest);
+	maybe_query_destination(dest);
 }
+
+void
+destination_stop_timing(struct destination *dest)
+{
+	struct timer *t;
+
+	t = find_timer(&dest->can_query_at);
+	if (t) {
+		TAILQ_REMOVE(&t->throttled_destinations, dest, timer_chain);
+		cleanup_timer(t);
+	}
+	bzero(&dest->can_query_at, sizeof(dest->can_query_at));
+}
+
+void
+destination_start_timing(struct destination *dest)
+{
+	struct timer *t;
+
+	destination_stop_timing(dest);
+	set_timeout(&dest->can_query_at, dest->min_interval);
+	t = new_timer(&dest->can_query_at);
+	TAILQ_INSERT_TAIL(&t->throttled_destinations, dest, timer_chain);
+}
+
