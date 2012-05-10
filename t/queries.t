@@ -97,7 +97,7 @@ my $hostname = hostname;
 my $uptime   = qr/^\d+$/;
 
 my $r = request([RT_GET,33,$target,161, ["1.3.6.1.2.1.1.5.0"]]);
-if ($r->[0] != (RT_GET|RT_REPLY)) {
+if ($r->[0] != (RT_GET|RT_REPLY) || ref $r->[2][0][1]) {
 	fail("Skipping remaining tests, need running local snmpd on port 161 with public community");
 	goto bailout;
 }
