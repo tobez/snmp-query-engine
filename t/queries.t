@@ -95,16 +95,16 @@ request_match("oids is an empty array", [RT_GET,27,"127.0.0.1",161, []], [RT_GET
 my $target   = "127.0.0.1";
 my $hostname = hostname;
 my $uptime   = qr/^\d+$/;
-if ($^O eq "linux" && !-f "/etc/redhat-release") {
-	$target   = "172.24.253.189";
-	$hostname = qr/ryv/;
-	$uptime   = ["no-such-object"];
+
+my $r = request([RT_GET,33,$target,161, ["1.3.6.1.2.1.1.5.0"]]);
+if ($r->[0] != (RT_GET|RT_REPLY)) {
+	fail("Skipping remaining tests, need running local snmpd on port 161 with public community");
+	goto bailout;
 }
 
 request_match("change community to a bad one", [RT_SETOPT,3000,$target,161, {community=>"meow", timeout => 1500, retries => 2}], [RT_SETOPT|RT_REPLY,3000,
 	{ip=>$target, port=>161, community=>"meow", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2, min_interval => 10, }]);
 
-my $r;
 $r = request_match("times out", [RT_GET,41,$target,161, ["1.3.6.1.2.1.1.5.0"]],
 			  [RT_GET|RT_REPLY,41,[["1.3.6.1.2.1.1.5.0",["timeout"]]]]);
 
@@ -174,6 +174,7 @@ $r = request_match("stats", [RT_INFO,5000], [RT_INFO|RT_REPLY,5000,
 	  	active_client_connections => 1, total_client_connections => 1 }}]);
 print STDERR "OIDS requested: $r->[2]{connection}{oids_requested}\n";
 
+bailout:
 Time::HiRes::sleep(0.2);
 close $conn;
 Time::HiRes::sleep(0.2);
