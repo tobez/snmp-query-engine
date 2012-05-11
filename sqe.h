@@ -111,6 +111,8 @@ struct program_stats
 	int64_t gettable_requests;
 
 	int64_t snmp_sends;
+	int64_t snmp_v1_sends;
+	int64_t snmp_v2c_sends;
 	int64_t snmp_retries;
 	int64_t snmp_timeouts;
 	int64_t udp_timeouts;
@@ -245,6 +247,7 @@ struct sid_info
 	struct client_requests_info *cri;
 	struct timeval will_timeout_at;
 	int retries_left;
+	unsigned version;
 
 	struct packet_builder pb;
 	struct ber packet;

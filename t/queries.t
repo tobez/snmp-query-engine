@@ -42,6 +42,8 @@ setopt_requests
 snmp_retries
 snmp_sends
 snmp_timeouts
+snmp_v1_sends
+snmp_v2c_sends
 total_client_connections
 total_timers_sec
 total_timers_usec
@@ -63,6 +65,8 @@ setopt_requests
 snmp_retries
 snmp_sends
 snmp_timeouts
+snmp_v1_sends
+snmp_v2c_sends
 udp_timeouts
 );
 

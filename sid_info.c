@@ -21,8 +21,9 @@ new_sid_info(struct client_requests_info *cri)
 	si->sid = sid;
 	si->cri = cri;
 	si->retries_left = dest->retries;
+	si->version = dest->version;
 	TAILQ_INIT(&si->oids_being_queried);
-	if (start_snmp_packet(&si->pb, dest->version, dest->community, sid) < 0)
+	if (start_snmp_packet(&si->pb, si->version, dest->community, sid) < 0)
 		croak(2, "new_sid_info: start_snmp_get_packet");
 	*si_slot = si;
 	TAILQ_INSERT_TAIL(&cri->sid_infos, si, sid_list);
@@ -98,6 +99,13 @@ build_snmp_query(struct client_requests_info *cri)
 
 	PS.snmp_sends++;
 	si->cri->si->PS.snmp_sends++;
+	if (si->version == 0) {
+		PS.snmp_v1_sends++;
+		si->cri->si->PS.snmp_v1_sends++;
+	} else {
+		PS.snmp_v2c_sends++;
+		si->cri->si->PS.snmp_v2c_sends++;
+	}
 	snmp_send(dest, &si->packet);
 }
 
@@ -168,6 +176,13 @@ void resend_query_with_new_sid(struct sid_info *si)
 
 	PS.snmp_sends++;
 	si->cri->si->PS.snmp_sends++;
+	if (si->version == 0) {
+		PS.snmp_v1_sends++;
+		si->cri->si->PS.snmp_v1_sends++;
+	} else {
+		PS.snmp_v2c_sends++;
+		si->cri->si->PS.snmp_v2c_sends++;
+	}
 	PS.snmp_retries++;
 	si->cri->si->PS.snmp_retries++;
 	snmp_send(si->cri->dest, &si->packet);
