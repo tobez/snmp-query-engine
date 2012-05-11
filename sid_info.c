@@ -122,10 +122,7 @@ sid_stop_timing(struct sid_info *si)
 	struct timer *t;
 
 	t = find_timer(&si->will_timeout_at);
-	if (t) {
-		TAILQ_REMOVE(&t->timed_out_sids, si, timer_chain);
-		cleanup_timer(t);
-	}
+	if (t) TAILQ_REMOVE(&t->timed_out_sids, si, timer_chain);
 	bzero(&si->will_timeout_at, sizeof(si->will_timeout_at));
 }
 

@@ -96,10 +96,7 @@ destination_stop_timing(struct destination *dest)
 	struct timer *t;
 
 	t = find_timer(&dest->can_query_at);
-	if (t) {
-		TAILQ_REMOVE(&t->throttled_destinations, dest, timer_chain);
-		cleanup_timer(t);
-	}
+	if (t) TAILQ_REMOVE(&t->throttled_destinations, dest, timer_chain);
 	bzero(&dest->can_query_at, sizeof(dest->can_query_at));
 }
 
