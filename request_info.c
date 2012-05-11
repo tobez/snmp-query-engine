@@ -40,6 +40,7 @@ pack_stats(struct program_stats *PS, msgpack_packer *pk)
 	STAT(active_timers_usec);
 	STAT(total_timers_sec);
 	STAT(total_timers_usec);
+	STAT(uptime);
 
 	#undef STAT
 	return n;
@@ -58,6 +59,9 @@ handle_info_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 
 	PS.info_requests++;
 	si->PS.info_requests++;
+
+	PS.uptime = ms_passed_since(&prog_start);
+	si->PS.uptime = ms_passed_since(&si->created);
 
 	buffer = msgpack_sbuffer_new();
 	pk = msgpack_packer_new(buffer, msgpack_sbuffer_write);

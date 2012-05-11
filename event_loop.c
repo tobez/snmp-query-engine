@@ -22,6 +22,12 @@ new_socket_info(int fd)
 
 	si->PS.active_client_connections = -42;
 	si->PS.total_client_connections = -42;
+	si->PS.active_timers_sec = -42;
+	si->PS.active_timers_usec = -42;
+	si->PS.total_timers_sec = -42;
+	si->PS.total_timers_usec = -42;
+	si->PS.bad_snmp_responses = -42;
+	gettimeofday(&si->created, NULL);
 
 	si->fd = fd;
 	TAILQ_INIT(&si->send_bufs);

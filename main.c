@@ -21,6 +21,7 @@ main(int argc, char **argv)
 	int o;
 	int port = 7667;
 
+	gettimeofday(&prog_start, NULL);
 	bzero(&PS, sizeof(PS));
 
 	while ( (o = getopt(argc, argv, "hp:q")) != -1) {

@@ -126,8 +126,10 @@ struct program_stats
 	int64_t active_timers_usec;
 	int64_t total_timers_sec;
 	int64_t total_timers_usec;
+	int64_t uptime;  /* in msec */
 };
 
+extern struct timeval prog_start;
 extern struct program_stats PS;
 
 struct ber
@@ -164,6 +166,7 @@ struct send_buf
 struct socket_info
 {
 	int fd;
+	struct timeval created;
 	void *udata;
 	void (*read_handler)(struct socket_info *si);
 	void (*write_handler)(struct socket_info *si);
@@ -338,7 +341,7 @@ extern struct timer *next_timer(void);
 extern int ms_to_next_timer(void);
 extern void trigger_timers(void);
 extern void set_timeout(struct timeval *tv, int timeout);  /* timeout in ms */
-extern int ms_passed_since(struct timeval *tv);
+extern int64_t ms_passed_since(struct timeval *tv);
 
 /* client_listen.c */
 extern void create_listening_socket(int port);

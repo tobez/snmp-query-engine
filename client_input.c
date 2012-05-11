@@ -144,11 +144,6 @@ void new_client_connection(int fd)
 
 	PS.active_client_connections++;
 	PS.total_client_connections++;
-	si->PS.active_timers_sec = -1;
-	si->PS.active_timers_usec = -1;
-	si->PS.total_timers_sec = -1;
-	si->PS.total_timers_usec = -1;
-	si->PS.bad_snmp_responses = -1;
 
 	msgpack_unpacker_init(&c->unpacker, MSGPACK_UNPACKER_INIT_BUFFER_SIZE);
 	msgpack_unpacked_init(&c->input);

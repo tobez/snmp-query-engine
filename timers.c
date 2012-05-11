@@ -1,5 +1,6 @@
 #include "sqe.h"
 
+struct timeval prog_start;
 static JudyL timers = NULL;
 
 struct timer *
@@ -158,7 +159,7 @@ set_timeout(struct timeval *tv, int timeout)
 	*tv = to;
 }
 
-int
+int64_t
 ms_passed_since(struct timeval *tv)
 {
 	struct timeval now;
