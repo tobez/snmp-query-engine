@@ -27,10 +27,12 @@ my @GLOBAL_STATS = qw(
 active_client_connections
 active_timers_sec
 active_timers_usec
+bad_snmp_responses
 client_requests
 get_requests
 getopt_requests
 gettable_requests
+good_snmp_responses
 info_requests
 invalid_requests
 oids_requested
@@ -39,15 +41,19 @@ oids_returned_to_client
 setopt_requests
 snmp_retries
 snmp_sends
+snmp_timeouts
 total_client_connections
 total_timers_sec
-total_timers_usec);
+total_timers_usec
+udp_timeouts
+);
 
 my @CLIENT_STATS = qw(
 client_requests
 get_requests
 getopt_requests
 gettable_requests
+good_snmp_responses
 info_requests
 invalid_requests
 oids_requested
@@ -56,6 +62,8 @@ oids_returned_to_client
 setopt_requests
 snmp_retries
 snmp_sends
+snmp_timeouts
+udp_timeouts
 );
 
 my $daemon_pid;
@@ -203,7 +211,7 @@ match("multi combined req2", $r[1], [RT_GET|RT_REPLY,3503,[["1.3.6.1.2.1.25.1.1.
 match("multi combined req3", $r[2], [RT_GET|RT_REPLY,3504,[["1.3.6.1.2.1.2.1.0",$NUMBER]]]);
 match("multi combined req4", $r[3], [RT_GET|RT_REPLY,3505,[["1.3.6.1.2.1.2.2.1.1.$first_ifindex",$first_ifindex]]]);
 $r = request([RT_INFO,3556]);
-print STDERR ">>>> SENDS 4 clients, ", $r->[2]{global}{snmp_sends}-$snmp_sends, " SNMP\n";
+print STDERR ">>>> SENDS 4 clients, ", $r->[2]{global}{snmp_sends}-$snmp_sends, " SNMP, $r->[2]{global}{udp_timeouts}($r->[2]{global}{snmp_timeouts}) timeouts in total\n";
 # TODO is($r->[2]{global}{snmp_sends}-$snmp_sends, 2, "4 client requests in 2 SNMP requests");
 
 $r = request_match("stats", [RT_INFO,5000], [RT_INFO|RT_REPLY,5000,

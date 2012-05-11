@@ -60,6 +60,7 @@ snmp_receive(struct socket_info *snmp)
 	return;
 
 bad_snmp_packet:
+	PS.bad_snmp_responses++;
 	fprintf(stderr, "bad SNMP packet, ignoring: %s\n", trace);
 }
 

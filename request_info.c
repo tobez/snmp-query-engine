@@ -24,8 +24,12 @@ pack_stats(struct program_stats *PS, msgpack_packer *pk)
 	STAT(get_requests);
 	STAT(gettable_requests);
 
-	STAT(snmp_sends);
 	STAT(snmp_retries);
+	STAT(snmp_sends);
+	STAT(snmp_timeouts);
+	STAT(udp_timeouts);
+	STAT(bad_snmp_responses);
+	STAT(good_snmp_responses);
 	STAT(oids_requested);
 	STAT(oids_returned_from_snmp);
 	STAT(oids_returned_to_client);

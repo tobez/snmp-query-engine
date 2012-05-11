@@ -65,7 +65,6 @@ build_snmp_query(struct client_requests_info *cri)
 		ci->n_oids_being_queried++;
 
 		si->table_oid = oi;
-fprintf(stderr, "REQT %s\n", oid2str(oi->last_known_table_entry->oid));
 		PS.oids_requested++;
 		cri->si->PS.oids_requested++;
 
@@ -74,15 +73,11 @@ fprintf(stderr, "REQT %s\n", oid2str(oi->last_known_table_entry->oid));
 								   dest->version == 0 ? PDU_GET_NEXT_REQUEST : PDU_GET_BULK_REQUEST,
 								   10)) < 0)
 			croak(2, "build_snmp_query: finalize_snmp_packet");
-
-		// fprintf(stderr, "see gettable packet we are sending (sid %u):\n", si->sid);
-		// ber_dump(stderr, &si->packet);
 	} else {
 		TAILQ_FOREACH_SAFE(oi, &cri->oids_to_query, oid_list, oi_temp) {
 			if (oi->last_known_table_entry) continue; /* Skip GETTABLE requests */
 			if (si->pb.e.len + oi->oid.len >= dest->max_request_packet_size)
 				break;
-fprintf(stderr, "REQG %s\n", oid2str(oi->oid));
 			PS.oids_requested++;
 			cri->si->PS.oids_requested++;
 			if (add_encoded_oid_to_snmp_packet(&si->pb, &oi->oid) < 0)
@@ -136,7 +131,6 @@ free_sid_info(struct sid_info *si)
 	 * Reason: free_client_request_info() does it more
 	 * efficiently and thus does not need to TAILQ_REMOVE.
 	 */
-fprintf(stderr, "   freeing sid_info %u\n", si->sid);
 	TAILQ_REMOVE(&si->cri->sid_infos, si, sid_list);
 	JLD(rc, si->cri->dest->sid_info, si->sid);
 	sid_stop_timing(si);
@@ -169,8 +163,6 @@ void resend_query_with_new_sid(struct sid_info *si)
 		croak(2, "resend_query_with_new_sid: sid_info must not be there");
 	*si_slot = si;
 
-	// fprintf(stderr, "see packet we are resending (sid %u, retries left %d):\n", si->sid, si->retries_left);
-	// ber_dump(stderr, &si->packet);
 	sid_start_timing(si);
 	si->retries_left--;
 
@@ -184,12 +176,15 @@ void resend_query_with_new_sid(struct sid_info *si)
 void
 sid_timer(struct sid_info *si)
 {
+	PS.udp_timeouts++;
+	si->cri->si->PS.udp_timeouts++;
 	sid_stop_timing(si);
 	if (si->retries_left > 0) {
 		resend_query_with_new_sid(si);
 		return;
 	}
-	fprintf(stderr, "sid %u is timed out, cleaning up\n", si->sid);
+	PS.snmp_timeouts++;
+	si->cri->si->PS.snmp_timeouts++;
 	all_oids_done(si, &BER_TIMEOUT);
 	free_sid_info(si);
 }
@@ -222,7 +217,6 @@ got_table_oid(struct sid_info *si, struct oid_info *table_oi, struct ber *oid, s
 	struct cid_info *ci;
 	struct oid_info *oi;
 
-//fprintf(stderr, "MEOW\n");
 	cri = si->cri;
 	ci = get_cid_info(cri, table_oi->cid);
 	if (!ci || ci->n_oids == 0)
@@ -268,8 +262,6 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 	struct cid_info *ci;
 
 	/* SNMP packet must be positioned past request id field */
-	// fprintf(stderr, "GOT packet\n");
-	// ber_dump(stderr, e);
 
 	#define CHECK(prob, val) if ((val) < 0) { trace = prob; goto bad_snmp_packet; }
 	CHECK("decoding error status", decode_integer(e, -1, &error_status));
@@ -301,9 +293,7 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 		ci->n_oids_being_queried--;
 		if (table_done) {
 			si->table_oid = NULL;
-			fprintf(stderr, "TABLE IS DONE!\n");
 			ci->n_oids--;
-			fprintf(stderr, "done table, stats: N%d, Q%d, D%d\n", ci->n_oids, ci->n_oids_being_queried, ci->n_oids_done);
 			if (ci->n_oids_done == ci->n_oids)
 				cid_reply(ci, RT_GETTABLE);
 		} else {
@@ -317,9 +307,12 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 			all_oids_done(si, &BER_MISSING);
 		}
 	}
+	PS.good_snmp_responses++;
+	si->cri->si->PS.good_snmp_responses++;
 	#undef CHECK
 
 	return;
 bad_snmp_packet:
+	PS.bad_snmp_responses++;
 	fprintf(stderr, "sid %u: bad SNMP packet, ignoring: %s\n", si->sid, trace);
 }

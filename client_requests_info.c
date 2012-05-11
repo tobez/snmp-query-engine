@@ -47,7 +47,6 @@ free_all_client_request_info_for_fd(int fd)
 	Word_t ip, port;
 	Word_t rc;
 
-fprintf(stderr, "free_all_client_request_info_for_fd(%d)\n", fd);
 	JLG(fd_slot, dest_by_fd, fd);
 	if (fd_slot == PJERR)
 		croak(2, "free_all_client_request_info_for_fd: JLG(fd) failed");
@@ -60,8 +59,6 @@ fprintf(stderr, "free_all_client_request_info_for_fd(%d)\n", fd);
 		port = 0;
 		JLF(cri_slot, *ip_slot, port);
 		while (cri_slot) {
-			fprintf(stderr, "free_all_client_request_info_for_fd(%d), %s:%u\n",
-					fd, inet_ntoa((*cri_slot)->dest->ip), (*cri_slot)->dest->port);
 			free_client_request_info(*cri_slot);
 			JLN(cri_slot, *ip_slot, port);
 		}

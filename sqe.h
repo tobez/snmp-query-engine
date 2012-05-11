@@ -112,6 +112,10 @@ struct program_stats
 
 	int64_t snmp_sends;
 	int64_t snmp_retries;
+	int64_t snmp_timeouts;
+	int64_t udp_timeouts;
+	int64_t good_snmp_responses;
+	int64_t bad_snmp_responses;
 	int64_t oids_requested;
 	int64_t oids_returned_from_snmp;
 	int64_t oids_returned_to_client;

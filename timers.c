@@ -78,9 +78,6 @@ cleanup_timer(struct timer *t)
 	if (!*sec_slot) {
 		JLD(rc, timers, tv.tv_sec);
 		PS.active_timers_sec--;
-		fprintf(stderr, "cleanup_timer: deleting whole second %u timer\n", (unsigned)tv.tv_sec);
-	} else {
-		fprintf(stderr, "cleanup_timer: deleting %u.%u timer\n", (unsigned)tv.tv_sec, (unsigned)tv.tv_usec);
 	}
 	return 1;
 }

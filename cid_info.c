@@ -26,10 +26,6 @@ int
 free_cid_info(struct cid_info *ci)
 {
 	Word_t rc;
-fprintf(stderr, "  freeing cid_info, fd %d, cid %u\n", ci->fd, ci->cid);
-fprintf(stderr, "  n_oids(%d), n_oids_being_queried(%d), n_oids_done(%d)\n",
-		ci->n_oids, ci->n_oids_being_queried, ci->n_oids_done);
-fprintf(stderr, "     oids_done, fd %d, cid %u\n", ci->fd, ci->cid);
 	JLD(rc, ci->cri->cid_info, ci->cid);
 	free_oid_info_list(&ci->oids_done);
 	free(ci);
@@ -115,7 +111,6 @@ decode_error:
 		ci->cri->si->PS.oids_returned_to_client++;
 	}
 
-	fprintf(stderr, "cid %u reply\n", ci->cid);
 	tcp_send(ci->cri->si, buffer->data, buffer->size);
 	msgpack_sbuffer_free(buffer);
 	msgpack_packer_free(pk);

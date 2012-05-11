@@ -33,11 +33,9 @@ client_input(struct socket_info *si)
 	if ( (n = read(si->fd, buf, 1500)) == -1) {
 		switch (errno) {
 		case EPIPE:
-			fprintf(stderr, "flush_buffers: EPIPE during read\n");
 			client_gone(si);
 			return;
 		case ECONNRESET:
-			fprintf(stderr, "flush_buffers: ECONNRESET during read\n");
 			client_gone(si);
 			return;
 		}
@@ -150,6 +148,7 @@ void new_client_connection(int fd)
 	si->PS.active_timers_usec = -1;
 	si->PS.total_timers_sec = -1;
 	si->PS.total_timers_usec = -1;
+	si->PS.bad_snmp_responses = -1;
 
 	msgpack_unpacker_init(&c->unpacker, MSGPACK_UNPACKER_INIT_BUFFER_SIZE);
 	msgpack_unpacked_init(&c->input);
