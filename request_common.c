@@ -8,8 +8,8 @@ error_reply(struct socket_info *si, unsigned code, unsigned cid, char *error)
 	int l = strlen(error);
 
 	msgpack_pack_array(pk, 3);
-	msgpack_pack_int(pk, code);
-	msgpack_pack_int(pk, cid);
+	msgpack_pack_unsigned_int(pk, code);
+	msgpack_pack_unsigned_int(pk, cid);
 	msgpack_pack_raw(pk, l);
 	msgpack_pack_raw_body(pk, error, l);
 
@@ -25,7 +25,7 @@ msgpack_pack_named_int(msgpack_packer *pk, char *name, int64_t val)
 	int l = strlen(name);
 	msgpack_pack_raw(pk, l);
 	msgpack_pack_raw_body(pk, name, l);
-	msgpack_pack_int(pk, val);
+	msgpack_pack_int64(pk, val);
 	/* XXX */
 	return 0;
 }
