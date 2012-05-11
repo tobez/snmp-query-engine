@@ -151,8 +151,8 @@ if ($r->[0] != (RT_GET|RT_REPLY) || ref $r->[2][0][1]) {
 	goto bailout;
 }
 
-request_match("change community to a bad one", [RT_SETOPT,3000,$target,161, {community=>"meow", timeout => 1500, retries => 2}], [RT_SETOPT|RT_REPLY,3000,
-	{ip=>$target, port=>161, community=>"meow", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2, min_interval => 10, }]);
+request_match("change community to a bad one", [RT_SETOPT,3000,$target,161, {community=>1234, timeout => 1500, retries => 2}], [RT_SETOPT|RT_REPLY,3000,
+	{ip=>$target, port=>161, community=>1234, version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2, min_interval => 10, }]);
 
 $r = request_match("times out", [RT_GET,41,$target,161, ["1.3.6.1.2.1.1.5.0"]],
 			  [RT_GET|RT_REPLY,41,[["1.3.6.1.2.1.1.5.0",["timeout"]]]]);

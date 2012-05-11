@@ -19,11 +19,20 @@ object_strdup(msgpack_object *o)
 char *
 object2string(msgpack_object *o, char s[], int bufsize)
 {
-	if (o->type != MSGPACK_OBJECT_RAW) return NULL;
-	if (o->via.raw.size >= bufsize)    return NULL;
+	switch (o->type) {
+	case MSGPACK_OBJECT_RAW:
+		if (o->via.raw.size >= bufsize)    return NULL;
+		memcpy(s, o->via.raw.ptr, o->via.raw.size);
+		s[o->via.raw.size] = 0;
+		break;
+	case MSGPACK_OBJECT_POSITIVE_INTEGER:
+		if (snprintf(s, bufsize, "%"PRIu64, o->via.u64) >= bufsize)
+			return NULL;
+		break;
+	default:
+		return NULL;
+	}
 
-	memcpy(s, o->via.raw.ptr, o->via.raw.size);
-	s[o->via.raw.size] = 0;
 	return s;
 }
 
@@ -42,7 +51,7 @@ object2ip(msgpack_object *o, struct in_addr *ip)
 {
 	char buf[16];
 	if (!object2string(o, buf, 16))	return 0;
-	return inet_aton(buf, ip);
+	return inet_pton(AF_INET, buf, ip);
 }
 
 static int sid_initialized = 0;
