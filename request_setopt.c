@@ -59,7 +59,7 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	if (o->via.array.ptr[RI_SETOPT_OPT].type != MSGPACK_OBJECT_MAP)
 		return error_reply(si, RT_SETOPT|RT_ERROR, cid, "options is not a map");
 
-	cri = get_client_requests_info(&ip, port, si->fd);
+	cri = get_client_requests_info(&ip, port, si);
 	memcpy(&d, cri->dest, sizeof(d));
 
 	if (!option2index)

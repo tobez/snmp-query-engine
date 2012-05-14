@@ -12,6 +12,12 @@ get_cid_info(struct client_requests_info *cri, unsigned cid)
 		ci = malloc(sizeof(*ci));
 		if (!ci)
 			croak(2, "get_cid_info: malloc(cid_info)");
+
+		PS.active_cid_infos++;
+		PS.total_cid_infos++;
+		cri->si->PS.active_cid_infos++;
+		cri->si->PS.total_cid_infos++;
+
 		bzero(ci, sizeof(*ci));
 		ci->cri = cri;
 		ci->fd = cri->fd;
@@ -26,6 +32,9 @@ int
 free_cid_info(struct cid_info *ci)
 {
 	Word_t rc;
+
+	PS.active_cid_infos--;
+	ci->cri->si->PS.active_cid_infos--;
 	JLD(rc, ci->cri->cid_info, ci->cid);
 	free_oid_info_list(&ci->oids_done);
 	free(ci);

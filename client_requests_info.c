@@ -3,7 +3,7 @@
 static JudyL dest_by_fd;  // -> JudyL(by ip) -> JudyL(by port) -> destination
 
 struct client_requests_info *
-get_client_requests_info(struct in_addr *ip, unsigned port, int fd)
+get_client_requests_info(struct in_addr *ip, unsigned port, struct socket_info *si)
 {
 	struct destination *dest;
 	void **fd_slot, **ip_slot;
@@ -11,7 +11,7 @@ get_client_requests_info(struct in_addr *ip, unsigned port, int fd)
 
 	dest = get_destination(ip, port);
 
-	JLI(fd_slot, dest_by_fd, fd);
+	JLI(fd_slot, dest_by_fd, si->fd);
 	if (fd_slot == PJERR)
 		croak(2, "get_client_requests_info: JLI(fd) failed");
 	JLI(ip_slot, *fd_slot, ip->s_addr);
@@ -24,15 +24,22 @@ get_client_requests_info(struct in_addr *ip, unsigned port, int fd)
 		cri = malloc(sizeof(*cri));
 		if (!cri)
 			croak(2, "get_client_requests_info: malloc(cri)");
+
+		PS.active_cr_infos++;
+		PS.total_cr_infos++;
+		si->PS.active_cr_infos++;
+		si->PS.total_cr_infos++;
+
 		bzero(cri, sizeof(*cri));
 		cri->dest = dest;
-		cri->fd   = fd;
+		cri->fd   = si->fd;
+		cri->si   = si;
 		TAILQ_INIT(&cri->oids_to_query);
 		TAILQ_INIT(&cri->sid_infos);
 		*cri_slot = cri;
 	}
 
-	JLI(dest_cri_slot, dest->client_requests_info, fd);
+	JLI(dest_cri_slot, dest->client_requests_info, si->fd);
 	if (dest_cri_slot == PJERR)
 		croak(2, "get_client_requests_info: JLI(dest/fd) failed");
 	*dest_cri_slot = *cri_slot;
@@ -78,6 +85,8 @@ free_client_request_info(struct client_requests_info *cri)
 	Word_t rc;
 	struct sid_info *si, *si_temp;
 
+	PS.active_cr_infos--;
+	cri->si->PS.active_cr_infos--;
 	si = TAILQ_FIRST(&cri->sid_infos);
 	while (si != NULL) {
 		si_temp = TAILQ_NEXT(si, sid_list);

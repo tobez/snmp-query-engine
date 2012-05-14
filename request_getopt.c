@@ -43,7 +43,7 @@ handle_getopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	PS.getopt_requests++;
 	si->PS.getopt_requests++;
 
-	cri = get_client_requests_info(&ip, port, si->fd);
+	cri = get_client_requests_info(&ip, port, si);
 	d = cri->dest;
 
 	buffer = msgpack_sbuffer_new();

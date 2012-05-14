@@ -13,10 +13,21 @@ fprintf(stderr, "       freeing an oid (C:%u,S:%u) %s\n", n1->cid, n1->sid, oid2
 }
 		free(n1->oid.buf);
 		free(n1->value.buf);
+		PS.active_oid_infos--;
 		free(n1);
 		n1 = n2;
 	}
 	TAILQ_INIT(list);
+	return 1;
+}
+
+int
+free_oid_info(struct oid_info *oi)
+{
+	free(oi->oid.buf);
+	free(oi->value.buf);
+	PS.active_oid_infos--;
+	free(oi);
 	return 1;
 }
 
@@ -36,6 +47,8 @@ allocate_oid_info_list(struct oid_info_head *list, msgpack_object *o, struct cid
 		oi = malloc(sizeof(*oi));
 		if (!oi)
 			croak(2, "allocate_oid_info_list: malloc(oid_info)");
+		PS.active_oid_infos++;
+		PS.total_oid_infos++;
 		bzero(oi, sizeof(*oi));
 		oi->cid = ci->cid;
 		oi->fd  = ci->fd;
@@ -64,6 +77,8 @@ allocate_oid_info(msgpack_object *o, struct cid_info *ci)
 	oi = malloc(sizeof(*oi));
 	if (!oi)
 		croak(2, "allocate_oid_info: malloc(oid_info)");
+	PS.active_oid_infos++;
+	PS.total_oid_infos++;
 	bzero(oi, sizeof(*oi));
 	oi->cid = ci->cid;
 	oi->fd  = ci->fd;

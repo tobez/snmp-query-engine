@@ -42,6 +42,14 @@ pack_stats(struct program_stats *PS, msgpack_packer *pk)
 	STAT(total_timers_usec);
 	STAT(uptime);
 
+	STAT(active_sid_infos);
+	STAT(total_sid_infos);
+	STAT(active_oid_infos);
+	STAT(total_oid_infos);
+	STAT(active_cid_infos);
+	STAT(total_cid_infos);
+	STAT(active_cr_infos);
+	STAT(total_cr_infos);
 	#undef STAT
 	return n;
 }

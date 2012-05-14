@@ -127,6 +127,16 @@ struct program_stats
 	int64_t total_timers_sec;
 	int64_t total_timers_usec;
 	int64_t uptime;  /* in msec */
+
+	int64_t active_sid_infos;
+	int64_t total_sid_infos;
+	int64_t active_oid_infos;
+	int64_t total_oid_infos;
+	int64_t active_cid_infos;
+	int64_t total_cid_infos;
+	int64_t active_cr_infos;
+	int64_t total_cr_infos;
+
 };
 
 extern struct timeval prog_start;
@@ -372,7 +382,7 @@ extern void destination_stop_timing(struct destination *dest);
 extern void destination_timer(struct destination *dest);
 
 /* client_requests_info.c */
-extern struct client_requests_info *get_client_requests_info(struct in_addr *ip, unsigned port, int fd);
+extern struct client_requests_info *get_client_requests_info(struct in_addr *ip, unsigned port, struct socket_info *si);
 extern int free_client_request_info(struct client_requests_info *cri);
 extern int free_all_client_request_info_for_fd(int fd);
 
@@ -399,6 +409,7 @@ extern void sid_timer(struct sid_info *si);
 extern int allocate_oid_info_list(struct oid_info_head *oi, msgpack_object *o, struct cid_info *ci);
 extern struct oid_info *allocate_oid_info(msgpack_object *o, struct cid_info *ci);
 extern int free_oid_info_list(struct oid_info_head *list);
+extern int free_oid_info(struct oid_info *oi);  /* use only for oid_infos outside any lists */
 
 /* request_common.c */
 extern int error_reply(struct socket_info *si, unsigned code, unsigned cid, char *error);

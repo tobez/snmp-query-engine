@@ -26,8 +26,7 @@ handle_gettable_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	if (!object2ip(&o->via.array.ptr[RI_GETTABLE_IP], &ip))
 		return error_reply(si, RT_GETTABLE|RT_ERROR, cid, "bad IP");
 
-	cri = get_client_requests_info(&ip, port, si->fd);
-	cri->si = si;
+	cri = get_client_requests_info(&ip, port, si);
 	ci = get_cid_info(cri, cid);
 	if (ci->n_oids != 0)
 		return error_reply(si, RT_GETTABLE|RT_ERROR, cid, "duplicate request id");

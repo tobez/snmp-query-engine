@@ -27,6 +27,8 @@ new_socket_info(int fd)
 	si->PS.total_timers_sec = -42;
 	si->PS.total_timers_usec = -42;
 	si->PS.bad_snmp_responses = -42;
+	si->PS.active_oid_infos = -42;
+	si->PS.total_oid_infos = -42;
 	gettimeofday(&si->created, NULL);
 
 	si->fd = fd;

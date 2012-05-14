@@ -17,6 +17,7 @@ new_sid_info(struct client_requests_info *cri)
 	si = malloc(sizeof(*si));
 	if (!si)
 		croak(2, "new_sid_info: malloc(sid_info)");
+
 	bzero(si, sizeof(*si));
 	si->sid = sid;
 	si->cri = cri;
@@ -27,6 +28,11 @@ new_sid_info(struct client_requests_info *cri)
 		croak(2, "new_sid_info: start_snmp_get_packet");
 	*si_slot = si;
 	TAILQ_INSERT_TAIL(&cri->sid_infos, si, sid_list);
+
+	PS.active_sid_infos++;
+	PS.total_sid_infos++;
+	cri->si->PS.active_sid_infos++;
+	cri->si->PS.total_sid_infos++;
 	return si;
 }
 
@@ -139,11 +145,16 @@ free_sid_info(struct sid_info *si)
 	 * Reason: free_client_request_info() does it more
 	 * efficiently and thus does not need to TAILQ_REMOVE.
 	 */
+	PS.active_sid_infos--;
+	si->cri->si->PS.active_sid_infos--;
+
 	TAILQ_REMOVE(&si->cri->sid_infos, si, sid_list);
 	JLD(rc, si->cri->dest->sid_info, si->sid);
 	sid_stop_timing(si);
 	free(si->packet.buf);
 	free_oid_info_list(&si->oids_being_queried);
+	if (si->table_oid)
+		free_oid_info(si->table_oid);
 	free(si);
 }
 
@@ -248,6 +259,9 @@ got_table_oid(struct sid_info *si, struct oid_info *table_oi, struct ber *oid, s
 	oi->sid = 0;
 	table_oi->last_known_table_entry = oi;
 
+	PS.active_oid_infos++;
+	PS.total_oid_infos++;
+
 	TAILQ_INSERT_TAIL(&ci->oids_done, oi, oid_list);
 	ci->n_oids_done++;
 	ci->n_oids++;
@@ -307,6 +321,7 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 		ci = get_cid_info(si->cri, si->table_oid->cid);
 		ci->n_oids_being_queried--;
 		if (table_done) {
+			free_oid_info(si->table_oid);
 			si->table_oid = NULL;
 			ci->n_oids--;
 			if (ci->n_oids_done == ci->n_oids)

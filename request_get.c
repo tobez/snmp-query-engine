@@ -31,8 +31,7 @@ handle_get_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	if (o->via.array.ptr[RI_GET_OIDS].via.array.size < 1)
 		return error_reply(si, RT_GET|RT_ERROR, cid, "oids is an empty array");
 
-	cri = get_client_requests_info(&ip, port, si->fd);
-	cri->si = si;
+	cri = get_client_requests_info(&ip, port, si);
 	ci = get_cid_info(cri, cid);
 	if (ci->n_oids != 0)
 		return error_reply(si, RT_GET|RT_ERROR, cid, "duplicate request id");
