@@ -1,3 +1,11 @@
+/*
+ * Part of `snmp-query-engine`.
+ *
+ * Copyright 2012, Anton Berezin <tobez@tobez.org>
+ * Modified BSD license.
+ * (See LICENSE file in the distribution.)
+ *
+ */
 #include "sqe.h"
 
 #define SPACECHECK(bytes) if (e->len + (bytes) > e->max_len) { errno = EMSGSIZE; return -1; }

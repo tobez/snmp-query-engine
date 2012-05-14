@@ -1,3 +1,11 @@
+#
+# Part of `snmp-query-engine`.
+#
+# Copyright 2012, Anton Berezin <tobez@tobez.org>
+# Modified BSD license.
+# (See LICENSE file in the distribution.)
+#
+#
 CC?=	cc
 OPTIMIZE=	-O3 -g
 INCPATH=	-I/usr/local/include -I/opt/local/include
