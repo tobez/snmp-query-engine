@@ -163,7 +163,8 @@ my $uptime   = qr/^\d+$/;
 my $r = request([RT_GET,33,$target,161, ["1.3.6.1.2.1.1.5.0"]]);
 if ($r->[0] != (RT_GET|RT_REPLY) || ref $r->[2][0][1]) {
 	print STDERR "\n\n=====\n=====\n";
-	print STDERR "=====> Skipping remaining tests, need running local snmpd on port 161 with public community\n";
+	print STDERR "=====> Skipping remaining tests, need running local snmpd on port 161\n";
+	print STDERR "=====> with \"public\" community.\n";
 	print STDERR "=====\n=====\n\n";
 	goto bailout;
 }
