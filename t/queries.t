@@ -24,7 +24,11 @@ sub THERE () { return bless \my $dummy, 't::Present' }
 our $NUMBER = qr/^\d+$/;
 
 my @GLOBAL_STATS = qw(
+active_cid_infos
 active_client_connections
+active_cr_infos
+active_oid_infos
+active_sid_infos
 active_timers_sec
 active_timers_usec
 bad_snmp_responses
@@ -44,13 +48,21 @@ snmp_sends
 snmp_timeouts
 snmp_v1_sends
 snmp_v2c_sends
+total_cid_infos
 total_client_connections
+total_cr_infos
+total_oid_infos
+total_sid_infos
 total_timers_sec
 total_timers_usec
 udp_timeouts
+uptime
 );
 
 my @CLIENT_STATS = qw(
+active_cid_infos
+active_cr_infos
+active_sid_infos
 client_requests
 get_requests
 getopt_requests
@@ -67,7 +79,11 @@ snmp_sends
 snmp_timeouts
 snmp_v1_sends
 snmp_v2c_sends
+total_cid_infos
+total_cr_infos
+total_sid_infos
 udp_timeouts
+uptime
 );
 
 my $daemon_pid;
