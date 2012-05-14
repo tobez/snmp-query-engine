@@ -204,6 +204,9 @@ sid_timer(struct sid_info *si)
 {
 	PS.udp_timeouts++;
 	si->cri->si->PS.udp_timeouts++;
+	si->cri->dest->packets_on_the_wire--;
+	if (si->cri->dest->packets_on_the_wire < 0)
+		si->cri->dest->packets_on_the_wire = 0;
 	sid_stop_timing(si);
 	if (si->retries_left > 0) {
 		resend_query_with_new_sid(si);

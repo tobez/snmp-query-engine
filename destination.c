@@ -55,7 +55,10 @@ maybe_query_destination(struct destination *dest)
 	Word_t fd;
 	struct timeval now;
 
-	/* XXX first check whether anything can be sent */
+	if (dest->packets_on_the_wire >= dest->max_packets_on_the_wire) {
+		PS.destination_throttles++;
+		return;
+	}
 	if (dest->can_query_at.tv_sec) {
 		gettimeofday(&now, NULL);
 		if (now.tv_sec < dest->can_query_at.tv_sec)	return;

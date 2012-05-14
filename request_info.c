@@ -50,6 +50,9 @@ pack_stats(struct program_stats *PS, msgpack_packer *pk)
 	STAT(total_cid_infos);
 	STAT(active_cr_infos);
 	STAT(total_cr_infos);
+
+	STAT(destination_throttles);
+
 	#undef STAT
 	return n;
 }

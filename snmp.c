@@ -30,6 +30,9 @@ snmp_receive(struct socket_info *snmp)
 		fprintf(stderr, "destination %s:%d is not knowing, ignoring packet\n", inet_ntoa(from.sin_addr), ntohs(from.sin_port));
 		return;
 	}
+	dest->packets_on_the_wire--;
+	if (dest->packets_on_the_wire < 0)
+		dest->packets_on_the_wire = 0;
 
 	enc = ber_init(buf, n); e = &enc;
 
@@ -89,6 +92,7 @@ create_snmp_socket(void)
 void snmp_send(struct destination *dest, struct ber *packet)
 {
 	destination_start_timing(dest);
+	dest->packets_on_the_wire++;
 	if (sendto(snmp->fd, packet->buf, packet->len, 0, (struct sockaddr *)&dest->dest_addr, sizeof(dest->dest_addr)) != packet->len)
 		croak(1, "snmp_send: sendto");
 //fprintf(stderr, "UDP datagram of %d bytes sent to %s:%d\n", packet->len, inet_ntoa(dest->dest_addr.sin_addr), ntohs(dest->dest_addr.sin_port));

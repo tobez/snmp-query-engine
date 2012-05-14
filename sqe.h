@@ -136,6 +136,7 @@ struct program_stats
 	int64_t active_cr_infos;
 	int64_t total_cr_infos;
 
+	int64_t destination_throttles; /* due to max_packets_on_the_wire limit */
 };
 
 extern struct timeval prog_start;
@@ -216,6 +217,7 @@ struct destination
 	int retries;
 	int min_interval;
 
+	int packets_on_the_wire;
 	struct timeval can_query_at;
 	int fd_of_last_query;
 	JudyL client_requests_info;   /* JudyL of struct client_requests_info indexed by fd */
