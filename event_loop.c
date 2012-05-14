@@ -1,7 +1,7 @@
 #include "sqe.h"
 
 struct program_stats PS;
-void *socks = NULL;
+static JudyL socks = NULL;
 
 #ifdef WITH_KQUEUE
 int kq = -1;
