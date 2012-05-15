@@ -409,7 +409,7 @@ extern void sid_start_timing(struct sid_info *si);
 extern void sid_stop_timing(struct sid_info *si);
 extern void check_timed_out_requests(void);
 extern void process_sid_info_response(struct sid_info *si, struct ber *e);
-extern void oid_done(struct sid_info *si, struct oid_info *oi, struct ber *val);
+extern void oid_done(struct sid_info *si, struct oid_info *oi, struct ber *val, int op);
 extern void all_oids_done(struct sid_info *si, struct ber *val);
 extern void got_table_oid(struct sid_info *si, struct oid_info *table_oi, struct ber *oid, struct ber *val);
 extern void sid_timer(struct sid_info *si);

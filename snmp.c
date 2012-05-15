@@ -104,4 +104,5 @@ void snmp_send(struct destination *dest, struct ber *packet)
 	if (sendto(snmp->fd, packet->buf, packet->len, 0, (struct sockaddr *)&dest->dest_addr, sizeof(dest->dest_addr)) != packet->len)
 		croak(1, "snmp_send: sendto");
 //fprintf(stderr, "UDP datagram of %d bytes sent to %s:%d\n", packet->len, inet_ntoa(dest->dest_addr.sin_addr), ntohs(dest->dest_addr.sin_port));
+//dump_buf(stderr, packet->buf, packet->len);
 }

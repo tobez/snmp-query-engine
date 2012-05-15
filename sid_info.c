@@ -76,7 +76,7 @@ build_snmp_query(struct client_requests_info *cri)
 		oi->sid = si->sid;
 		ci = get_cid_info(cri, oi->cid);
 		if (!ci || ci->n_oids == 0)
-			croakx(2, "build_snmp_query: cid_info unexpectedly missing");
+			croakx(2, "build_snmp_query: cid_info unexpectedly missing for table oid");
 		ci->n_oids_being_queried++;
 
 		si->table_oid = oi;
@@ -210,6 +210,7 @@ void resend_query_with_new_sid(struct sid_info *si)
 void
 sid_timer(struct sid_info *si)
 {
+	struct destination *dest;
 	PS.udp_timeouts++;
 	si->cri->si->PS.udp_timeouts++;
 	si->cri->dest->packets_on_the_wire--;
@@ -222,12 +223,20 @@ sid_timer(struct sid_info *si)
 	}
 	PS.snmp_timeouts++;
 	si->cri->si->PS.snmp_timeouts++;
-	all_oids_done(si, &BER_TIMEOUT);
+
+	if (si->table_oid) {
+		oid_done(si, si->table_oid, &BER_TIMEOUT, RT_GETTABLE);
+		si->table_oid = NULL;
+	} else {
+		all_oids_done(si, &BER_TIMEOUT);
+	}
+	dest = si->cri->dest;
 	free_sid_info(si);
+	maybe_query_destination(si->cri->dest);
 }
 
 void
-oid_done(struct sid_info *si, struct oid_info *oi, struct ber *val)
+oid_done(struct sid_info *si, struct oid_info *oi, struct ber *val, int op)
 {
 	struct client_requests_info *cri;
 	struct cid_info *ci;
@@ -239,12 +248,13 @@ oid_done(struct sid_info *si, struct oid_info *oi, struct ber *val)
 	/* XXX free old value? */
 	oi->value = ber_rewind(ber_dup(val));
 	oi->sid = 0;
-	TAILQ_REMOVE(&si->oids_being_queried, oi, oid_list);
+	if (op != RT_GETTABLE)
+		TAILQ_REMOVE(&si->oids_being_queried, oi, oid_list);
 	TAILQ_INSERT_TAIL(&ci->oids_done, oi, oid_list);
 	ci->n_oids_being_queried--;
 	ci->n_oids_done++;
 	if (ci->n_oids_done == ci->n_oids)
-		cid_reply(ci, RT_GET);
+		cid_reply(ci, op);
 }
 
 void
@@ -282,10 +292,9 @@ void
 all_oids_done(struct sid_info *si, struct ber *val)
 {
 	struct oid_info *oi, *oi_temp;
-
 	/* XXX handle si->table_oid stuff as well */
 	TAILQ_FOREACH_SAFE(oi, &si->oids_being_queried, oid_list, oi_temp) {
-		oid_done(si, oi, val);
+		oid_done(si, oi, val, RT_GET);
 	}
 }
 
@@ -322,7 +331,7 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 		} else {
 			TAILQ_FOREACH(oi, &si->oids_being_queried, oid_list) {
 				if (ber_equal(&oid, &oi->oid)) {
-					oid_done(si, oi, &val);
+					oid_done(si, oi, &val, RT_GET);
 					break;
 				}
 			}
