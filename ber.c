@@ -193,10 +193,6 @@ finalize_snmp_packet(struct packet_builder *pb, struct ber *encoded_packet, unsi
 	int l;
 	e = &pb->e;
 
-	if ( (l = encode_store_length(e, pb->oid_sequence)) < 0)	return -1;
-	pb->sid_offset += l;
-	if (encode_store_length(e, pb->pdu) < 0)	return -1;
-	pb->pdu[0] = type;
 	if (type == PDU_GET_BULK_REQUEST) {
 		if (max_repetitions <= 0)
 			max_repetitions = 10;
@@ -204,7 +200,12 @@ finalize_snmp_packet(struct packet_builder *pb, struct ber *encoded_packet, unsi
 			max_repetitions = 255;
 		pb->max_repetitions[0] = (unsigned char)max_repetitions;
 	}
-	if (encode_store_length(e, pb->packet_sequence) < 0)	return -1;
+	if ( (l = encode_store_length(e, pb->oid_sequence)) < 0)	return -1;
+	if ( (l = encode_store_length(e, pb->pdu)) < 0)	return -1;
+	pb->sid_offset += l;
+	pb->pdu[0] = type;
+	if ( (l = encode_store_length(e, pb->packet_sequence)) < 0)	return -1;
+	pb->sid_offset += l;
 	*encoded_packet = ber_dup(e);
 	free(e->buf);
 	return pb->sid_offset;
