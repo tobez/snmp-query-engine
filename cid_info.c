@@ -69,6 +69,7 @@ cid_reply(struct cid_info *ci, int type)
 	unsigned char t;
 	unsigned len, u32;
 	unsigned long long u64;
+	char unsupported[30]; /* "unsupported type 0xXX" */
 
 	msgpack_pack_array(pk, 3);
 	msgpack_pack_int(pk, type|RT_REPLY);
@@ -122,7 +123,8 @@ decode_error:
 			pack_error(pk, "decode-error");
 			break;
 		default:
-			pack_error(pk, "unsupported");
+			snprintf(unsupported, 30, "unsupported type 0x%02x", t);
+			pack_error(pk, unsupported);
 		}
 		PS.oids_returned_to_client++;
 		ci->cri->si->PS.oids_returned_to_client++;
