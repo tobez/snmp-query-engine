@@ -232,7 +232,7 @@ sid_timer(struct sid_info *si)
 	}
 	dest = si->cri->dest;
 	free_sid_info(si);
-	maybe_query_destination(si->cri->dest);
+	maybe_query_destination(dest);
 }
 
 void
