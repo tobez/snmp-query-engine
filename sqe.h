@@ -243,7 +243,6 @@ struct client_requests_info
 	JudyL cid_info; /* JudyL of struct cid_info ("cid" = client id) indexed by cid */
 	struct oid_info_head oids_to_query;
 	struct sid_info_head sid_infos;
-	struct timeval can_send_at;
 };
 
 struct cid_info
@@ -400,11 +399,13 @@ extern void dump_all_destinations(msgpack_packer *pk);
 extern struct client_requests_info *get_client_requests_info(struct in_addr *ip, unsigned port, struct socket_info *si);
 extern int free_client_request_info(struct client_requests_info *cri);
 extern int free_all_client_request_info_for_fd(int fd);
+extern void dump_client_request_info(msgpack_packer *pk, struct client_requests_info *cri);
 
 /* cid_info.c */
 extern struct cid_info *get_cid_info(struct client_requests_info *cri, unsigned cid);
 extern int free_cid_info(struct cid_info *ci);
 extern void cid_reply(struct cid_info *ci, int type);
+extern void dump_cid_info(msgpack_packer *pk, struct cid_info *ci);
 
 /* sid_info.c */
 extern struct sid_info *new_sid_info(struct client_requests_info *cri);

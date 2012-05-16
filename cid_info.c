@@ -146,3 +146,36 @@ decode_error:
 	msgpack_packer_free(pk);
 	free_cid_info(ci);
 }
+
+void
+dump_cid_info(msgpack_packer *pk, struct cid_info *ci)
+{
+	char buf[512];
+	Word_t n_oids_done;
+	struct oid_info *oi;
+
+	#define PACK msgpack_pack_string(pk, buf)
+	#define DUMPi(field) msgpack_pack_named_int(pk, #field, ci->field)
+	#define DUMPs(field) msgpack_pack_named_string(pk, #field, ci->field)
+	snprintf(buf, 512, "CID(%d)", ci->cid); PACK;
+	msgpack_pack_map(pk, 7);
+
+	msgpack_pack_string(pk, "cri");
+	snprintf(buf, 512, "CRI(%s:%d->%d)", inet_ntoa(ci->cri->dest->ip), ci->cri->dest->port, ci->cri->fd); PACK;
+
+	DUMPi(cid);
+	DUMPi(fd);
+	DUMPi(n_oids);
+	DUMPi(n_oids_being_queried);
+	DUMPi(n_oids_done);
+
+	n_oids_done = 0;
+	TAILQ_FOREACH(oi, &ci->oids_done, oid_list) {
+		n_oids_done++;
+	}
+	msgpack_pack_named_int(pk, "#OIDS_DONE", n_oids_done);
+
+	#undef DUMPi
+	#undef DUMPs
+	#undef PACK
+}

@@ -127,13 +127,14 @@ static void
 dump_destination(msgpack_packer *pk, struct destination *dest)
 {
 	char buf[512];
-	Word_t rc;
+	Word_t n_cri, n_sid, fd;
+	struct client_requests_info **cri_slot;
 
 	#define PACK msgpack_pack_string(pk, buf)
 	#define DUMPi(field) msgpack_pack_named_int(pk, #field, dest->field)
 	#define DUMPs(field) msgpack_pack_named_string(pk, #field, dest->field)
 	snprintf(buf, 512, "DEST(%s:%d)", inet_ntoa(dest->ip), dest->port); PACK;
-	msgpack_pack_map(pk, 12);
+	msgpack_pack_map(pk, 13);
 	DUMPi(version);
 	DUMPs(community);
 	DUMPi(max_packets_on_the_wire);
@@ -145,10 +146,20 @@ dump_destination(msgpack_packer *pk, struct destination *dest)
 	DUMPi(packets_on_the_wire);
 	/* XXX can_query_at */
 	DUMPi(fd_of_last_query);
-	JLC(rc, dest->client_requests_info, 0, -1);
-	msgpack_pack_named_int(pk, "#CRIs", rc);
-	JLC(rc, dest->sid_info, 0, -1);
-	msgpack_pack_named_int(pk, "#SIDs", rc);
+	JLC(n_cri, dest->client_requests_info, 0, -1);
+	msgpack_pack_named_int(pk, "#CRI", n_cri);
+	JLC(n_sid, dest->sid_info, 0, -1);
+	msgpack_pack_named_int(pk, "#SID", n_sid);
+
+	msgpack_pack_string(pk, "@CRI");
+	msgpack_pack_map(pk, n_cri);
+	fd = 0;
+	JLF(cri_slot, dest->client_requests_info, fd);
+	while (cri_slot) {
+		dump_client_request_info(pk, *cri_slot);
+		JLN(cri_slot, dest->client_requests_info, fd);
+	}
+
 	#undef DUMPi
 	#undef DUMPs
 	#undef PACK
