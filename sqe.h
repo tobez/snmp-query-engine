@@ -313,6 +313,7 @@ extern int encode_store_length(struct ber *e, unsigned char *s);
 
 extern int decode_type_len(struct ber *e, unsigned char *type, unsigned *len);
 extern int decode_integer(struct ber *e, int int_len, unsigned *value);
+extern int decode_ipv4_address(struct ber *e, int l, struct in_addr *ip);
 extern int decode_counter64(struct ber *e, int int_len, unsigned long long *value);
 extern int decode_timeticks(struct ber *e, int int_len, unsigned long long *value);
 extern unsigned char *decode_string_oid(unsigned char *s, int l, char *buf, int buf_size);

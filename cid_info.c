@@ -69,6 +69,8 @@ cid_reply(struct cid_info *ci, int type)
 	unsigned char t;
 	unsigned len, u32;
 	unsigned long long u64;
+	struct in_addr ip;
+	char *strip;
 	char unsupported[30]; /* "unsupported type 0xXX" */
 
 	msgpack_pack_array(pk, 3);
@@ -102,6 +104,13 @@ cid_reply(struct cid_info *ci, int type)
 		case AT_COUNTER64:
 			if (decode_counter64(&oi->value, len, &u64) < 0)	goto decode_error;
 			msgpack_pack_uint64(pk, u64);
+			break;
+		case AT_IP_ADDRESS:
+			if (decode_ipv4_address(&oi->value, len, &ip) < 0)	goto decode_error;
+			strip = inet_ntoa(ip);
+			len = strlen(strip);
+			msgpack_pack_raw(pk, len);
+			msgpack_pack_raw_body(pk, strip, len);
 			break;
 		case AT_NO_SUCH_OBJECT:
 			pack_error(pk, "no-such-object");

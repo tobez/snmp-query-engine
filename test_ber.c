@@ -133,6 +133,24 @@ main(void)
 	int success = 0;
 	int n_tests = 0;
 	char oid[256];
+	struct in_addr ip;
+	struct ber bt;
+	unsigned char buf[80];
+
+	n_tests++;
+	bt.buf = buf;
+	bt.b = buf;
+	bt.len = 0;
+	bt.max_len = 80;
+	strcpy((char *)buf, "\x40\x04\xff\xff\xff\xfc");
+	if (decode_ipv4_address(&bt, -1, &ip) < 0) {
+		fprintf(stderr, "test %d, decode_ipv4_address: unexpected failure\n", n_tests);
+	} else {
+		if (strcmp(inet_ntoa(ip), "255.255.255.252") != 0)
+			fprintf(stderr, "test %d, decode_ipv4_address: bad IP %s, expected 255.255.255.252\n", n_tests, inet_ntoa(ip));
+		else
+			success++;
+	}
 
 	strcpy(oid, "1.3.6.1.2.1.2.2.1.2.1001");
 	success += test_encode_string_oid(&n_tests, oid, 24, "\x06\x0b\x2b\x06\x01\x02\x01\x02\x02\x01\x02\x87\x69", 13);

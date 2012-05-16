@@ -315,6 +315,30 @@ decode_composite(struct ber *e, unsigned char comp_type, int *composite_end_pos)
 }
 
 int
+decode_ipv4_address(struct ber *e, int l, struct in_addr *ip)
+{
+	unsigned char t;
+	unsigned len;
+	unsigned int_ip;
+	if (l < 0) {
+		if (decode_type_len(e, &t, &len) < 0)	return -1;
+		if (t != AT_IP_ADDRESS) {
+			errno = EINVAL;
+			return -1;
+		}
+		if (len > INT_MAX) {
+			errno = ERANGE;
+			return -1;
+		}
+		l = (int)len;
+	}
+	if (decode_integer(e, l, &int_ip) < 0)
+		return -1;
+	ip->s_addr = htonl(int_ip);
+	return 0;
+}
+
+int
 decode_integer(struct ber *e, int l, unsigned *value)
 {
 	unsigned char t;
