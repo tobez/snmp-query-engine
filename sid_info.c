@@ -61,6 +61,7 @@ build_snmp_query(struct client_requests_info *cri)
 	struct sid_info *si = NULL;
 	struct destination *dest;
 	struct cid_info *ci;
+	int extra_size;
 
 	if (TAILQ_EMPTY(&cri->oids_to_query))	return; /* XXX */
 
@@ -91,7 +92,9 @@ build_snmp_query(struct client_requests_info *cri)
 	} else {
 		TAILQ_FOREACH_SAFE(oi, &cri->oids_to_query, oid_list, oi_temp) {
 			if (oi->last_known_table_entry) continue; /* Skip GETTABLE requests */
-			if (si->pb.e.len + oi->oid.len >= dest->max_request_packet_size)
+			extra_size = 4;
+			if (oi->oid.len >= 128)	extra_size++;
+			if (si->pb.e.len + oi->oid.len + extra_size >= dest->max_request_packet_size)
 				break;
 			PS.oids_requested++;
 			cri->si->PS.oids_requested++;
