@@ -123,3 +123,64 @@ destination_start_timing(struct destination *dest)
 	TAILQ_INSERT_TAIL(&t->throttled_destinations, dest, timer_chain);
 }
 
+static void
+dump_destination(msgpack_packer *pk, struct destination *dest)
+{
+	char buf[512];
+	Word_t rc;
+
+	#define PACK msgpack_pack_string(pk, buf)
+	#define DUMPi(field) msgpack_pack_named_int(pk, #field, dest->field)
+	#define DUMPs(field) msgpack_pack_named_string(pk, #field, dest->field)
+	snprintf(buf, 512, "DEST(%s:%d)", inet_ntoa(dest->ip), dest->port); PACK;
+	msgpack_pack_map(pk, 12);
+	DUMPi(version);
+	DUMPs(community);
+	DUMPi(max_packets_on_the_wire);
+	DUMPi(max_request_packet_size);
+	DUMPi(timeout);
+	DUMPi(retries);
+	DUMPi(min_interval);
+	DUMPi(max_repetitions);
+	DUMPi(packets_on_the_wire);
+	/* XXX can_query_at */
+	DUMPi(fd_of_last_query);
+	JLC(rc, dest->client_requests_info, 0, -1);
+	msgpack_pack_named_int(pk, "#CRIs", rc);
+	JLC(rc, dest->sid_info, 0, -1);
+	msgpack_pack_named_int(pk, "#SIDs", rc);
+	#undef DUMPi
+	#undef DUMPs
+	#undef PACK
+}
+
+void
+dump_all_destinations(msgpack_packer *pk)
+{
+	struct destination **dest_slot;
+	void **ip_slot;
+	Word_t ip, port, rc;
+	int n_dest = 0;
+
+	ip = 0;
+	JLF(ip_slot, by_ip, ip);
+	while (ip_slot) {
+		JLC(rc, *ip_slot, 0, -1);
+		n_dest += rc;
+		JLN(ip_slot, by_ip, ip);
+	}
+	msgpack_pack_map(pk, n_dest);
+
+	ip = 0;
+	JLF(ip_slot, by_ip, ip);
+	while (ip_slot) {
+		port = 0;
+		JLF(dest_slot, *ip_slot, port);
+		while (dest_slot) {
+			dump_destination(pk, *dest_slot);
+			JLN(dest_slot, *ip_slot, port);
+		}
+		JLN(ip_slot, by_ip, ip);
+	}
+}
+

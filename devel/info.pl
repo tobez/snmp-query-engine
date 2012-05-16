@@ -19,7 +19,7 @@ our $mp = Data::MessagePack->new()->prefer_integer;
 our $conn = IO::Socket::INET->new(PeerAddr => "127.0.0.1:7667", Proto => "tcp")
 or die "cannot connect to snmp-query-engine daemon: $!\n";
 
-dd request([RT_INFO,3203]);
+dd request([RT_INFO,3203,@ARGV]);
 
 close $conn;
 

@@ -394,6 +394,7 @@ extern void maybe_query_destination(struct destination *dest);
 extern void destination_start_timing(struct destination *dest);
 extern void destination_stop_timing(struct destination *dest);
 extern void destination_timer(struct destination *dest);
+extern void dump_all_destinations(msgpack_packer *pk);
 
 /* client_requests_info.c */
 extern struct client_requests_info *get_client_requests_info(struct in_addr *ip, unsigned port, struct socket_info *si);
@@ -427,6 +428,7 @@ extern int free_oid_info(struct oid_info *oi);  /* use only for oid_infos outsid
 
 /* request_common.c */
 extern int error_reply(struct socket_info *si, unsigned code, unsigned cid, char *error);
+extern int msgpack_pack_string(msgpack_packer *pk, char *s);
 extern int msgpack_pack_named_int(msgpack_packer *pk, char *name, int64_t val);
 extern int msgpack_pack_named_string(msgpack_packer *pk, char *name, char *val);
 extern int msgpack_pack_options(msgpack_packer *pk, struct destination *d);

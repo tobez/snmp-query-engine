@@ -52,6 +52,16 @@ msgpack_pack_named_string(msgpack_packer *pk, char *name, char *val)
 }
 
 int
+msgpack_pack_string(msgpack_packer *pk, char *s)
+{
+	int l = strlen(s);
+	msgpack_pack_raw(pk, l);
+	msgpack_pack_raw_body(pk, s, l);
+	/* XXX */
+	return 0;
+}
+
+int
 msgpack_pack_options(msgpack_packer *pk, struct destination *d)
 {
 	msgpack_pack_map(pk, 10);

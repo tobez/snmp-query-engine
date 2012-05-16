@@ -73,20 +73,31 @@ handle_info_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	char *key;
 	int l;
 
-	if (o->via.array.size != 2)
+	if (o->via.array.size < 2)
 		return error_reply(si, RT_INFO|RT_ERROR, cid, "bad request length");
 
 	PS.info_requests++;
 	si->PS.info_requests++;
-
-	PS.uptime = ms_passed_since(&prog_start);
-	si->PS.uptime = ms_passed_since(&si->created);
 
 	buffer = msgpack_sbuffer_new();
 	pk = msgpack_packer_new(buffer, msgpack_sbuffer_write);
 	msgpack_pack_array(pk, 3);
 	msgpack_pack_int(pk, RT_INFO|RT_REPLY);
 	msgpack_pack_int(pk, cid);
+
+	if (o->via.array.size == 3 &&
+		o->via.array.ptr[2].type == MSGPACK_OBJECT_POSITIVE_INTEGER)
+	{
+		switch (o->via.array.ptr[2].via.u64) {
+		case 1: /* dump destinations */
+			dump_all_destinations(pk);
+			goto send;
+		}
+	}
+
+	PS.uptime = ms_passed_since(&prog_start);
+	si->PS.uptime = ms_passed_since(&si->created);
+
 	msgpack_pack_map(pk, 2);
 
 	key = "global";
@@ -103,6 +114,7 @@ handle_info_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	msgpack_pack_map(pk, pack_stats(&si->PS, NULL));
 	pack_stats(&si->PS, pk);
 
+send:
 	tcp_send(si, buffer->data, buffer->size);
 	msgpack_sbuffer_free(buffer);
 	msgpack_packer_free(pk);
