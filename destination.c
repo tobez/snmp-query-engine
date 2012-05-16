@@ -38,6 +38,7 @@ struct destination *get_destination(struct in_addr *ip, unsigned port)
 		d->timeout                 = DEFAULT_TIMEOUT;
 		d->retries                 = DEFAULT_RETRIES;
 		d->min_interval            = DEFAULT_MIN_INTERVAL;
+		d->max_repetitions         = DEFAULT_MAX_REPETITIONS;
 		*dest_slot = d;
 	}
 	return *dest_slot;

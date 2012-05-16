@@ -16,13 +16,14 @@
 
 static void *option2index; /* a JudySL tree */
 
-#define OPT_version       1
-#define OPT_community     2
-#define OPT_max_packets   3
-#define OPT_max_req_size  4
-#define OPT_timeout       5
-#define OPT_retries       6
-#define OPT_min_interval  7
+#define OPT_version         1
+#define OPT_community       2
+#define OPT_max_packets     3
+#define OPT_max_req_size    4
+#define OPT_timeout         5
+#define OPT_retries         6
+#define OPT_min_interval    7
+#define OPT_max_repetitions 8
 
 static void
 build_option2index(void)
@@ -37,6 +38,7 @@ build_option2index(void)
 	ADD(timeout);
 	ADD(retries);
 	ADD(min_interval);
+	ADD(max_repetitions);
 	#undef ADD
 }
 
@@ -118,6 +120,11 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 > 10000)
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid min interval");
 			d.min_interval = v->via.u64;
+			break;
+		case OPT_max_repetitions:
+			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 < 1 || v->via.u64 > 255)
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid max repetitions");
+			d.max_repetitions = v->via.u64;
 			break;
 		default:
 			return error_reply(si, RT_SETOPT|RT_ERROR, cid, "bad option key");
