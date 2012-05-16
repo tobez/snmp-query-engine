@@ -79,7 +79,7 @@
 #define AT_UNSIGNED         0x42
 #define AT_TIMETICKS        0x43
 #define AT_OPAQUE           0x44
-#define AT_COUNTER64        0x45
+#define AT_COUNTER64        0x46
 
 #define AT_NO_SUCH_OBJECT   0x80
 #define AT_NO_SUCH_INSTANCE 0x81
