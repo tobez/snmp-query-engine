@@ -87,6 +87,8 @@ cid_reply(struct cid_info *ci, int type)
 			t = VAL_DECODE_ERROR;
 		switch (t) {
 		case AT_INTEGER:
+		case AT_COUNTER:
+		case AT_UNSIGNED:
 			if (decode_integer(&oi->value, len, &u32) < 0)	goto decode_error;
 			msgpack_pack_uint64(pk, u32);
 			break;
