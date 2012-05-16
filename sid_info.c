@@ -86,7 +86,7 @@ build_snmp_query(struct client_requests_info *cri)
 		if ( (si->sid_offset_in_a_packet =
 			  finalize_snmp_packet(&si->pb, &si->packet,
 								   dest->version == 0 ? PDU_GET_NEXT_REQUEST : PDU_GET_BULK_REQUEST,
-								   10)) < 0)
+								   si->table_oid->max_repetitions)) < 0)
 			croak(2, "build_snmp_query: finalize_snmp_packet");
 	} else {
 		TAILQ_FOREACH_SAFE(oi, &cri->oids_to_query, oid_list, oi_temp) {

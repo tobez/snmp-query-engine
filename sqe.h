@@ -66,6 +66,7 @@
 #define RI_GETTABLE_IP   2
 #define RI_GETTABLE_PORT 3
 #define RI_GETTABLE_OID  4
+#define RI_GETTABLE_MREP 5
 
 #define AT_INTEGER          2
 #define AT_STRING           4
@@ -205,6 +206,7 @@ struct client_connection
 #define DEFAULT_TIMEOUT 2000
 #define DEFAULT_RETRIES 3
 #define DEFAULT_MIN_INTERVAL 10
+#define DEFAULT_MAX_REPETITIONS 10
 
 TAILQ_HEAD(oid_info_head, oid_info);
 TAILQ_HEAD(sid_info_head, sid_info);
@@ -224,6 +226,7 @@ struct destination
 	int timeout;
 	int retries;
 	int min_interval;
+	int max_repetitions;
 
 	int packets_on_the_wire;
 	struct timeval can_query_at;
@@ -292,6 +295,7 @@ struct oid_info
 	 * then this structure is just a normal OID being
 	 * requested. */
 	struct oid_info *last_known_table_entry;
+	int max_repetitions;  /* only applicable when last_known_table_entry is not NULL */
 	struct ber oid;
 	struct ber value;
 };
