@@ -10,7 +10,7 @@
 
 /*
  * gettable request:
- * [ 0, $cid, $ip, $port, $oid ]
+ * [ 0, $cid, $ip, $port, $oid, optional $max_repetitions ]
  *
  */
 
