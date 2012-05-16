@@ -1,0 +1,139 @@
+% SNMP-QUERY-ENGINE(1)
+% Anton Berezin
+% May 2012
+
+# NAME
+
+snmp-query-engine - multiplexing SNMP query engine
+
+# VERSION
+
+This document describes snmp-query-engine version 0.1
+
+# SYNOPSIS
+
+snmp-query-engine
+
+# DESCRIPTION
+
+XXX
+
+# OPTIONS
+
+XXX
+
+# REQUESTS
+
+All requests are arrays of at least two elements.
+The first element must be a request type
+represented by a small positive integer:
+
+1. SETOPT
+2. GETOPT
+3. INFO
+4. GET
+5. GETTABLE
+
+The second element must be a request id,
+represented by a positive integer.
+It is a good idea for every request within
+a single client session to have a unique
+request id, although request ids may
+be reused - provided that the previous
+request with the same id is no longer
+active (that is, the client already
+got a response).
+
+The rest of request parameters are
+request type-specific, and are described below.
+
+All responses will be an array
+of at least two elements.  The first
+element will be the request type ORed
+with either 0x10 to indicate a successfull
+reply, or with 0x20 to indicate an error.
+The second element will be the request id.
+In case of an error, the third, and last,
+element will be a textual description
+of the error.  In case of a successfull
+reply, the rest of response array
+elements are request type-specific,
+and are described below.
+
+## SETOPT
+
+The SETOPT request allows the client
+to change per-destination options.
+Please note that options are specific
+for a destination, and not for a client
+session, so that other clients making
+requests towards the same destination
+will also be affected.
+
+SETOPT parameters:
+
+- destination IP (v4 only) address in a dot-decimal notation
+- destination port number
+- a map of options
+
+The map of options may contain any
+number of supported options, including zero,
+in which case SETOPT is exactly equivalent
+to GETOPT.
+
+Supported options:
+
+- `version`  
+SNMP version, 1 for SNMP 1, 2 for SNMP 2c;  default is 2.
+- `community`  
+SNMP community;  default is "public".
+- `max_packets`  
+Maximum number of SNMP packets to the destination being "on the wire"
+at any given time.  The `snmp-query-engine` will avoid sending
+any new SNMP requests exceeding this number
+until getting a reply or a timeout.  The default is 3.
+- `max_req_size`  
+Maximum SNMP request packet size in bytes,
+not counting IP and UDP headers.  Any request
+which would exceed this size will be split
+into smaller pieces.  Conversely, if there
+are pending several small requests from the same
+client towards the same destination, they may
+be combined into a single SNMP request.
+The default is 1400.
+- `timeout`  
+Time, in milliseconds, after which the SNMP
+request will be re-sent (up to a configurable
+number of retries).  The default is 2000 (XXX which is probably too little).
+- `retries`  
+Number of times a request will be re-sent (including the first
+send), after which a timeout will be returned to the client.
+The default is 3.
+- `min_interval`  
+Time, in milliseconds, that must pass between
+subsequent SNMP queries towards the destination.
+The default is 10.
+- `max_repetitions`  
+How many OIDs shall the destination return
+in a single reply when requesting a table
+using SNMP 2c.  This can be overridden
+by individual GETTABLE requests.  The default is 10.
+
+SETOPT reply will consist of a single map
+with all current option values
+for a given destination.
+
+## GETOPT
+
+The SETOPT request allows the client
+to query per-destination options.
+
+GETOPT parameters:
+
+- destination IP (v4 only) address in a dot-decimal notation
+- destination port number
+
+GETOPT reply will consist of a single map
+with all current options for a given destination
+(see SETOPT parameters for options description).
+
