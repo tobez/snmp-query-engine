@@ -94,3 +94,24 @@ allocate_oid_info(msgpack_object *o, struct cid_info *ci)
 
 	return oi;
 }
+
+void
+dump_oid_info(msgpack_packer *pk, struct oid_info *oi)
+{
+	#define DUMPi(field) msgpack_pack_named_int(pk, #field, oi->field)
+	msgpack_pack_map(pk, 6);
+
+	DUMPi(sid);
+	DUMPi(cid);
+	DUMPi(fd);
+	DUMPi(max_repetitions);
+	msgpack_pack_string(pk, "oid");
+	msgpack_pack_oid(pk, oi->oid);
+	msgpack_pack_string(pk, "value");
+	if (!oi->value.buf)
+		msgpack_pack_nil(pk);
+	else
+		msgpack_pack_ber(pk, oi->value);
+
+	#undef DUMPi
+}

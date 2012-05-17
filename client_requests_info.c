@@ -129,7 +129,7 @@ dump_client_request_info(msgpack_packer *pk, struct client_requests_info *cri)
 	#define DUMPi(field) msgpack_pack_named_int(pk, #field, cri->field)
 	#define DUMPs(field) msgpack_pack_named_string(pk, #field, cri->field)
 	snprintf(buf, 512, "CRI(%d)", cri->fd); PACK;
-	msgpack_pack_map(pk, 6);
+	msgpack_pack_map(pk, 7);
 
 	msgpack_pack_string(pk, "dest");
 	snprintf(buf, 512, "DEST(%s:%d)", inet_ntoa(cri->dest->ip), cri->dest->port); PACK;
@@ -158,6 +158,12 @@ dump_client_request_info(msgpack_packer *pk, struct client_requests_info *cri)
 	while (cid_slot) {
 		dump_cid_info(pk, *cid_slot);
 		JLN(cid_slot, cri->cid_info, cid);
+	}
+
+	msgpack_pack_string(pk, "@SID");
+	msgpack_pack_map(pk, n_sid);
+	TAILQ_FOREACH(si, &cri->sid_infos, sid_list) {
+		dump_sid_info(pk, si);
 	}
 
 	#undef DUMPi

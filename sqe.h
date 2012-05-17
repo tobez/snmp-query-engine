@@ -420,12 +420,14 @@ extern void oid_done(struct sid_info *si, struct oid_info *oi, struct ber *val, 
 extern void all_oids_done(struct sid_info *si, struct ber *val);
 extern void got_table_oid(struct sid_info *si, struct oid_info *table_oi, struct ber *oid, struct ber *val);
 extern void sid_timer(struct sid_info *si);
+extern void dump_sid_info(msgpack_packer *pk, struct sid_info *si);
 
 /* oid_info.c */
 extern int allocate_oid_info_list(struct oid_info_head *oi, msgpack_object *o, struct cid_info *ci);
 extern struct oid_info *allocate_oid_info(msgpack_object *o, struct cid_info *ci);
 extern int free_oid_info_list(struct oid_info_head *list);
 extern int free_oid_info(struct oid_info *oi);  /* use only for oid_infos outside any lists */
+extern void dump_oid_info(msgpack_packer *pk, struct oid_info *oi);
 
 /* request_common.c */
 extern int error_reply(struct socket_info *si, unsigned code, unsigned cid, char *error);
@@ -433,6 +435,8 @@ extern int msgpack_pack_string(msgpack_packer *pk, char *s);
 extern int msgpack_pack_named_int(msgpack_packer *pk, char *name, int64_t val);
 extern int msgpack_pack_named_string(msgpack_packer *pk, char *name, char *val);
 extern int msgpack_pack_options(msgpack_packer *pk, struct destination *d);
+extern void msgpack_pack_oid(struct msgpack_packer *pk, struct ber oid);
+extern void msgpack_pack_ber(struct msgpack_packer *pk, struct ber value);
 
 /* request_setopt.c */
 extern int handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o);

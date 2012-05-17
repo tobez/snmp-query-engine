@@ -49,29 +49,12 @@ free_cid_info(struct cid_info *ci)
 	return 1;
 }
 
-void static inline
-pack_error(msgpack_packer *pk, char *error)
-{
-	int l = strlen(error);
-	msgpack_pack_array(pk, 1);
-	msgpack_pack_raw(pk, l);
-	msgpack_pack_raw_body(pk, error, l);
-}
-
 void
 cid_reply(struct cid_info *ci, int type)
 {
 	msgpack_sbuffer* buffer = msgpack_sbuffer_new();
 	msgpack_packer* pk = msgpack_packer_new(buffer, msgpack_sbuffer_write);
 	struct oid_info *oi;
-	char *stroid;
-	int l;
-	unsigned char t;
-	unsigned len, u32;
-	unsigned long long u64;
-	struct in_addr ip;
-	char *strip;
-	char unsupported[30]; /* "unsupported type 0xXX" */
 
 	msgpack_pack_array(pk, 3);
 	msgpack_pack_int(pk, type|RT_REPLY);
@@ -79,68 +62,11 @@ cid_reply(struct cid_info *ci, int type)
 	msgpack_pack_array(pk, ci->n_oids_done);
 	TAILQ_FOREACH(oi, &ci->oids_done, oid_list) {
 		msgpack_pack_array(pk, 2);
-		stroid = oid2str(oi->oid);
-		l = strlen(stroid);
-		msgpack_pack_raw(pk, l);
-		msgpack_pack_raw_body(pk, stroid, l);
-		if (decode_type_len(&oi->value, &t, &len) < 0)
-			t = VAL_DECODE_ERROR;
-		switch (t) {
-		case AT_INTEGER:
-		case AT_COUNTER:
-		case AT_UNSIGNED:
-			if (decode_integer(&oi->value, len, &u32) < 0)	goto decode_error;
-			msgpack_pack_uint64(pk, u32);
-			break;
-		case AT_STRING:
-			msgpack_pack_raw(pk, len);
-			msgpack_pack_raw_body(pk, oi->value.b, len);
-			break;
-		case AT_NULL:
-			msgpack_pack_nil(pk);
-			break;
-		case AT_TIMETICKS:
-			if (decode_timeticks(&oi->value, len, &u64) < 0)	goto decode_error;
-			msgpack_pack_uint64(pk, u64);
-			break;
-		case AT_COUNTER64:
-			if (decode_counter64(&oi->value, len, &u64) < 0)	goto decode_error;
-			msgpack_pack_uint64(pk, u64);
-			break;
-		case AT_IP_ADDRESS:
-			if (decode_ipv4_address(&oi->value, len, &ip) < 0)	goto decode_error;
-			strip = inet_ntoa(ip);
-			len = strlen(strip);
-			msgpack_pack_raw(pk, len);
-			msgpack_pack_raw_body(pk, strip, len);
-			break;
-		case AT_NO_SUCH_OBJECT:
-			pack_error(pk, "no-such-object");
-			break;
-		case AT_NO_SUCH_INSTANCE:
-			pack_error(pk, "no-such-instance");
-			break;
-		case AT_END_OF_MIB_VIEW:
-			pack_error(pk, "end-of-mib");
-			break;
-		case VAL_TIMEOUT:
-			pack_error(pk, "timeout");
-			break;
-		case VAL_MISSING:
-			pack_error(pk, "missing");
-			break;
-decode_error:
-		case VAL_DECODE_ERROR:
-			pack_error(pk, "decode-error");
-			break;
-		default:
-			snprintf(unsupported, 30, "unsupported type 0x%02x", t);
-			pack_error(pk, unsupported);
-		}
+		msgpack_pack_oid(pk, oi->oid);
+		msgpack_pack_ber(pk, oi->value);
 		PS.oids_returned_to_client++;
 		ci->cri->si->PS.oids_returned_to_client++;
 	}
-
 	tcp_send(ci->cri->si, buffer->data, buffer->size);
 	msgpack_sbuffer_free(buffer);
 	msgpack_packer_free(pk);

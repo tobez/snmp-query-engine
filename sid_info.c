@@ -369,3 +369,51 @@ bad_snmp_packet:
 	PS.bad_snmp_responses++;
 	fprintf(stderr, "sid %u: bad SNMP packet, ignoring: %s\n", si->sid, trace);
 }
+
+void
+dump_sid_info(msgpack_packer *pk, struct sid_info *si)
+{
+	char buf[512];
+	Word_t n_oids;
+	struct oid_info *oi;
+
+	#define PACK msgpack_pack_string(pk, buf)
+	#define DUMPi(field) msgpack_pack_named_int(pk, #field, si->field)
+	#define DUMPs(field) msgpack_pack_named_string(pk, #field, si->field)
+	snprintf(buf, 512, "SID(%d)", si->sid); PACK;
+	msgpack_pack_map(pk, 7);
+
+	msgpack_pack_string(pk, "cri");
+	snprintf(buf, 512, "CRI(%s:%d->%d)", inet_ntoa(si->cri->dest->ip), si->cri->dest->port, si->cri->fd); PACK;
+
+	DUMPi(retries_left);
+	DUMPi(version);
+	msgpack_pack_string(pk, "table_oid");
+	if (si->table_oid) {
+		dump_oid_info(pk, si->table_oid);
+	} else {
+		msgpack_pack_nil(pk);
+	}
+	msgpack_pack_string(pk, "last_known_table_oid");
+	if (si->table_oid && si->table_oid->last_known_table_entry) {
+		dump_oid_info(pk, si->table_oid->last_known_table_entry);
+	} else {
+		msgpack_pack_nil(pk);
+	}
+
+	n_oids = 0;
+	TAILQ_FOREACH(oi, &si->oids_being_queried, oid_list) {
+		n_oids++;
+	}
+	msgpack_pack_named_int(pk, "#OID", n_oids);
+
+	msgpack_pack_string(pk, "@OID");
+	msgpack_pack_array(pk, n_oids);
+	TAILQ_FOREACH(oi, &si->oids_being_queried, oid_list) {
+		dump_oid_info(pk, oi);
+	}
+
+	#undef DUMPi
+	#undef DUMPs
+	#undef PACK
+}

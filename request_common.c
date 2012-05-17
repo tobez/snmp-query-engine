@@ -77,3 +77,90 @@ msgpack_pack_options(msgpack_packer *pk, struct destination *d)
 	msgpack_pack_named_int(pk, "max_repetitions", d->max_repetitions);
 	return 0;
 }
+
+static void inline
+pack_error(msgpack_packer *pk, char *error)
+{
+	int l = strlen(error);
+	msgpack_pack_array(pk, 1);
+	msgpack_pack_raw(pk, l);
+	msgpack_pack_raw_body(pk, error, l);
+}
+
+void
+msgpack_pack_oid(struct msgpack_packer *pk, struct ber oid)
+{
+	char *stroid;
+	int l;
+
+	stroid = oid2str(oid);
+	l = strlen(stroid);
+	msgpack_pack_raw(pk, l);
+	msgpack_pack_raw_body(pk, stroid, l);
+}
+
+void
+msgpack_pack_ber(struct msgpack_packer *pk, struct ber value)
+{
+	unsigned char t;
+	unsigned len, u32;
+	unsigned long long u64;
+	struct in_addr ip;
+	char *strip;
+	char unsupported[30]; /* "unsupported type 0xXX" */
+
+	if (decode_type_len(&value, &t, &len) < 0)
+		t = VAL_DECODE_ERROR;
+	switch (t) {
+	case AT_INTEGER:
+	case AT_COUNTER:
+	case AT_UNSIGNED:
+		if (decode_integer(&value, len, &u32) < 0)	goto decode_error;
+		msgpack_pack_uint64(pk, u32);
+		break;
+	case AT_STRING:
+		msgpack_pack_raw(pk, len);
+		msgpack_pack_raw_body(pk, value.b, len);
+		break;
+	case AT_NULL:
+		msgpack_pack_nil(pk);
+		break;
+	case AT_TIMETICKS:
+		if (decode_timeticks(&value, len, &u64) < 0)	goto decode_error;
+		msgpack_pack_uint64(pk, u64);
+		break;
+	case AT_COUNTER64:
+		if (decode_counter64(&value, len, &u64) < 0)	goto decode_error;
+		msgpack_pack_uint64(pk, u64);
+		break;
+	case AT_IP_ADDRESS:
+		if (decode_ipv4_address(&value, len, &ip) < 0)	goto decode_error;
+		strip = inet_ntoa(ip);
+		len = strlen(strip);
+		msgpack_pack_raw(pk, len);
+		msgpack_pack_raw_body(pk, strip, len);
+		break;
+	case AT_NO_SUCH_OBJECT:
+		pack_error(pk, "no-such-object");
+		break;
+	case AT_NO_SUCH_INSTANCE:
+		pack_error(pk, "no-such-instance");
+		break;
+	case AT_END_OF_MIB_VIEW:
+		pack_error(pk, "end-of-mib");
+		break;
+	case VAL_TIMEOUT:
+		pack_error(pk, "timeout");
+		break;
+	case VAL_MISSING:
+		pack_error(pk, "missing");
+		break;
+decode_error:
+	case VAL_DECODE_ERROR:
+		pack_error(pk, "decode-error");
+		break;
+	default:
+		snprintf(unsupported, 30, "unsupported type 0x%02x", t);
+		pack_error(pk, unsupported);
+	}
+}
