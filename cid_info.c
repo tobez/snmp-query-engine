@@ -84,7 +84,7 @@ dump_cid_info(msgpack_packer *pk, struct cid_info *ci)
 	#define DUMPi(field) msgpack_pack_named_int(pk, #field, ci->field)
 	#define DUMPs(field) msgpack_pack_named_string(pk, #field, ci->field)
 	snprintf(buf, 512, "CID(%d)", ci->cid); PACK;
-	msgpack_pack_map(pk, 7);
+	msgpack_pack_map(pk, 8);
 
 	msgpack_pack_string(pk, "cri");
 	snprintf(buf, 512, "CRI(%s:%d->%d)", inet_ntoa(ci->cri->dest->ip), ci->cri->dest->port, ci->cri->fd); PACK;
@@ -100,6 +100,12 @@ dump_cid_info(msgpack_packer *pk, struct cid_info *ci)
 		n_oids_done++;
 	}
 	msgpack_pack_named_int(pk, "#OIDS_DONE", n_oids_done);
+
+	msgpack_pack_string(pk, "@OIDS_DONE");
+	msgpack_pack_array(pk, n_oids_done);
+	TAILQ_FOREACH(oi, &ci->oids_done, oid_list) {
+		dump_oid_info(pk, oi);
+	}
 
 	#undef DUMPi
 	#undef DUMPs

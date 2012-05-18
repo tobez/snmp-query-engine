@@ -129,7 +129,7 @@ dump_client_request_info(msgpack_packer *pk, struct client_requests_info *cri)
 	#define DUMPi(field) msgpack_pack_named_int(pk, #field, cri->field)
 	#define DUMPs(field) msgpack_pack_named_string(pk, #field, cri->field)
 	snprintf(buf, 512, "CRI(%d)", cri->fd); PACK;
-	msgpack_pack_map(pk, 7);
+	msgpack_pack_map(pk, 8);
 
 	msgpack_pack_string(pk, "dest");
 	snprintf(buf, 512, "DEST(%s:%d)", inet_ntoa(cri->dest->ip), cri->dest->port); PACK;
@@ -144,6 +144,12 @@ dump_client_request_info(msgpack_packer *pk, struct client_requests_info *cri)
 		n_query_queue++;
 	}
 	msgpack_pack_named_int(pk, "#QUERY_QUEUE", n_query_queue);
+
+	msgpack_pack_string(pk, "@QUERY_QUEUE");
+	msgpack_pack_array(pk, n_query_queue);
+	TAILQ_FOREACH(oi, &cri->oids_to_query, oid_list) {
+		dump_oid_info(pk, oi);
+	}
 
 	n_sid = 0;
 	TAILQ_FOREACH(si, &cri->sid_infos, sid_list) {
