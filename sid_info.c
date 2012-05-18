@@ -359,6 +359,7 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 			fprintf(stderr, "SID %u: unexpectedly, not all oids are accounted for!\n", si->sid);
 			all_oids_done(si, &BER_MISSING);
 		}
+		maybe_query_destination(si->cri->dest);
 	}
 	PS.good_snmp_responses++;
 	si->cri->si->PS.good_snmp_responses++;
