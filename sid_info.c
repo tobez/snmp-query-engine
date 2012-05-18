@@ -219,6 +219,7 @@ sid_timer(struct sid_info *si)
 	si->cri->dest->packets_on_the_wire--;
 	if (si->cri->dest->packets_on_the_wire < 0)
 		si->cri->dest->packets_on_the_wire = 0;
+// fprintf(stderr, "%s: sid_timer->(%d)\n", inet_ntoa(si->cri->dest->ip), si->cri->dest->packets_on_the_wire);
 	sid_stop_timing(si);
 	if (si->retries_left > 0) {
 		resend_query_with_new_sid(si);
@@ -312,8 +313,11 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 	struct oid_info *oi;
 	int table_done = 0;
 	struct cid_info *ci;
+	struct client_requests_info *cri;
 
 	/* SNMP packet must be positioned past request id field */
+
+	cri = si->cri;
 
 	#define CHECK(prob, val) if ((val) < 0) { trace = prob; goto bad_snmp_packet; }
 	CHECK("decoding error status", decode_integer(e, -1, &error_status));
@@ -324,7 +328,7 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 		CHECK("oid", decode_oid(e, &oid));
 		CHECK("value", decode_any(e, &val));
 		PS.oids_returned_from_snmp++;
-		si->cri->si->PS.oids_returned_from_snmp++;
+		cri->si->PS.oids_returned_from_snmp++;
 		if (si->table_oid) {
 			if (oid_belongs_to_table(&oid, &si->table_oid->oid)) {
 				got_table_oid(si, si->table_oid, &oid, &val);
@@ -341,7 +345,7 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 		}
 	}
 	if (si->table_oid) {
-		ci = get_cid_info(si->cri, si->table_oid->cid);
+		ci = get_cid_info(cri, si->table_oid->cid);
 		ci->n_oids_being_queried--;
 		if (table_done) {
 			free_oid_info(si->table_oid);
@@ -350,19 +354,17 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 			if (ci->n_oids_done == ci->n_oids)
 				cid_reply(ci, RT_GETTABLE);
 		} else {
-			TAILQ_INSERT_TAIL(&si->cri->oids_to_query, si->table_oid, oid_list);
+			TAILQ_INSERT_TAIL(&cri->oids_to_query, si->table_oid, oid_list);
 			si->table_oid = NULL;
-			maybe_query_destination(si->cri->dest);
 		}
 	} else {
 		if (!TAILQ_EMPTY(&si->oids_being_queried)) {
 			fprintf(stderr, "SID %u: unexpectedly, not all oids are accounted for!\n", si->sid);
 			all_oids_done(si, &BER_MISSING);
 		}
-		maybe_query_destination(si->cri->dest);
 	}
 	PS.good_snmp_responses++;
-	si->cri->si->PS.good_snmp_responses++;
+	cri->si->PS.good_snmp_responses++;
 	#undef CHECK
 
 	return;

@@ -41,6 +41,7 @@ snmp_receive(struct socket_info *snmp)
 	dest->packets_on_the_wire--;
 	if (dest->packets_on_the_wire < 0)
 		dest->packets_on_the_wire = 0;
+// fprintf(stderr, "%s: snmp_receive->(%d)\n", inet_ntoa(dest->ip), dest->packets_on_the_wire);
 
 	enc = ber_init(buf, n); e = &enc;
 
@@ -67,12 +68,14 @@ snmp_receive(struct socket_info *snmp)
 //	fprintf(stderr, "this packet appears to be legit, sid %u(%u)\n", sid, si->sid);
 	process_sid_info_response(si, e);
 	free_sid_info(si);
+	maybe_query_destination(dest);
 
 	return;
 
 bad_snmp_packet:
 	PS.bad_snmp_responses++;
 	fprintf(stderr, "bad SNMP packet, ignoring: %s\n", trace);
+	maybe_query_destination(dest);
 }
 
 void
@@ -101,6 +104,7 @@ void snmp_send(struct destination *dest, struct ber *packet)
 {
 	destination_start_timing(dest);
 	dest->packets_on_the_wire++;
+//fprintf(stderr, "%s: snmp_send->(%d)\n", inet_ntoa(dest->ip), dest->packets_on_the_wire);
 	if (sendto(snmp->fd, packet->buf, packet->len, 0, (struct sockaddr *)&dest->dest_addr, sizeof(dest->dest_addr)) != packet->len)
 		croak(1, "snmp_send: sendto");
 //fprintf(stderr, "UDP datagram of %d bytes sent to %s:%d\n", packet->len, inet_ntoa(dest->dest_addr.sin_addr), ntohs(dest->dest_addr.sin_port));

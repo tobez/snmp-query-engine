@@ -66,14 +66,20 @@ maybe_query_destination(struct destination *dest)
 
 	if (dest->packets_on_the_wire >= dest->max_packets_on_the_wire) {
 		PS.destination_throttles++;
+//fprintf(stderr, "%s: max_packets_on_the_wire(%d)\n", inet_ntoa(dest->ip), dest->packets_on_the_wire);
 		return;
 	}
 	if (dest->can_query_at.tv_sec) {
 		gettimeofday(&now, NULL);
-		if (now.tv_sec < dest->can_query_at.tv_sec)	return;
-		if (now.tv_sec == dest->can_query_at.tv_sec && now.tv_usec < dest->can_query_at.tv_usec)	return;
+		if (now.tv_sec < dest->can_query_at.tv_sec ||
+			(now.tv_sec == dest->can_query_at.tv_sec && now.tv_usec < dest->can_query_at.tv_usec))
+		{
+//fprintf(stderr, "%s: min_interval\n", inet_ntoa(dest->ip));
+			return;
+		}
 	}
 
+//fprintf(stderr, "%s: ok(%d)\n", inet_ntoa(dest->ip), dest->packets_on_the_wire);
 	/* Then find a client_requests_info, in a round-robin fashion,
 	 * which has anything to send.   Be careful with when to stop.
 	 */
@@ -98,6 +104,7 @@ void
 destination_timer(struct destination *dest)
 {
 	// XXX implement me
+//fprintf(stderr, "%s: min_interval timer tick (%d)\n", inet_ntoa(dest->ip), dest->packets_on_the_wire);
 	destination_stop_timing(dest);
 	maybe_query_destination(dest);
 }
