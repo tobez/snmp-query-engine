@@ -394,6 +394,7 @@ extern void destination_start_timing(struct destination *dest);
 extern void destination_stop_timing(struct destination *dest);
 extern void destination_timer(struct destination *dest);
 extern void dump_all_destinations(msgpack_packer *pk);
+extern void unclog_all_destinations(void);
 
 /* client_requests_info.c */
 extern struct client_requests_info *get_client_requests_info(struct in_addr *ip, unsigned port, struct socket_info *si);

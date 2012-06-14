@@ -173,6 +173,26 @@ dump_destination(msgpack_packer *pk, struct destination *dest)
 }
 
 void
+unclog_all_destinations(void)
+{
+	struct destination **dest_slot;
+	void **ip_slot;
+	Word_t ip, port;
+
+	ip = 0;
+	JLF(ip_slot, by_ip, ip);
+	while (ip_slot) {
+		port = 0;
+		JLF(dest_slot, *ip_slot, port);
+		while (dest_slot) {
+			maybe_query_destination(*dest_slot);
+			JLN(dest_slot, *ip_slot, port);
+		}
+		JLN(ip_slot, by_ip, ip);
+	}
+}
+
+void
 dump_all_destinations(msgpack_packer *pk)
 {
 	struct destination **dest_slot;

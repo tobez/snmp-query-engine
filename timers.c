@@ -98,7 +98,7 @@ ms_to_next_timer(void)
 	struct timeval now;
 
 	t = next_timer();
-	if (!t)	return 5000;
+	if (!t)	return 1000;
 
 	gettimeofday(&now, NULL);
 	if (now.tv_sec > t->when.tv_sec)	return 0;
@@ -106,7 +106,7 @@ ms_to_next_timer(void)
 		if (now.tv_usec > t->when.tv_usec)	return 0;
 		return (t->when.tv_usec - now.tv_usec)/1000;
 	}
-	if (t->when.tv_sec - now.tv_sec > 5)	return 5000;
+	if (t->when.tv_sec - now.tv_sec > 5)	return 1000;
 	return 1000*(t->when.tv_sec - now.tv_sec) + ((int)t->when.tv_usec - (int)now.tv_usec)/1000;
 }
 
@@ -128,6 +128,8 @@ again:
 	return *usec_slot;
 }
 
+struct timeval last_unclog;
+
 void
 trigger_timers(void)
 {
@@ -135,6 +137,10 @@ trigger_timers(void)
 	struct timeval now;
 
 	gettimeofday(&now, NULL);
+	if (last_unclog.tv_sec < now.tv_sec) {
+		last_unclog = now;
+		unclog_all_destinations();
+	}
 
 again:
 	t = next_timer();
