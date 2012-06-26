@@ -218,21 +218,19 @@ struct destination
 	TAILQ_ENTRY(destination) timer_chain;
 	struct in_addr ip;
 	unsigned port;
-	unsigned version;
-	char community[256];
 	struct sockaddr_in dest_addr;
-	int max_packets_on_the_wire;
-	int max_request_packet_size;
-	int timeout;
-	int retries;
-	int min_interval;
-	int max_repetitions;
 
 	int packets_on_the_wire;
 	struct timeval can_query_at;
 	int fd_of_last_query;
 	JudyL client_requests_info;   /* JudyL of struct client_requests_info indexed by fd */
 	JudyL sid_info;  /* JudyL of struct sid_info indexed by sid */
+
+	/* setopt-controlled parameters */
+	int max_packets_on_the_wire;
+	int max_request_packet_size;
+	int min_interval;
+	int max_repetitions;
 };
 
 struct client_requests_info
@@ -243,6 +241,12 @@ struct client_requests_info
 	JudyL cid_info; /* JudyL of struct cid_info ("cid" = client id) indexed by cid */
 	struct oid_info_head oids_to_query;
 	struct sid_info_head sid_infos;
+
+	/* setopt-controlled parameters */
+	unsigned version;
+	char     community[256];
+	int      timeout;
+	int      retries;
 };
 
 struct cid_info
@@ -435,7 +439,7 @@ extern int error_reply(struct socket_info *si, unsigned code, unsigned cid, char
 extern int msgpack_pack_string(msgpack_packer *pk, char *s);
 extern int msgpack_pack_named_int(msgpack_packer *pk, char *name, int64_t val);
 extern int msgpack_pack_named_string(msgpack_packer *pk, char *name, char *val);
-extern int msgpack_pack_options(msgpack_packer *pk, struct destination *d);
+extern int msgpack_pack_options(msgpack_packer *pk, struct client_requests_info *cri);
 extern void msgpack_pack_oid(struct msgpack_packer *pk, struct ber oid);
 extern void msgpack_pack_ber(struct msgpack_packer *pk, struct ber value);
 

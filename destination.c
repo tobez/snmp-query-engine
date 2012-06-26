@@ -28,15 +28,11 @@ struct destination *get_destination(struct in_addr *ip, unsigned port)
 		bzero(d, sizeof(*d));
 		d->ip                      = *ip;
 		d->port                    = port;
-		d->version                 = 1; /* 2c is the default */
-		strcpy(d->community, "public");
 		d->dest_addr.sin_family    = PF_INET;
 		d->dest_addr.sin_addr      = *ip;
 		d->dest_addr.sin_port      = htons(port);
 		d->max_packets_on_the_wire = DEFAULT_MAX_PACKETS_ON_THE_WIRE;
 		d->max_request_packet_size = DEFAULT_MAX_REQUEST_PACKET_SIZE;
-		d->timeout                 = DEFAULT_TIMEOUT;
-		d->retries                 = DEFAULT_RETRIES;
 		d->min_interval            = DEFAULT_MIN_INTERVAL;
 		d->max_repetitions         = DEFAULT_MAX_REPETITIONS;
 		*dest_slot = d;
@@ -141,13 +137,9 @@ dump_destination(msgpack_packer *pk, struct destination *dest)
 	#define DUMPi(field) msgpack_pack_named_int(pk, #field, dest->field)
 	#define DUMPs(field) msgpack_pack_named_string(pk, #field, dest->field)
 	snprintf(buf, 512, "DEST(%s:%d)", inet_ntoa(dest->ip), dest->port); PACK;
-	msgpack_pack_map(pk, 13);
-	DUMPi(version);
-	DUMPs(community);
+	msgpack_pack_map(pk, 9);
 	DUMPi(max_packets_on_the_wire);
 	DUMPi(max_request_packet_size);
-	DUMPi(timeout);
-	DUMPi(retries);
 	DUMPi(min_interval);
 	DUMPi(max_repetitions);
 	DUMPi(packets_on_the_wire);

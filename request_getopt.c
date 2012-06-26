@@ -59,7 +59,7 @@ handle_getopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	msgpack_pack_array(pk, 3);
 	msgpack_pack_int(pk, RT_GETOPT|RT_REPLY);
 	msgpack_pack_int(pk, cid);
-	msgpack_pack_options(pk, d);
+	msgpack_pack_options(pk, cri);
 
 	tcp_send(si, buffer->data, buffer->size);
 	msgpack_sbuffer_free(buffer);

@@ -62,19 +62,19 @@ msgpack_pack_string(msgpack_packer *pk, char *s)
 }
 
 int
-msgpack_pack_options(msgpack_packer *pk, struct destination *d)
+msgpack_pack_options(msgpack_packer *pk, struct client_requests_info *cri)
 {
 	msgpack_pack_map(pk, 10);
-	msgpack_pack_named_string(pk, "ip", inet_ntoa(d->ip));
-	msgpack_pack_named_int(pk, "port", d->port);
-	msgpack_pack_named_string(pk, "community", d->community);
-	msgpack_pack_named_int(pk, "version", d->version + 1);
-	msgpack_pack_named_int(pk, "max_packets", d->max_packets_on_the_wire);
-	msgpack_pack_named_int(pk, "max_req_size", d->max_request_packet_size);
-	msgpack_pack_named_int(pk, "timeout", d->timeout);
-	msgpack_pack_named_int(pk, "retries", d->retries);
-	msgpack_pack_named_int(pk, "min_interval", d->min_interval);
-	msgpack_pack_named_int(pk, "max_repetitions", d->max_repetitions);
+	msgpack_pack_named_string(pk, "ip", inet_ntoa(cri->dest->ip));
+	msgpack_pack_named_int(pk, "port", cri->dest->port);
+	msgpack_pack_named_string(pk, "community", cri->community);
+	msgpack_pack_named_int(pk, "version", cri->version + 1);
+	msgpack_pack_named_int(pk, "max_packets", cri->dest->max_packets_on_the_wire);
+	msgpack_pack_named_int(pk, "max_req_size", cri->dest->max_request_packet_size);
+	msgpack_pack_named_int(pk, "timeout", cri->timeout);
+	msgpack_pack_named_int(pk, "retries", cri->retries);
+	msgpack_pack_named_int(pk, "min_interval", cri->dest->min_interval);
+	msgpack_pack_named_int(pk, "max_repetitions", cri->dest->max_repetitions);
 	return 0;
 }
 

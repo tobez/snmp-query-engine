@@ -39,6 +39,12 @@ get_client_requests_info(struct in_addr *ip, unsigned port, struct socket_info *
 		si->PS.total_cr_infos++;
 
 		bzero(cri, sizeof(*cri));
+
+		cri->version               = 1; /* 2c is the default */
+		strcpy(cri->community, "public");
+		cri->timeout               = DEFAULT_TIMEOUT;
+		cri->retries               = DEFAULT_RETRIES;
+
 		cri->dest = dest;
 		cri->fd   = si->fd;
 		cri->si   = si;
@@ -129,12 +135,16 @@ dump_client_request_info(msgpack_packer *pk, struct client_requests_info *cri)
 	#define DUMPi(field) msgpack_pack_named_int(pk, #field, cri->field)
 	#define DUMPs(field) msgpack_pack_named_string(pk, #field, cri->field)
 	snprintf(buf, 512, "CRI(%d)", cri->fd); PACK;
-	msgpack_pack_map(pk, 8);
+	msgpack_pack_map(pk, 12);
 
 	msgpack_pack_string(pk, "dest");
 	snprintf(buf, 512, "DEST(%s:%d)", inet_ntoa(cri->dest->ip), cri->dest->port); PACK;
 
 	DUMPi(fd);
+	DUMPi(version);
+	DUMPs(community);
+	DUMPi(timeout);
+	DUMPi(retries);
 
 	JLC(n_cid, cri->cid_info, 0, -1);
 	msgpack_pack_named_int(pk, "#CID", n_cid);

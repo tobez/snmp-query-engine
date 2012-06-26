@@ -29,10 +29,10 @@ new_sid_info(struct client_requests_info *cri)
 	bzero(si, sizeof(*si));
 	si->sid = sid;
 	si->cri = cri;
-	si->retries_left = dest->retries;
-	si->version = dest->version;
+	si->retries_left = cri->retries;
+	si->version = cri->version;
 	TAILQ_INIT(&si->oids_being_queried);
-	if (start_snmp_packet(&si->pb, si->version, dest->community, sid) < 0)
+	if (start_snmp_packet(&si->pb, si->version, cri->community, sid) < 0)
 		croak(2, "new_sid_info: start_snmp_get_packet");
 	*si_slot = si;
 	TAILQ_INSERT_TAIL(&cri->sid_infos, si, sid_list);
@@ -86,7 +86,7 @@ build_snmp_query(struct client_requests_info *cri)
 
 		if ( (si->sid_offset_in_a_packet =
 			  finalize_snmp_packet(&si->pb, &si->packet,
-								   dest->version == 0 ? PDU_GET_NEXT_REQUEST : PDU_GET_BULK_REQUEST,
+								   cri->version == 0 ? PDU_GET_NEXT_REQUEST : PDU_GET_BULK_REQUEST,
 								   si->table_oid->max_repetitions)) < 0)
 			croak(2, "build_snmp_query: finalize_snmp_packet");
 	} else {
@@ -131,7 +131,7 @@ sid_start_timing(struct sid_info *si)
 {
 	struct timer *t;
 
-	set_timeout(&si->will_timeout_at, si->cri->dest->timeout);
+	set_timeout(&si->will_timeout_at, si->cri->timeout);
 	t = new_timer(&si->will_timeout_at);
 	TAILQ_INSERT_TAIL(&t->timed_out_sids, si, timer_chain);
 }

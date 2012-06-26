@@ -49,6 +49,7 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	struct in_addr ip;
 	struct client_requests_info *cri;
 	struct destination d;
+	struct client_requests_info c;
 	msgpack_sbuffer* buffer;
 	msgpack_packer* pk;
 	msgpack_object *h, *v;
@@ -71,6 +72,7 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 
 	cri = get_client_requests_info(&ip, port, si);
 	memcpy(&d, cri->dest, sizeof(d));
+	memcpy(&c, cri, sizeof(c));
 
 	if (!option2index)
 		build_option2index();
@@ -90,10 +92,10 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 		case OPT_version:
 			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || (v->via.u64 != 1 && v->via.u64 != 2))
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid SNMP version");
-			d.version = v->via.u64 - 1;
+			c.version = v->via.u64 - 1;
 			break;
 		case OPT_community:
-			if (!object2string(v, d.community, 256))
+			if (!object2string(v, c.community, 256))
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid SNMP community");
 			break;
 		case OPT_max_packets:
@@ -109,12 +111,12 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 		case OPT_timeout:
 			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 > 30000)
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid timeout");
-			d.timeout = v->via.u64;
+			c.timeout = v->via.u64;
 			break;
 		case OPT_retries:
 			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 < 1 || v->via.u64 > 10)
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid retries");
-			d.retries = v->via.u64;
+			c.retries = v->via.u64;
 			break;
 		case OPT_min_interval:
 			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 > 10000)
@@ -134,13 +136,14 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	PS.setopt_requests++;
 	si->PS.setopt_requests++;
 
+	memcpy(cri, &c, sizeof(c));       /* This is safe to do, I am sure */
 	memcpy(cri->dest, &d, sizeof(d)); /* This is safe to do, I am sure */
 	buffer = msgpack_sbuffer_new();
 	pk = msgpack_packer_new(buffer, msgpack_sbuffer_write);
 	msgpack_pack_array(pk, 3);
 	msgpack_pack_int(pk, RT_SETOPT|RT_REPLY);
 	msgpack_pack_int(pk, cid);
-	msgpack_pack_options(pk, &d);
+	msgpack_pack_options(pk, &c);
 
 	tcp_send(si, buffer->data, buffer->size);
 	msgpack_sbuffer_free(buffer);
