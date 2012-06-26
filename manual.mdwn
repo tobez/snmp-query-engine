@@ -25,34 +25,32 @@ XXX
 # REQUESTS
 
 All requests are arrays of at least two elements.
-The first element must be a request type
-represented by a small positive integer:
 
-1. SETOPT
-2. GETOPT
-3. INFO
-4. GET
-5. GETTABLE
+parameter 0
+:   The first element must be a request type
+    represented by a small positive integer:
+    1 (**SETOPT**), 2 (**GETOPT**), 3 (**INFO**), 4 (**GET**), 5 (**GETTABLE**).
 
-The second element must be a request id,
-represented by a positive integer.
-It is a good idea for every request within
-a single client session to have a unique
-request id, although request ids may
-be reused - provided that the previous
-request with the same id is no longer
-active (that is, the client already
-got a response).
+parameter 1
+:   The second element must be a **request id**,
+    represented by a positive integer.
+    It is a good idea for every request within
+    a single client session to have a unique
+    request id, although request ids may
+    be reused - provided that the previous
+    request with the same id is no longer
+    active (that is, the client already
+    got a response).
 
 The rest of request parameters are
 request type-specific, and are described below.
 
 All responses will be an array
-of at least two elements.  The first
-element will be the request type ORed
+of at least two elements.  The **first
+element** will be the request type ORed
 with either 0x10 to indicate a successfull
 reply, or with 0x20 to indicate an error.
-The second element will be the request id.
+The **second element** will be the **request id**.
 In case of an error, the third, and last,
 element will be a textual description
 of the error.  In case of a successfull
@@ -62,19 +60,25 @@ and are described below.
 
 ## SETOPT
 
-The SETOPT request allows the client
-to change per-destination options.
-Please note that options are specific
-for a destination, and not for a client
-session, so that other clients making
-requests towards the same destination
-will also be affected.
+The **SETOPT** request allows the client
+to change several per-destination
+and per-destination/client options.
+
+Please note that setting values for options that are specific
+for a destination, and not for a destination/client
+session, will affect other clients
+making requests towards the same destination.
 
 SETOPT parameters:
 
-- destination IP (v4 only) address in a dot-decimal notation
-- destination port number
-- a map of options
+parameter 2
+:   destination IP (v4 only) address in a dot-decimal notation
+
+parameter 3
+:   destination port number
+
+parameter 4
+:   a map of options
 
 The map of options may contain any
 number of supported options, including zero,
@@ -83,57 +87,293 @@ to GETOPT.
 
 Supported options:
 
-- `version`  
-SNMP version, 1 for SNMP 1, 2 for SNMP 2c;  default is 2.
-- `community`  
-SNMP community;  default is "public".
-- `max_packets`  
-Maximum number of SNMP packets to the destination being "on the wire"
-at any given time.  The `snmp-query-engine` will avoid sending
-any new SNMP requests exceeding this number
-until getting a reply or a timeout.  The default is 3.
-- `max_req_size`  
-Maximum SNMP request packet size in bytes,
-not counting IP and UDP headers.  Any request
-which would exceed this size will be split
-into smaller pieces.  Conversely, if there
-are pending several small requests from the same
-client towards the same destination, they may
-be combined into a single SNMP request.
-The default is 1400.
-- `timeout`  
-Time, in milliseconds, after which the SNMP
-request will be re-sent (up to a configurable
-number of retries).  The default is 2000 (XXX which is probably too little).
-- `retries`  
-Number of times a request will be re-sent (including the first
-send), after which a timeout will be returned to the client.
-The default is 3.
-- `min_interval`  
-Time, in milliseconds, that must pass between
-subsequent SNMP queries towards the destination.
-The default is 10.
-- `max_repetitions`  
-How many OIDs shall the destination return
-in a single reply when requesting a table
-using SNMP 2c.  This can be overridden
-by individual GETTABLE requests.  The default is 10.
+**`version`**
+:   SNMP version, 1 for SNMP 1, 2 for SNMP 2c;  default is **2**.
+    This is a per destination/client option which does
+    not affect other clients.
 
-SETOPT reply will consist of a single map
+**`community`**
+:   SNMP community;  default is **"public"**.
+    This is a per destination/client option which does
+    not affect other clients.
+
+**`max_packets`**
+:   Maximum number of SNMP packets to the destination being "on the wire"
+    at any given time.  The `snmp-query-engine` will avoid sending
+    any new SNMP requests exceeding this number
+    until getting a reply or a timeout.  The default is **3**.
+    This is a per destination option which affects other clients.
+
+**`max_req_size`**
+:   Maximum SNMP request packet size in bytes,
+    not counting IP and UDP headers.  Any request
+    which would exceed this size will be split
+    into smaller pieces.  Conversely, if there
+    are pending several small requests from the same
+    client towards the same destination, they may
+    be combined into a single SNMP request.
+    The default is **1400**.
+    This is a per destination option which affects other clients.
+
+**`timeout`**
+:   Time, in milliseconds, after which the SNMP
+    request will be re-sent (up to a configurable
+    number of retries).  The default is **2000** (which is probably too little).
+    This is a per destination/client option which does
+    not affect other clients.
+
+**`retries`**
+:   Number of times a request will be re-sent (including the first
+    send), after which a timeout will be returned to the client.
+    The default is **3**.
+    This is a per destination/client option which does
+    not affect other clients.
+
+**`min_interval`**
+:   Time, in milliseconds, that must pass between
+    subsequent SNMP queries towards the destination.
+    The default is **10**.
+    This is a per destination option which affects other clients.
+
+**`max_repetitions`**
+:   How many OIDs shall the destination return
+    in a single reply when requesting a table
+    using SNMP 2c.  This can be overridden
+    by individual GETTABLE requests.  The default is **10**.
+    This is a per destination option which affects other clients.
+
+**SETOPT** reply will consist of a single map
 with all current option values
-for a given destination.
+for a given destination and client.
 
 ## GETOPT
 
-The SETOPT request allows the client
-to query per-destination options.
+The **GETOPT** request allows the client
+to query per-destination and per-destination/client
+options.
 
 GETOPT parameters:
 
-- destination IP (v4 only) address in a dot-decimal notation
-- destination port number
+parameter 2
+:   destination IP (v4 only) address in a dot-decimal notation
 
-GETOPT reply will consist of a single map
+parameter 3
+:   destination port number
+
+**GETOPT** reply will consist of a single map
 with all current options for a given destination
-(see SETOPT parameters for options description).
+(see **SETOPT** parameters for options description).
+
+## INFO
+
+The **INFO** request returns global and connection statistics.
+It has no extra parameters.
+
+**INFO** reply will consist of a map with two keys, **connection**
+and **global**.  The values associated with those keys are
+themselves maps with, respectively, connection and global
+stats.
+
+The following statistics are available *for connection*:
+
+**`active_cid_infos`**
+:   number of GET and GETTABLE requests in progress for this connection
+
+**`active_cr_infos`**
+:   number of destinations queried during this connection
+
+**`active_sid_infos`**
+:   number of active SNMP requests for this connection
+
+**`client_requests`**
+:   number of all requests made during this connection
+
+**`get_requests`**
+:   number of GET requests made during this connection
+
+**`getopt_requests`**
+:   number of GETOPT requests made during this connection
+
+**`gettable_requests`**
+:   number of GETTABLE requests made during this connection
+
+**`good_snmp_responses`**
+:   number of good SNMP responses received during this connection
+
+**`info_requests`**
+:   number of INFO requests made during this connection
+
+**`invalid_requests`**
+:   number of invalid requests made during this connection
+
+**`oids_requested`**
+:   number of oids requested as part of GET and GETTABLE processing
+    during this connection
+
+**`oids_returned_from_snmp`**
+:   number of oids got with SNMP responses
+    during this connection
+
+**`oids_returned_to_client`**
+:   number of oids returned back to client
+    during this connection
+
+**`setopt_requests`**
+:   number of SETOPT requests made during this connection
+
+**`snmp_retries`**
+:   number of times an SNMP query was retried due to UDP timeout
+    during this connection
+
+**`snmp_sends`**
+:   number of SNMP packets sent
+    during this connection
+
+**`snmp_timeouts`**
+:   number of times timeout was returned back to the client
+    during this connection;  this represents "hard timeouts",
+    that is not getting any response after configured number
+    of retries
+
+**`snmp_v1_sends`**
+:   number of SNMP version 1 packets sent
+    during this connection
+
+**`snmp_v2c_sends`**
+:   number of SNMP version 2c packets sent
+    during this connection
+
+**`total_cid_infos`**
+:   number of GET and GETTABLE requests made during this connection
+
+**`total_cr_infos`**
+:   number of destinations queried during this connection;
+    this will always be the same as `active_cr_infos` due
+    to the way the daemon is implemented
+
+**`total_sid_infos`**
+:   number of SNMP requests performed
+    during this connection
+
+**`udp_timeouts`**
+:   number of "soft" timeouts
+    during this connection
+
+**`uptime`**
+:   the duration of the connection in milliseconds
+
+The following *global* statistics are available:
+
+**`active_cid_infos`**
+:   number of GET and GETTABLE requests in progress
+
+**`active_client_connections`**
+:   number of active client connections
+
+**`active_cr_infos`**
+:   sum of a number of destinations queried by each active client connection
+
+**`active_oid_infos`**
+:   number of oids being requested plus number of oids
+    pending return to a client
+
+**`active_sid_infos`**
+:   number of active SNMP requests
+
+**`active_timers_sec`**
+:   number of active timer slots with a second resolution
+
+**`active_timers_usec`**
+:   number of active timers
+
+**`bad_snmp_responses`**
+:   number of bad SNMP responses (the responses
+    which were not valid SNMP or for which
+    a corresponding request could not be found)
+
+**`client_requests`**
+:   total number of all client requests
+
+**`destination_throttles`**
+:   number of times an SNMP query was postponed
+    due to `min_interval` and `max_packets` settings
+
+**`get_requests`**
+:   total number of GET requests
+
+**`getopt_requests`**
+:   total number of GETOPT requests
+
+**`gettable_requests`**
+:   total number of GETTABLE requests
+
+**`good_snmp_responses`**
+:   total number of good SNMP responses received
+
+**`info_requests`**
+:   total number of INFO requests
+
+**`invalid_requests`**
+:   total number of invalid client requests
+
+**`oids_requested`**
+:   total number of oids requested as part of GET and GETTABLE processing
+
+**`oids_returned_from_snmp`**
+:   total number of oids got with SNMP responses
+
+**`oids_returned_to_client`**
+:   total number of oids returned back to clients
+
+**`setopt_requests`**
+:   total number of SETOPT requests
+
+**`snmp_retries`**
+:   total number of times an SNMP query was retried due to UDP timeout
+
+**`snmp_sends`**
+:   total number of SNMP packets sent
+
+**`snmp_timeouts`**
+:   total number of times a timeout was returned back to a client;
+    this represents "hard timeouts",
+    that is not getting any response after configured number
+    of retries
+
+**`snmp_v1_sends`**
+:   total number of SNMP version 1 packets sent
+
+**`snmp_v2c_sends`**
+:   total number of SNMP version 2c packets sent
+
+**`total_cid_infos`**
+:   total number of GET and GETTABLE requests made
+
+**`total_client_connections`**
+:   total number of client connections
+
+**`total_cr_infos`**
+:   total sum of a number of destinations queried by each client connection
+
+**`total_oid_infos`**
+:   total number of oids requested and returned to a client
+
+**`total_sid_infos`**
+:   total number of SNMP requests performed
+
+**`total_timers_sec`**
+:   total number of timer slots with a second resolution
+
+**`total_timers_usec`**
+:   total number of timers
+
+**`udp_timeouts`**
+:   total number of "soft" timeouts
+
+**`uptime`**
+:   daemon uptime in milliseconds
+
+## GET
+
+## GETTABLE
 

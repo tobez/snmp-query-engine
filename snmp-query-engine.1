@@ -1,0 +1,491 @@
+.TH SNMP-QUERY-ENGINE 1 "May 2012" 
+.SH NAME
+.PP
+snmp-query-engine - multiplexing SNMP query engine
+.SH VERSION
+.PP
+This document describes snmp-query-engine version 0.1
+.SH SYNOPSIS
+.PP
+snmp-query-engine
+.SH DESCRIPTION
+.PP
+XXX
+.SH OPTIONS
+.PP
+XXX
+.SH REQUESTS
+.PP
+All requests are arrays of at least two elements.
+.TP
+.B parameter 0
+The first element must be a request type represented by a small positive
+integer: 1 (\f[B]SETOPT\f[]), 2 (\f[B]GETOPT\f[]), 3 (\f[B]INFO\f[]), 4
+(\f[B]GET\f[]), 5 (\f[B]GETTABLE\f[]).
+.RS
+.RE
+.TP
+.B parameter 1
+The second element must be a \f[B]request id\f[], represented by a
+positive integer.
+It is a good idea for every request within a single client session to
+have a unique request id, although request ids may be reused - provided
+that the previous request with the same id is no longer active (that is,
+the client already got a response).
+.RS
+.RE
+.PP
+The rest of request parameters are request type-specific, and are
+described below.
+.PP
+All responses will be an array of at least two elements.
+The \f[B]first element\f[] will be the request type ORed with either
+0x10 to indicate a successfull reply, or with 0x20 to indicate an error.
+The \f[B]second element\f[] will be the \f[B]request id\f[].
+In case of an error, the third, and last, element will be a textual
+description of the error.
+In case of a successfull reply, the rest of response array elements are
+request type-specific, and are described below.
+.SS SETOPT
+.PP
+The \f[B]SETOPT\f[] request allows the client to change several
+per-destination and per-destination/client options.
+.PP
+Please note that setting values for options that are specific for a
+destination, and not for a destination/client session, will affect other
+clients making requests towards the same destination.
+.PP
+SETOPT parameters:
+.TP
+.B parameter 2
+destination IP (v4 only) address in a dot-decimal notation
+.RS
+.RE
+.TP
+.B parameter 3
+destination port number
+.RS
+.RE
+.TP
+.B parameter 4
+a map of options
+.RS
+.RE
+.PP
+The map of options may contain any number of supported options,
+including zero, in which case SETOPT is exactly equivalent to GETOPT.
+.PP
+Supported options:
+.TP
+.B \f[B]\f[C]version\f[]\f[]
+SNMP version, 1 for SNMP 1, 2 for SNMP 2c; default is \f[B]2\f[].
+This is a per destination/client option which does not affect other
+clients.
+.RS
+.RE
+.TP
+.B \f[B]\f[C]community\f[]\f[]
+SNMP community; default is \f[B]"public"\f[].
+This is a per destination/client option which does not affect other
+clients.
+.RS
+.RE
+.TP
+.B \f[B]\f[C]max_packets\f[]\f[]
+Maximum number of SNMP packets to the destination being "on the wire" at
+any given time.
+The \f[C]snmp-query-engine\f[] will avoid sending any new SNMP requests
+exceeding this number until getting a reply or a timeout.
+The default is \f[B]3\f[].
+This is a per destination option which affects other clients.
+.RS
+.RE
+.TP
+.B \f[B]\f[C]max_req_size\f[]\f[]
+Maximum SNMP request packet size in bytes, not counting IP and UDP
+headers.
+Any request which would exceed this size will be split into smaller
+pieces.
+Conversely, if there are pending several small requests from the same
+client towards the same destination, they may be combined into a single
+SNMP request.
+The default is \f[B]1400\f[].
+This is a per destination option which affects other clients.
+.RS
+.RE
+.TP
+.B \f[B]\f[C]timeout\f[]\f[]
+Time, in milliseconds, after which the SNMP request will be re-sent (up
+to a configurable number of retries).
+The default is \f[B]2000\f[] (which is probably too little).
+This is a per destination/client option which does not affect other
+clients.
+.RS
+.RE
+.TP
+.B \f[B]\f[C]retries\f[]\f[]
+Number of times a request will be re-sent (including the first send),
+after which a timeout will be returned to the client.
+The default is \f[B]3\f[].
+This is a per destination/client option which does not affect other
+clients.
+.RS
+.RE
+.TP
+.B \f[B]\f[C]min_interval\f[]\f[]
+Time, in milliseconds, that must pass between subsequent SNMP queries
+towards the destination.
+The default is \f[B]10\f[].
+This is a per destination option which affects other clients.
+.RS
+.RE
+.TP
+.B \f[B]\f[C]max_repetitions\f[]\f[]
+How many OIDs shall the destination return in a single reply when
+requesting a table using SNMP 2c.
+This can be overridden by individual GETTABLE requests.
+The default is \f[B]10\f[].
+This is a per destination option which affects other clients.
+.RS
+.RE
+.PP
+\f[B]SETOPT\f[] reply will consist of a single map with all current
+option values for a given destination and client.
+.SS GETOPT
+.PP
+The \f[B]GETOPT\f[] request allows the client to query per-destination
+and per-destination/client options.
+.PP
+GETOPT parameters:
+.TP
+.B parameter 2
+destination IP (v4 only) address in a dot-decimal notation
+.RS
+.RE
+.TP
+.B parameter 3
+destination port number
+.RS
+.RE
+.PP
+\f[B]GETOPT\f[] reply will consist of a single map with all current
+options for a given destination (see \f[B]SETOPT\f[] parameters for
+options description).
+.SS INFO
+.PP
+The \f[B]INFO\f[] request returns global and connection statistics.
+It has no extra parameters.
+.PP
+\f[B]INFO\f[] reply will consist of a map with two keys,
+\f[B]connection\f[] and \f[B]global\f[].
+The values associated with those keys are themselves maps with,
+respectively, connection and global stats.
+.PP
+The following statistics are available \f[I]for connection\f[]:
+.TP
+.B \f[B]\f[C]active_cid_infos\f[]\f[]
+number of GET and GETTABLE requests in progress for this connection
+.RS
+.RE
+.TP
+.B \f[B]\f[C]active_cr_infos\f[]\f[]
+number of destinations queried during this connection
+.RS
+.RE
+.TP
+.B \f[B]\f[C]active_sid_infos\f[]\f[]
+number of active SNMP requests for this connection
+.RS
+.RE
+.TP
+.B \f[B]\f[C]client_requests\f[]\f[]
+number of all requests made during this connection
+.RS
+.RE
+.TP
+.B \f[B]\f[C]get_requests\f[]\f[]
+number of GET requests made during this connection
+.RS
+.RE
+.TP
+.B \f[B]\f[C]getopt_requests\f[]\f[]
+number of GETOPT requests made during this connection
+.RS
+.RE
+.TP
+.B \f[B]\f[C]gettable_requests\f[]\f[]
+number of GETTABLE requests made during this connection
+.RS
+.RE
+.TP
+.B \f[B]\f[C]good_snmp_responses\f[]\f[]
+number of good SNMP responses received during this connection
+.RS
+.RE
+.TP
+.B \f[B]\f[C]info_requests\f[]\f[]
+number of INFO requests made during this connection
+.RS
+.RE
+.TP
+.B \f[B]\f[C]invalid_requests\f[]\f[]
+number of invalid requests made during this connection
+.RS
+.RE
+.TP
+.B \f[B]\f[C]oids_requested\f[]\f[]
+number of oids requested as part of GET and GETTABLE processing during
+this connection
+.RS
+.RE
+.TP
+.B \f[B]\f[C]oids_returned_from_snmp\f[]\f[]
+number of oids got with SNMP responses during this connection
+.RS
+.RE
+.TP
+.B \f[B]\f[C]oids_returned_to_client\f[]\f[]
+number of oids returned back to client during this connection
+.RS
+.RE
+.TP
+.B \f[B]\f[C]setopt_requests\f[]\f[]
+number of SETOPT requests made during this connection
+.RS
+.RE
+.TP
+.B \f[B]\f[C]snmp_retries\f[]\f[]
+number of times an SNMP query was retried due to UDP timeout during this
+connection
+.RS
+.RE
+.TP
+.B \f[B]\f[C]snmp_sends\f[]\f[]
+number of SNMP packets sent during this connection
+.RS
+.RE
+.TP
+.B \f[B]\f[C]snmp_timeouts\f[]\f[]
+number of times timeout was returned back to the client during this
+connection; this represents "hard timeouts", that is not getting any
+response after configured number of retries
+.RS
+.RE
+.TP
+.B \f[B]\f[C]snmp_v1_sends\f[]\f[]
+number of SNMP version 1 packets sent during this connection
+.RS
+.RE
+.TP
+.B \f[B]\f[C]snmp_v2c_sends\f[]\f[]
+number of SNMP version 2c packets sent during this connection
+.RS
+.RE
+.TP
+.B \f[B]\f[C]total_cid_infos\f[]\f[]
+number of GET and GETTABLE requests made during this connection
+.RS
+.RE
+.TP
+.B \f[B]\f[C]total_cr_infos\f[]\f[]
+number of destinations queried during this connection; this will always
+be the same as \f[C]active_cr_infos\f[] due to the way the daemon is
+implemented
+.RS
+.RE
+.TP
+.B \f[B]\f[C]total_sid_infos\f[]\f[]
+number of SNMP requests performed during this connection
+.RS
+.RE
+.TP
+.B \f[B]\f[C]udp_timeouts\f[]\f[]
+number of "soft" timeouts during this connection
+.RS
+.RE
+.TP
+.B \f[B]\f[C]uptime\f[]\f[]
+the duration of the connection in milliseconds
+.RS
+.RE
+.PP
+The following \f[I]global\f[] statistics are available:
+.TP
+.B \f[B]\f[C]active_cid_infos\f[]\f[]
+number of GET and GETTABLE requests in progress
+.RS
+.RE
+.TP
+.B \f[B]\f[C]active_client_connections\f[]\f[]
+number of active client connections
+.RS
+.RE
+.TP
+.B \f[B]\f[C]active_cr_infos\f[]\f[]
+sum of a number of destinations queried by each active client connection
+.RS
+.RE
+.TP
+.B \f[B]\f[C]active_oid_infos\f[]\f[]
+number of oids being requested plus number of oids pending return to a
+client
+.RS
+.RE
+.TP
+.B \f[B]\f[C]active_sid_infos\f[]\f[]
+number of active SNMP requests
+.RS
+.RE
+.TP
+.B \f[B]\f[C]active_timers_sec\f[]\f[]
+number of active timer slots with a second resolution
+.RS
+.RE
+.TP
+.B \f[B]\f[C]active_timers_usec\f[]\f[]
+number of active timers
+.RS
+.RE
+.TP
+.B \f[B]\f[C]bad_snmp_responses\f[]\f[]
+number of bad SNMP responses (the responses which were not valid SNMP or
+for which a corresponding request could not be found)
+.RS
+.RE
+.TP
+.B \f[B]\f[C]client_requests\f[]\f[]
+total number of all client requests
+.RS
+.RE
+.TP
+.B \f[B]\f[C]destination_throttles\f[]\f[]
+number of times an SNMP query was postponed due to \f[C]min_interval\f[]
+and \f[C]max_packets\f[] settings
+.RS
+.RE
+.TP
+.B \f[B]\f[C]get_requests\f[]\f[]
+total number of GET requests
+.RS
+.RE
+.TP
+.B \f[B]\f[C]getopt_requests\f[]\f[]
+total number of GETOPT requests
+.RS
+.RE
+.TP
+.B \f[B]\f[C]gettable_requests\f[]\f[]
+total number of GETTABLE requests
+.RS
+.RE
+.TP
+.B \f[B]\f[C]good_snmp_responses\f[]\f[]
+total number of good SNMP responses received
+.RS
+.RE
+.TP
+.B \f[B]\f[C]info_requests\f[]\f[]
+total number of INFO requests
+.RS
+.RE
+.TP
+.B \f[B]\f[C]invalid_requests\f[]\f[]
+total number of invalid client requests
+.RS
+.RE
+.TP
+.B \f[B]\f[C]oids_requested\f[]\f[]
+total number of oids requested as part of GET and GETTABLE processing
+.RS
+.RE
+.TP
+.B \f[B]\f[C]oids_returned_from_snmp\f[]\f[]
+total number of oids got with SNMP responses
+.RS
+.RE
+.TP
+.B \f[B]\f[C]oids_returned_to_client\f[]\f[]
+total number of oids returned back to clients
+.RS
+.RE
+.TP
+.B \f[B]\f[C]setopt_requests\f[]\f[]
+total number of SETOPT requests
+.RS
+.RE
+.TP
+.B \f[B]\f[C]snmp_retries\f[]\f[]
+total number of times an SNMP query was retried due to UDP timeout
+.RS
+.RE
+.TP
+.B \f[B]\f[C]snmp_sends\f[]\f[]
+total number of SNMP packets sent
+.RS
+.RE
+.TP
+.B \f[B]\f[C]snmp_timeouts\f[]\f[]
+total number of times a timeout was returned back to a client; this
+represents "hard timeouts", that is not getting any response after
+configured number of retries
+.RS
+.RE
+.TP
+.B \f[B]\f[C]snmp_v1_sends\f[]\f[]
+total number of SNMP version 1 packets sent
+.RS
+.RE
+.TP
+.B \f[B]\f[C]snmp_v2c_sends\f[]\f[]
+total number of SNMP version 2c packets sent
+.RS
+.RE
+.TP
+.B \f[B]\f[C]total_cid_infos\f[]\f[]
+total number of GET and GETTABLE requests made
+.RS
+.RE
+.TP
+.B \f[B]\f[C]total_client_connections\f[]\f[]
+total number of client connections
+.RS
+.RE
+.TP
+.B \f[B]\f[C]total_cr_infos\f[]\f[]
+total sum of a number of destinations queried by each client connection
+.RS
+.RE
+.TP
+.B \f[B]\f[C]total_oid_infos\f[]\f[]
+total number of oids requested and returned to a client
+.RS
+.RE
+.TP
+.B \f[B]\f[C]total_sid_infos\f[]\f[]
+total number of SNMP requests performed
+.RS
+.RE
+.TP
+.B \f[B]\f[C]total_timers_sec\f[]\f[]
+total number of timer slots with a second resolution
+.RS
+.RE
+.TP
+.B \f[B]\f[C]total_timers_usec\f[]\f[]
+total number of timers
+.RS
+.RE
+.TP
+.B \f[B]\f[C]udp_timeouts\f[]\f[]
+total number of "soft" timeouts
+.RS
+.RE
+.TP
+.B \f[B]\f[C]uptime\f[]\f[]
+daemon uptime in milliseconds
+.RS
+.RE
+.SS GET
+.SS GETTABLE
+.SH AUTHORS
+Anton Berezin.
