@@ -528,3 +528,7 @@ a client to `snmp-query-engine`,
 It can be found on CPAN
 and on github.
 
+# ACKNOWLEDGEMENTS
+
+This work is in part sponsored by Telia Denmark.
+
