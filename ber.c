@@ -784,7 +784,7 @@ oid_belongs_to_table(struct ber *oo, struct ber *tt)
 	if (decode_type_len(&o, &otype, &olen) < 0)	return 0;
 	if (decode_type_len(&t, &ttype, &tlen) < 0)	return 0;
 
-	if (olen < tlen) return 0;
+	if (olen <= tlen) return 0;
 	if (otype != AT_OID || ttype != AT_OID) return 0;
 
 	if (memcmp(o.b, t.b, tlen) != 0) return 0;
