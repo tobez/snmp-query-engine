@@ -33,7 +33,6 @@ handle_getopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	unsigned port = 65536;
 	struct in_addr ip;
 	struct client_requests_info *cri;
-	struct destination *d;
 	msgpack_sbuffer* buffer;
 	msgpack_packer* pk;
 
@@ -52,7 +51,6 @@ handle_getopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	si->PS.getopt_requests++;
 
 	cri = get_client_requests_info(&ip, port, si);
-	d = cri->dest;
 
 	buffer = msgpack_sbuffer_new();
 	pk = msgpack_packer_new(buffer, msgpack_sbuffer_write);
