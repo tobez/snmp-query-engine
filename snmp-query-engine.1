@@ -10,10 +10,33 @@ This document describes snmp-query-engine version 0.1
 snmp-query-engine
 .SH DESCRIPTION
 .PP
-XXX
-.SH OPTIONS
+The \f[C]snmp-query-engine\f[] daemon accepts multiple client
+connections and performs SNMP queries towards multiple destinations on
+behalf of its clients, taking care of multiplexing and throttling the
+requests.
+This allows querying large number of devices for large amounts of SNMP
+information quickly, while controlling the load on the devices induced
+by multiple SNMP queries.
 .PP
-XXX
+Clients communicate with the \f[C]snmp-query-engine\f[] daemon via TCP.
+Both requests and responses are encoded using MessagePack format,
+http://msgpack.org/.
+.SH OPTIONS
+.TP
+.B -h
+produce usage text and quit
+.RS
+.RE
+.TP
+.B -p \f[B]prt\f[]
+listen on port \f[B]prt\f[] instead of default \f[B]7667\f[]
+.RS
+.RE
+.TP
+.B -q
+quiet operation
+.RS
+.RE
 .SH REQUESTS
 .PP
 All requests are arrays of at least two elements.
@@ -486,6 +509,188 @@ daemon uptime in milliseconds
 .RS
 .RE
 .SS GET
+.PP
+Clients should use the \f[B]GET\f[] request to obtain one or more oids
+from a destination.
+A single \f[B]GET\f[] request will correspond to one or more SNMP gets,
+depending on the value of the \f[I]\f[C]max_req_size\f[]\f[] option.
+.PP
+GET parameters:
+.TP
+.B parameter 2
+destination IP (v4 only) address in a dot-decimal notation
+.RS
+.RE
+.TP
+.B parameter 3
+destination port number
+.RS
+.RE
+.TP
+.B parameter 4
+an array of oids to get
+.RS
+.RE
+.PP
+\f[B]GET\f[] reply consists of an array, each element of which
+corresponds to a single requested oid.
+Each such element is itself a two-element array.
+The first element will be oid itself.
+The second element will either be a value, or an array with a single
+element.
+If it is an array, its only element will be an error description.
+Possible errors are:
+.TP
+.B no-such-object
+SNMP reply returned "no such object" for this oid
+.RS
+.RE
+.TP
+.B no-such-instance
+SNMP reply returned "no such instance" for this oid
+.RS
+.RE
+.TP
+.B end-of-mib
+SNMP reply returned "end-of-mib" for this oid
+.RS
+.RE
+.TP
+.B timeout
+there was a timeout; for \f[B]GET\f[] requests with a small number of
+oids, in case of timeout all oids will generally return this error; for
+larger \f[B]GET\f[] requests, it is perfectly possible to get this error
+for only some of the oids
+.RS
+.RE
+.TP
+.B missing
+the oid not found in the reply
+.RS
+.RE
+.TP
+.B decode-error
+there was an error decoding the value
+.RS
+.RE
+.TP
+.B unsupported type 0xHH
+the \f[C]snmp-query-engine\f[] does not support values of this type
+(yet)
+.RS
+.RE
+.PP
+Example request:
+.IP
+.nf
+\f[C]
+[GET,\ $id,\ "127.0.0.1",\ 161,
+\ \ \ [\ "1.3.6.1.2.1.1.5.0",
+\ \ \ \ \ "1.3.6.1.2.1.25.1.1.0",
+\ \ \ \ \ "1.3.66"\ ]
+]
+\f[]
+.fi
+.PP
+Example reply:
+.IP
+.nf
+\f[C]
+[GET|0x10,\ $id,\ [
+\ \ \ ["1.3.6.1.2.1.1.5.0",\ "my.host.name"],
+\ \ \ ["1.3.6.1.2.1.25.1.1.0",\ 215485727],
+\ \ \ ["1.3.66",\ ["no-such-object"]],
+\ ],
+]
+\f[]
+.fi
 .SS GETTABLE
+.PP
+Clients should use the \f[B]GETTABLE\f[] request to obtain a table of
+oids from a destination.
+A single \f[B]GETTABLE\f[] request will correspond to one or more SNMP
+get-next (for SNMP version 1) or get-bulk (for SNMP version 2) queries.
+.PP
+GETTABLE parameters:
+.TP
+.B parameter 2
+destination IP (v4 only) address in a dot-decimal notation
+.RS
+.RE
+.TP
+.B parameter 3
+destination port number
+.RS
+.RE
+.TP
+.B parameter 4
+an oid of a table to get
+.RS
+.RE
+.PP
+\f[B]GETTABLE\f[] reply consists of an array, each element of which
+corresponds to a single oid from the requested table.
+Each such element is itself a two-element array.
+The first element will be oid itself.
+The second element will either be a value, or an array with a single
+element.
+If it is an array, its only element will be an error description.
+Possible errors are the same as in \f[B]GET\f[] request.
+.PP
+The requested table oid is never present in the reply itself if there
+were no errors.
+.PP
+Example request 1:
+.IP
+.nf
+\f[C]
+[GETTABLE,\ $id,\ "127.0.0.1",\ 161,\ "1.3.6.1.2.1.1.5"]
+\f[]
+.fi
+.PP
+Example reply 1:
+.IP
+.nf
+\f[C]
+[GETTABLE|0x10,\ $id,\ [["1.3.6.1.2.1.1.5.0",\ "my.host.name"]]]
+\f[]
+.fi
+.PP
+Example request 2:
+.IP
+.nf
+\f[C]
+[GETTABLE,\ $id,\ "127.0.0.1",\ 161,\ "1.3.6.1.2.1.1.5.0"]
+\f[]
+.fi
+.PP
+Example reply 2 ("empty table"):
+.IP
+.nf
+\f[C]
+[GETTABLE|0x10,\ $id,\ []]
+\f[]
+.fi
+.PP
+Example request 3:
+.IP
+.nf
+\f[C]
+[GETTABLE,\ $id,\ "1.1.1.1",\ 161,\ "1.3.6.1.2.1.1.5"]
+\f[]
+.fi
+.PP
+Example reply 3 ("table oid itself in error reply"):
+.IP
+.nf
+\f[C]
+[GETTABLE|0x10,\ 41,\ [["1.3.6.1.2.1.1.5",\ ["timeout"]]]]
+\f[]
+.fi
+.SH SEE ALSO
+.PP
+There is a Perl module which serves as a client to
+\f[C]snmp-query-engine\f[], \f[B]Net::SNMP::QueryEngine::AnyEvent\f[].
+It can be found on CPAN and on github.
 .SH AUTHORS
 Anton Berezin.

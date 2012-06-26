@@ -16,11 +16,30 @@ snmp-query-engine
 
 # DESCRIPTION
 
-XXX
+The `snmp-query-engine` daemon accepts multiple
+client connections and performs SNMP queries
+towards multiple destinations on behalf of its clients,
+taking care of multiplexing and throttling the requests.
+This allows querying large number of devices for
+large amounts of SNMP information quickly,
+while controlling the load on the devices
+induced by multiple SNMP queries.
+
+Clients communicate with the `snmp-query-engine` 
+daemon via TCP.  Both requests and responses
+are encoded using MessagePack format,
+http://msgpack.org/.
 
 # OPTIONS
 
-XXX
+-h
+:   produce usage text and quit
+
+-p **prt**
+:   listen on port **prt** instead of default **7667**
+
+-q
+:   quiet operation
 
 # REQUESTS
 
@@ -375,5 +394,137 @@ The following *global* statistics are available:
 
 ## GET
 
+Clients should use the **GET** request
+to obtain one or more oids from a destination.
+A single **GET** request will correspond
+to one or more SNMP gets, depending on the
+value of the *`max_req_size`* option.
+
+GET parameters:
+
+parameter 2
+:   destination IP (v4 only) address in a dot-decimal notation
+
+parameter 3
+:   destination port number
+
+parameter 4
+:   an array of oids to get
+
+**GET** reply consists of an array, each element
+of which corresponds to a single requested oid.
+Each such element is itself a two-element array.
+The first element will be oid itself.
+The second element will either be a value,
+or an array with a single element.  If it is
+an array, its only element will be an error
+description.  Possible errors are:
+
+no-such-object
+:   SNMP reply returned "no such object" for this oid
+
+no-such-instance
+:   SNMP reply returned "no such instance" for this oid
+
+end-of-mib
+:   SNMP reply returned "end-of-mib" for this oid
+
+timeout
+:   there was a timeout;  for **GET** requests
+    with a small number of oids, in case of timeout
+    all oids will generally return this error;
+    for larger **GET** requests, it is perfectly
+    possible to get this error for only some
+    of the oids
+
+missing
+:   the oid not found in the reply
+
+decode-error
+:   there was an error decoding the value
+
+unsupported type 0xHH
+:   the `snmp-query-engine` does not support
+    values of this type (yet)
+
+Example request:
+
+    [GET, $id, "127.0.0.1", 161,
+       [ "1.3.6.1.2.1.1.5.0",
+         "1.3.6.1.2.1.25.1.1.0",
+         "1.3.66" ]
+    ]
+
+Example reply:
+
+    [GET|0x10, $id, [
+       ["1.3.6.1.2.1.1.5.0", "my.host.name"],
+       ["1.3.6.1.2.1.25.1.1.0", 215485727],
+       ["1.3.66", ["no-such-object"]],
+     ],
+    ]
+
 ## GETTABLE
+
+Clients should use the **GETTABLE** request
+to obtain a table of oids from a destination.
+A single **GETTABLE** request will correspond
+to one or more SNMP get-next (for SNMP version 1)
+or get-bulk (for SNMP version 2) queries.
+
+GETTABLE parameters:
+
+parameter 2
+:   destination IP (v4 only) address in a dot-decimal notation
+
+parameter 3
+:   destination port number
+
+parameter 4
+:   an oid of a table to get
+
+**GETTABLE** reply consists of an array, each element
+of which corresponds to a single oid from the requested table.
+Each such element is itself a two-element array.
+The first element will be oid itself.
+The second element will either be a value,
+or an array with a single element.  If it is
+an array, its only element will be an error
+description.  Possible errors are the same as in **GET**
+request.
+
+The requested table oid is never present in the reply itself
+if there were no errors.
+
+Example request 1:
+
+    [GETTABLE, $id, "127.0.0.1", 161, "1.3.6.1.2.1.1.5"]
+
+Example reply 1:
+
+    [GETTABLE|0x10, $id, [["1.3.6.1.2.1.1.5.0", "my.host.name"]]]
+
+Example request 2:
+
+    [GETTABLE, $id, "127.0.0.1", 161, "1.3.6.1.2.1.1.5.0"]
+
+Example reply 2 ("empty table"):
+
+    [GETTABLE|0x10, $id, []]
+
+Example request 3:
+
+    [GETTABLE, $id, "1.1.1.1", 161, "1.3.6.1.2.1.1.5"]
+
+Example reply 3 ("table oid itself in error reply"):
+
+    [GETTABLE|0x10, 41, [["1.3.6.1.2.1.1.5", ["timeout"]]]]
+
+# SEE ALSO
+
+There is a Perl module which serves as
+a client to `snmp-query-engine`,
+**Net::SNMP::QueryEngine::AnyEvent**.
+It can be found on CPAN
+and on github.
 
