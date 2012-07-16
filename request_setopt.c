@@ -136,13 +136,15 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 < 0 || v->via.u64 > 1000)
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid ignore threshold");
 			d.ignore_threshold = v->via.u64;
-			bzero(&d.ignore_until, sizeof(cri->dest->ignore_until));
+			if (cri->dest->ignore_threshold != d.ignore_threshold)
+				bzero(&d.ignore_until, sizeof(cri->dest->ignore_until));
 			break;
 		case OPT_ignore_duration:
 			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 > 86400000)
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid ignore duration");
 			d.ignore_duration = v->via.u64;
-			bzero(&d.ignore_until, sizeof(cri->dest->ignore_until));
+			if (cri->dest->ignore_duration != d.ignore_duration)
+				bzero(&d.ignore_until, sizeof(cri->dest->ignore_until));
 			break;
 		default:
 			return error_reply(si, RT_SETOPT|RT_ERROR, cid, "bad option key");
