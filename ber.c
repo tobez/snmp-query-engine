@@ -20,6 +20,8 @@ static unsigned char BUF_TIMEOUT[] = "\x8a";
 struct ber BER_TIMEOUT = { BUF_TIMEOUT, BUF_TIMEOUT+2, 2, 2 };
 static unsigned char BUF_MISSING[] = "\x8b";
 struct ber BER_MISSING = { BUF_MISSING, BUF_MISSING+2, 2, 2 };
+static unsigned char BUF_IGNORED[] = "\x8e";
+struct ber BER_IGNORED = { BUF_IGNORED, BUF_IGNORED+2, 2, 2 };
 
 struct ber ber_init(void *buf, int size)
 {

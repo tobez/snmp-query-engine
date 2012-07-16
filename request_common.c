@@ -64,7 +64,7 @@ msgpack_pack_string(msgpack_packer *pk, char *s)
 int
 msgpack_pack_options(msgpack_packer *pk, struct client_requests_info *cri)
 {
-	msgpack_pack_map(pk, 10);
+	msgpack_pack_map(pk, 12);
 	msgpack_pack_named_string(pk, "ip", inet_ntoa(cri->dest->ip));
 	msgpack_pack_named_int(pk, "port", cri->dest->port);
 	msgpack_pack_named_string(pk, "community", cri->community);
@@ -75,6 +75,8 @@ msgpack_pack_options(msgpack_packer *pk, struct client_requests_info *cri)
 	msgpack_pack_named_int(pk, "retries", cri->retries);
 	msgpack_pack_named_int(pk, "min_interval", cri->dest->min_interval);
 	msgpack_pack_named_int(pk, "max_repetitions", cri->dest->max_repetitions);
+	msgpack_pack_named_int(pk, "ignore_threshold", cri->dest->ignore_threshold);
+	msgpack_pack_named_int(pk, "ignore_duration", cri->dest->ignore_duration);
 	return 0;
 }
 
@@ -158,6 +160,9 @@ msgpack_pack_ber(struct msgpack_packer *pk, struct ber value)
 decode_error:
 	case VAL_DECODE_ERROR:
 		pack_error(pk, "decode-error");
+		break;
+	case VAL_IGNORED:
+		pack_error(pk, "ignored");
 		break;
 	default:
 		snprintf(unsupported, 30, "unsupported type 0x%02x", t);

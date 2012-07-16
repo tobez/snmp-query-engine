@@ -100,6 +100,7 @@
 #define VAL_MISSING          0x8b
 #define VAL_UNSUPPORTED      0x8c
 #define VAL_DECODE_ERROR     0x8d
+#define VAL_IGNORED          0x8e
 
 #define MAX_OID 4294967295u  /* 2^35-1 to fit into 5 bytes, but we limit that to 2^32-1 */
 
@@ -129,6 +130,7 @@ struct program_stats
 	int64_t oids_requested;
 	int64_t oids_returned_from_snmp;
 	int64_t oids_returned_to_client;
+	int64_t oids_ignored;
 
 	int64_t active_timers_sec;
 	int64_t active_timers_usec;
@@ -146,6 +148,7 @@ struct program_stats
 	int64_t total_cr_infos;
 
 	int64_t destination_throttles; /* due to max_packets_on_the_wire limit */
+	int64_t destination_ignores;
 };
 
 extern struct timeval prog_start;
@@ -162,6 +165,7 @@ struct ber
 extern struct ber BER_NULL;
 extern struct ber BER_TIMEOUT;
 extern struct ber BER_MISSING;
+extern struct ber BER_IGNORED;
 
 struct packet_builder
 {
@@ -207,6 +211,8 @@ struct client_connection
 #define DEFAULT_RETRIES 3
 #define DEFAULT_MIN_INTERVAL 10
 #define DEFAULT_MAX_REPETITIONS 10
+#define DEFAULT_IGNORE_THRESHOLD 0
+#define DEFAULT_IGNORE_DURATION  300000
 
 TAILQ_HEAD(oid_info_head, oid_info);
 TAILQ_HEAD(sid_info_head, sid_info);
@@ -225,12 +231,16 @@ struct destination
 	int fd_of_last_query;
 	JudyL client_requests_info;   /* JudyL of struct client_requests_info indexed by fd */
 	JudyL sid_info;  /* JudyL of struct sid_info indexed by sid */
+	int timeouts_in_a_row;
+	struct timeval ignore_until;
 
 	/* setopt-controlled parameters */
 	int max_packets_on_the_wire;
 	int max_request_packet_size;
 	int min_interval;
 	int max_repetitions;
+	int ignore_threshold;
+	int ignore_duration;
 };
 
 struct client_requests_info

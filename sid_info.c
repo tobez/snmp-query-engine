@@ -236,6 +236,7 @@ sid_timer(struct sid_info *si)
 	}
 	dest = si->cri->dest;
 	free_sid_info(si);
+	dest->timeouts_in_a_row++;
 	maybe_query_destination(dest);
 }
 
@@ -255,6 +256,7 @@ oid_done(struct sid_info *si, struct oid_info *oi, struct ber *val, int op)
 	if (op != RT_GETTABLE)
 		TAILQ_REMOVE(&si->oids_being_queried, oi, oid_list);
 	TAILQ_INSERT_TAIL(&ci->oids_done, oi, oid_list);
+	if (val == &BER_IGNORED) PS.oids_ignored++;
 	ci->n_oids_being_queried--;
 	ci->n_oids_done++;
 	if (ci->n_oids_done == ci->n_oids)
@@ -365,6 +367,8 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 	}
 	PS.good_snmp_responses++;
 	cri->si->PS.good_snmp_responses++;
+	cri->dest->timeouts_in_a_row = 0;
+	bzero(&cri->dest->ignore_until, sizeof(cri->dest->ignore_until));
 	#undef CHECK
 
 	return;

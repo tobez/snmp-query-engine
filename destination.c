@@ -35,6 +35,8 @@ struct destination *get_destination(struct in_addr *ip, unsigned port)
 		d->max_request_packet_size = DEFAULT_MAX_REQUEST_PACKET_SIZE;
 		d->min_interval            = DEFAULT_MIN_INTERVAL;
 		d->max_repetitions         = DEFAULT_MAX_REPETITIONS;
+		d->ignore_threshold        = DEFAULT_IGNORE_THRESHOLD;
+		d->ignore_duration         = DEFAULT_IGNORE_DURATION;
 		*dest_slot = d;
 	}
 	return *dest_slot;
@@ -54,11 +56,74 @@ struct destination *find_destination(struct in_addr *ip, unsigned port)
 }
 
 void
+flush_ignored_destination(struct destination *dest)
+{
+	struct client_requests_info *cri;
+	Word_t fd;
+	struct client_requests_info **cri_slot;
+	struct sid_info *si, *si_temp;
+	struct oid_info *oi, *oi_temp;
+	struct cid_info *ci;
+
+	fd = 0;
+	JLF(cri_slot, dest->client_requests_info, fd);
+	while (cri_slot) {
+		cri = *cri_slot;
+
+		si = TAILQ_FIRST(&cri->sid_infos);
+		while (si != NULL) {
+			si_temp = TAILQ_NEXT(si, sid_list);
+			if (si->table_oid) {
+				oid_done(si, si->table_oid, &BER_IGNORED, RT_GETTABLE);
+				si->table_oid = NULL;
+			} else {
+				all_oids_done(si, &BER_IGNORED);
+			}
+			free_sid_info(si);
+			si = si_temp;
+		}
+		TAILQ_INIT(&cri->sid_infos);
+
+		TAILQ_FOREACH_SAFE(oi, &cri->oids_to_query, oid_list, oi_temp) {
+			ci = get_cid_info(cri, oi->cid);
+			if (!ci || ci->n_oids == 0)
+				croakx(2, "flush_ignored_destination: cid_info unexpectedly missing");
+			/* XXX free old value? */
+			oi->value = ber_rewind(ber_dup(&BER_IGNORED));
+			oi->sid = 0;
+			TAILQ_REMOVE(&cri->oids_to_query, oi, oid_list);
+			TAILQ_INSERT_TAIL(&ci->oids_done, oi, oid_list);
+			PS.oids_ignored++;
+			ci->n_oids_done++;
+			if (ci->n_oids_done == ci->n_oids)
+				cid_reply(ci, oi->last_known_table_entry ? RT_GETTABLE : RT_GET);
+		}
+
+		JLN(cri_slot, dest->client_requests_info, fd);
+	}
+}
+
+void
 maybe_query_destination(struct destination *dest)
 {
 	struct client_requests_info **cri_slot;
 	Word_t fd;
 	struct timeval now;
+
+	if (dest->ignore_threshold && dest->timeouts_in_a_row >= dest->ignore_threshold) {
+		PS.destination_ignores++;
+		dest->timeouts_in_a_row = 0;
+		set_timeout(&dest->ignore_until, dest->ignore_duration);
+	}
+	if (dest->ignore_until.tv_sec > 0) {
+		gettimeofday(&now, NULL);
+		if (now.tv_sec < dest->ignore_until.tv_sec ||
+			(now.tv_sec == dest->ignore_until.tv_sec && now.tv_usec < dest->ignore_until.tv_usec))
+		{
+			flush_ignored_destination(dest);
+			return;
+		}
+	}
 
 	if (dest->packets_on_the_wire >= dest->max_packets_on_the_wire) {
 		PS.destination_throttles++;
@@ -142,6 +207,8 @@ dump_destination(msgpack_packer *pk, struct destination *dest)
 	DUMPi(max_request_packet_size);
 	DUMPi(min_interval);
 	DUMPi(max_repetitions);
+	DUMPi(ignore_threshold);
+	DUMPi(ignore_duration);
 	DUMPi(packets_on_the_wire);
 	/* XXX can_query_at */
 	DUMPi(fd_of_last_query);

@@ -43,6 +43,7 @@ pack_stats(struct program_stats *PS, msgpack_packer *pk)
 	STAT(oids_requested);
 	STAT(oids_returned_from_snmp);
 	STAT(oids_returned_to_client);
+	STAT(oids_ignored);
 
 	STAT(active_timers_sec);
 	STAT(active_timers_usec);
@@ -60,6 +61,7 @@ pack_stats(struct program_stats *PS, msgpack_packer *pk)
 	STAT(total_cr_infos);
 
 	STAT(destination_throttles);
+	STAT(destination_ignores);
 
 	#undef STAT
 	return n;

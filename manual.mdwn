@@ -161,6 +161,21 @@ Supported options:
     by individual GETTABLE requests.  The default is **10**.
     This is a per destination option which affects other clients.
 
+**`ignore_threshold`**
+:   All queries of the destination will immediately
+    return with an "ignored" error for `ignore_duration`
+    milliseconds if number of "hard timeouts" will
+    exceed `ignore_threshold` in a row (without any
+    successfull replies between timed out queries).
+    If `ignore_threshold` is 0, no queries will be
+    ignored.  The default is **0**.
+    This is a per destination option which affects other clients.
+
+**`ignore_duration`**
+:   See `ignore_threshold` above.
+    The default is **300000** milliseconds (5 minutes).
+    This is a per destination option which affects other clients.
+
 **SETOPT** reply will consist of a single map
 with all current option values
 for a given destination and client.
@@ -317,6 +332,10 @@ The following *global* statistics are available:
 :   number of times an SNMP query was postponed
     due to `min_interval` and `max_packets` settings
 
+**`destination_ignores`**
+:   number of times a destination was put into "ignore"
+    mode via `ignore_threshold` and `ignore_duration` mechanism
+
 **`get_requests`**
 :   total number of GET requests
 
@@ -343,6 +362,10 @@ The following *global* statistics are available:
 
 **`oids_returned_to_client`**
 :   total number of oids returned back to clients
+
+**`oids_ignored`**
+:   total number of oids ignored via `ignore_threshold` and `ignore_duration`
+    mechanism
 
 **`setopt_requests`**
 :   total number of SETOPT requests
@@ -436,6 +459,12 @@ timeout
     for larger **GET** requests, it is perfectly
     possible to get this error for only some
     of the oids
+
+ignore
+:   the oid was requested during time when its
+    destination was in the "ignore" state
+    (see `ignore_threshold` and `ignore_duration`
+    options for details)
 
 missing
 :   the oid not found in the reply

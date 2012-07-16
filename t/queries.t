@@ -33,6 +33,7 @@ active_timers_sec
 active_timers_usec
 bad_snmp_responses
 client_requests
+destination_ignores
 destination_throttles
 get_requests
 getopt_requests
@@ -40,6 +41,7 @@ gettable_requests
 good_snmp_responses
 info_requests
 invalid_requests
+oids_ignored
 oids_requested
 oids_returned_from_snmp
 oids_returned_to_client
@@ -162,8 +164,9 @@ request_match("oids is an empty array", [RT_GET,27,"127.0.0.1",161, []], [RT_GET
 my $target   = "127.0.0.1";
 my $hostname = hostname;
 my $uptime   = qr/^\d+$/;
+my $r;
 
-my $r = request([RT_GET,33,$target,161, ["1.3.6.1.2.1.1.5.0"]]);
+$r = request([RT_GET,33,$target,161, ["1.3.6.1.2.1.1.5.0"]]);
 if ($r->[0] != (RT_GET|RT_REPLY) || ref $r->[2][0][1]) {
 	print STDERR "\n\n=====\n=====\n";
 	print STDERR "=====> Skipping remaining tests, need running local snmpd on port 161\n";
@@ -172,13 +175,24 @@ if ($r->[0] != (RT_GET|RT_REPLY) || ref $r->[2][0][1]) {
 	goto bailout;
 }
 
-request_match("change community to a bad one", [RT_SETOPT,3000,$target,161, {community=>1234, timeout => 1500, retries => 2}], [RT_SETOPT|RT_REPLY,3000,
-	{ip=>$target, port=>161, community=>1234, version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2, min_interval => 10, max_repetitions => 10, }]);
+$r = request_match("change community to a bad one", [RT_SETOPT,3000,$target,161, {community=>1234, ignore_threshold => 1, timeout => 1500, retries => 2}], [RT_SETOPT|RT_REPLY,3000,
+	{ip=>$target, port=>161, community=>1234, version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2, min_interval => 10, max_repetitions => 10, ignore_threshold => 1, ignore_duration => 300000 }]);
 
-$r = request_match("times out", [RT_GET,41,$target,161, ["1.3.6.1.2.1.1.5.0"]],
+$r = request([RT_INFO,2252]);
+is($r->[2]{global}{destination_ignores}, 0, "ignored destinations 0");
+is($r->[2]{global}{oids_ignored}, 0, "ignored oids 0");
+
+request_match("times out", [RT_GET,41,$target,161, ["1.3.6.1.2.1.1.5.0"]],
 			  [RT_GET|RT_REPLY,41,[["1.3.6.1.2.1.1.5.0",["timeout"]]]]);
+for my $id (2241..2250) {
+	request_match("ignored $id", [RT_GET,$id,$target,161, ["1.3.6.1.2.1.1.5.0"]],
+				  [RT_GET|RT_REPLY,$id,[["1.3.6.1.2.1.1.5.0",["ignored"]]]]);
+}
+$r = request([RT_INFO,2251]);
+is($r->[2]{global}{destination_ignores}, 1, "ignored destinations");
+is($r->[2]{global}{oids_ignored}, 10, "ignored oids");
 
-request_match("change community to a good one", [RT_SETOPT,3001,$target,161, {community=>"public"}], [RT_SETOPT|RT_REPLY,3001,
+request_match("change community to a good one", [RT_SETOPT,3001,$target,161, {community=>"public", ignore_threshold => 0}], [RT_SETOPT|RT_REPLY,3001,
 	{ip=>$target, port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2, min_interval => 10, max_repetitions => 10, }]);
 
 request_match("all is good", [RT_GET,42,$target,161, ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0", "1.3.66"]],

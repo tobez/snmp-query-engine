@@ -171,6 +171,24 @@ The default is \f[B]10\f[].
 This is a per destination option which affects other clients.
 .RS
 .RE
+.TP
+.B \f[B]\f[C]ignore_threshold\f[]\f[]
+All queries of the destination will immediately return with an "ignored"
+error for \f[C]ignore_duration\f[] milliseconds if number of "hard
+timeouts" will exceed \f[C]ignore_threshold\f[] in a row (without any
+successfull replies between timed out queries).
+If \f[C]ignore_threshold\f[] is 0, no queries will be ignored.
+The default is \f[B]0\f[].
+This is a per destination option which affects other clients.
+.RS
+.RE
+.TP
+.B \f[B]\f[C]ignore_duration\f[]\f[]
+See \f[C]ignore_threshold\f[] above.
+The default is \f[B]300000\f[] milliseconds (5 minutes).
+This is a per destination option which affects other clients.
+.RS
+.RE
 .PP
 \f[B]SETOPT\f[] reply will consist of a single map with all current
 option values for a given destination and client.
@@ -387,6 +405,12 @@ and \f[C]max_packets\f[] settings
 .RS
 .RE
 .TP
+.B \f[B]\f[C]destination_ignores\f[]\f[]
+number of times a destination was put into "ignore" mode via
+\f[C]ignore_threshold\f[] and \f[C]ignore_duration\f[] mechanism
+.RS
+.RE
+.TP
 .B \f[B]\f[C]get_requests\f[]\f[]
 total number of GET requests
 .RS
@@ -429,6 +453,12 @@ total number of oids got with SNMP responses
 .TP
 .B \f[B]\f[C]oids_returned_to_client\f[]\f[]
 total number of oids returned back to clients
+.RS
+.RE
+.TP
+.B \f[B]\f[C]oids_ignored\f[]\f[]
+total number of oids ignored via \f[C]ignore_threshold\f[] and
+\f[C]ignore_duration\f[] mechanism
 .RS
 .RE
 .TP
@@ -561,6 +591,13 @@ there was a timeout; for \f[B]GET\f[] requests with a small number of
 oids, in case of timeout all oids will generally return this error; for
 larger \f[B]GET\f[] requests, it is perfectly possible to get this error
 for only some of the oids
+.RS
+.RE
+.TP
+.B ignore
+the oid was requested during time when its destination was in the
+"ignore" state (see \f[C]ignore_threshold\f[] and
+\f[C]ignore_duration\f[] options for details)
 .RS
 .RE
 .TP
