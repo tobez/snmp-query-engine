@@ -122,6 +122,9 @@ maybe_query_destination(struct destination *dest)
 		{
 			flush_ignored_destination(dest);
 			return;
+		} else {
+			/* we are past ignore duration here */
+			bzero(&dest->ignore_until, sizeof(dest->ignore_until));
 		}
 	}
 

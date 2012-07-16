@@ -175,8 +175,8 @@ if ($r->[0] != (RT_GET|RT_REPLY) || ref $r->[2][0][1]) {
 	goto bailout;
 }
 
-$r = request_match("change community to a bad one", [RT_SETOPT,3000,$target,161, {community=>1234, ignore_threshold => 1, timeout => 1500, retries => 2}], [RT_SETOPT|RT_REPLY,3000,
-	{ip=>$target, port=>161, community=>1234, version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2, min_interval => 10, max_repetitions => 10, ignore_threshold => 1, ignore_duration => 300000 }]);
+$r = request_match("change community to a bad one", [RT_SETOPT,3000,$target,161, {community=>1234, ignore_threshold => 1, timeout => 1500, retries => 2, ignore_duration => 2000}], [RT_SETOPT|RT_REPLY,3000,
+	{ip=>$target, port=>161, community=>1234, version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2, min_interval => 10, max_repetitions => 10, ignore_threshold => 1, ignore_duration => 2000 }]);
 
 $r = request([RT_INFO,2252]);
 is($r->[2]{global}{destination_ignores}, 0, "ignored destinations 0");
@@ -192,8 +192,23 @@ $r = request([RT_INFO,2251]);
 is($r->[2]{global}{destination_ignores}, 1, "ignored destinations");
 is($r->[2]{global}{oids_ignored}, 10, "ignored oids");
 
-request_match("change community to a good one", [RT_SETOPT,3001,$target,161, {community=>"public", ignore_threshold => 0}], [RT_SETOPT|RT_REPLY,3001,
-	{ip=>$target, port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2, min_interval => 10, max_repetitions => 10, }]);
+request_match("change community to a good one", [RT_SETOPT,2253,$target,161, {community=>"public"}], [RT_SETOPT|RT_REPLY,2253,
+	{ip=>$target, port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2, min_interval => 10, max_repetitions => 10, ignore_threshold => 1, ignore_duration => 2000}]);
+
+sleep 2;
+
+request_match("past ignore interval", [RT_GET,2254,$target,161, ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0", "1.3.66"]],
+			  [RT_GET|RT_REPLY,2254,[
+			  ["1.3.6.1.2.1.1.5.0",$hostname],
+			  ["1.3.6.1.2.1.25.1.1.0",$uptime],
+			  ["1.3.66",["no-such-object"]]]]);
+
+$r = request([RT_INFO,2255]);
+is($r->[2]{global}{destination_ignores}, 1, "ignored destinations did not change");
+is($r->[2]{global}{oids_ignored}, 10, "ignored oids did not change");
+
+request_match("switch off ignoring", [RT_SETOPT,3001,$target,161, {ignore_threshold => 0}], [RT_SETOPT|RT_REPLY,3001,
+	{ip=>$target, port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2, min_interval => 10, max_repetitions => 10, ignore_threshold => 0, ignore_duration => 2000}]);
 
 request_match("all is good", [RT_GET,42,$target,161, ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0", "1.3.66"]],
 			  [RT_GET|RT_REPLY,42,[
