@@ -90,12 +90,23 @@ build_snmp_query(struct client_requests_info *cri)
 								   si->table_oid->max_repetitions)) < 0)
 			croak(2, "build_snmp_query: finalize_snmp_packet");
 	} else {
+		int oids_in_request = 0;
+		int estimated_values_size = 0;
+
 		TAILQ_FOREACH_SAFE(oi, &cri->oids_to_query, oid_list, oi_temp) {
 			if (oi->last_known_table_entry) continue; /* Skip GETTABLE requests */
 			extra_size = 4;
+			oids_in_request++;
+			estimated_values_size += dest->estimated_value_size;
+
 			if (oi->oid.len >= 128)	extra_size++;
 			if (si->pb.e.len + oi->oid.len + extra_size >= dest->max_request_packet_size)
 				break;
+			if (oids_in_request > dest->max_oids_per_request)
+				break;
+			if (si->pb.e.len + oi->oid.len + extra_size + estimated_values_size >= dest->max_reply_packet_size)
+				break;
+
 			PS.oids_requested++;
 			cri->si->PS.oids_requested++;
 			if (add_encoded_oid_to_snmp_packet(&si->pb, &oi->oid) < 0)

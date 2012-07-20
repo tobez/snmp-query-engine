@@ -207,6 +207,9 @@ struct client_connection
 
 #define DEFAULT_MAX_PACKETS_ON_THE_WIRE 3
 #define DEFAULT_MAX_REQUEST_PACKET_SIZE 1400
+#define DEFAULT_MAX_REPLY_PACKET_SIZE 1472
+#define DEFAULT_ESTIMATED_VALUE_SIZE  9
+#define DEFAULT_MAX_OIDS_PER_REQUEST  64
 #define DEFAULT_TIMEOUT 2000
 #define DEFAULT_RETRIES 3
 #define DEFAULT_MIN_INTERVAL 10
@@ -237,6 +240,9 @@ struct destination
 	/* setopt-controlled parameters */
 	int max_packets_on_the_wire;
 	int max_request_packet_size;
+	int max_reply_packet_size;
+	int estimated_value_size;
+	int max_oids_per_request;
 	int min_interval;
 	int max_repetitions;
 	int ignore_threshold;

@@ -64,13 +64,16 @@ msgpack_pack_string(msgpack_packer *pk, char *s)
 int
 msgpack_pack_options(msgpack_packer *pk, struct client_requests_info *cri)
 {
-	msgpack_pack_map(pk, 12);
+	msgpack_pack_map(pk, 15);
 	msgpack_pack_named_string(pk, "ip", inet_ntoa(cri->dest->ip));
 	msgpack_pack_named_int(pk, "port", cri->dest->port);
 	msgpack_pack_named_string(pk, "community", cri->community);
 	msgpack_pack_named_int(pk, "version", cri->version + 1);
 	msgpack_pack_named_int(pk, "max_packets", cri->dest->max_packets_on_the_wire);
 	msgpack_pack_named_int(pk, "max_req_size", cri->dest->max_request_packet_size);
+	msgpack_pack_named_int(pk, "max_reply_size", cri->dest->max_reply_packet_size);
+	msgpack_pack_named_int(pk, "estimated_value_size", cri->dest->estimated_value_size);
+	msgpack_pack_named_int(pk, "max_oids_per_request", cri->dest->max_oids_per_request);
 	msgpack_pack_named_int(pk, "timeout", cri->timeout);
 	msgpack_pack_named_int(pk, "retries", cri->retries);
 	msgpack_pack_named_int(pk, "min_interval", cri->dest->min_interval);

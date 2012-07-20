@@ -134,6 +134,31 @@ Supported options:
     The default is **1400**.
     This is a per destination option which affects other clients.
 
+**`max_reply_size`**
+:   Maximum SNMP reply packet size in bytes,
+    not counting IP and UDP headers.
+    When composing a request, the query engine
+    estimates the expected size of the reply
+    using `estimated_value_size` option.
+    If the estimated reply size exceeds
+    `max_reply_size`, the request will be
+    split into smaller pieces.
+    This option is only relevant for `get* requests.
+    The default is **1472**.
+    This is a per destination option which affects other clients.
+
+**`estimated_value_size`**
+:   The expected size of a returned value in bytes.
+    The default is **9**, which corresponds to the
+    largest possible 64-bit counter.
+    This is a per destination option which affects other clients.
+
+**`max_oids_per_request`**
+:   Never ask for more than this number of oids
+    in a single SNMP get query.
+    The default is **64**.
+    This is a per destination option which affects other clients.
+
 **`timeout`**
 :   Time, in milliseconds, after which the SNMP
     request will be re-sent (up to a configurable
@@ -421,7 +446,9 @@ Clients should use the **GET** request
 to obtain one or more oids from a destination.
 A single **GET** request will correspond
 to one or more SNMP gets, depending on the
-value of the *`max_req_size`* option.
+values of *`max_req_size`*, *`max_reply_size`*,
+*`estimated_value_size`*, and *`max_oids_per_request`*
+options.
 
 GET parameters:
 

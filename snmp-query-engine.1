@@ -137,6 +137,34 @@ This is a per destination option which affects other clients.
 .RS
 .RE
 .TP
+.B \f[B]\f[C]max_reply_size\f[]\f[]
+Maximum SNMP reply packet size in bytes, not counting IP and UDP
+headers.
+When composing a request, the query engine estimates the expected size
+of the reply using \f[C]estimated_value_size\f[] option.
+If the estimated reply size exceeds \f[C]max_reply_size\f[], the request
+will be split into smaller pieces.
+This option is only relevant for `get* requests.
+The default is \f[B]1472\f[].
+This is a per destination option which affects other clients.
+.RS
+.RE
+.TP
+.B \f[B]\f[C]estimated_value_size\f[]\f[]
+The expected size of a returned value in bytes.
+The default is \f[B]9\f[], which corresponds to the largest possible
+64-bit counter.
+This is a per destination option which affects other clients.
+.RS
+.RE
+.TP
+.B \f[B]\f[C]max_oids_per_request\f[]\f[]
+Never ask for more than this number of oids in a single SNMP get query.
+The default is \f[B]64\f[].
+This is a per destination option which affects other clients.
+.RS
+.RE
+.TP
 .B \f[B]\f[C]timeout\f[]\f[]
 Time, in milliseconds, after which the SNMP request will be re-sent (up
 to a configurable number of retries).
@@ -543,7 +571,10 @@ daemon uptime in milliseconds
 Clients should use the \f[B]GET\f[] request to obtain one or more oids
 from a destination.
 A single \f[B]GET\f[] request will correspond to one or more SNMP gets,
-depending on the value of the \f[I]\f[C]max_req_size\f[]\f[] option.
+depending on the values of \f[I]\f[C]max_req_size\f[]\f[],
+\f[I]\f[C]max_reply_size\f[]\f[],
+\f[I]\f[C]estimated_value_size\f[]\f[], and
+\f[I]\f[C]max_oids_per_request\f[]\f[] options.
 .PP
 GET parameters:
 .TP

@@ -16,16 +16,19 @@
 
 static void *option2index; /* a JudySL tree */
 
-#define OPT_version          1
-#define OPT_community        2
-#define OPT_max_packets      3
-#define OPT_max_req_size     4
-#define OPT_timeout          5
-#define OPT_retries          6
-#define OPT_min_interval     7
-#define OPT_max_repetitions  8
-#define OPT_ignore_threshold 9
-#define OPT_ignore_duration  10
+#define OPT_version               1
+#define OPT_community             2
+#define OPT_max_packets           3
+#define OPT_max_req_size          4
+#define OPT_timeout               5
+#define OPT_retries               6
+#define OPT_min_interval          7
+#define OPT_max_repetitions       8
+#define OPT_ignore_threshold      9
+#define OPT_ignore_duration      10
+#define OPT_max_reply_size       11
+#define OPT_estimated_value_size 12
+#define OPT_max_oids_per_request 13
 
 static void
 build_option2index(void)
@@ -37,6 +40,9 @@ build_option2index(void)
 	ADD(community);
 	ADD(max_packets);
 	ADD(max_req_size);
+	ADD(max_reply_size);
+	ADD(estimated_value_size);
+	ADD(max_oids_per_request);
 	ADD(timeout);
 	ADD(retries);
 	ADD(min_interval);
@@ -111,6 +117,21 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 < 500 || v->via.u64 > 50000)
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid max request size");
 			d.max_request_packet_size = v->via.u64;
+			break;
+		case OPT_max_reply_size:
+			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 < 500 || v->via.u64 > 50000)
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid max reply size");
+			d.max_reply_packet_size = v->via.u64;
+			break;
+		case OPT_estimated_value_size:
+			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 < 1 || v->via.u64 > 1024)
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid estimated value size");
+			d.estimated_value_size = v->via.u64;
+			break;
+		case OPT_max_oids_per_request:
+			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 < 1 || v->via.u64 > 1024)
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid max oids per request");
+			d.max_oids_per_request = v->via.u64;
 			break;
 		case OPT_timeout:
 			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 > 30000)

@@ -33,6 +33,9 @@ struct destination *get_destination(struct in_addr *ip, unsigned port)
 		d->dest_addr.sin_port      = htons(port);
 		d->max_packets_on_the_wire = DEFAULT_MAX_PACKETS_ON_THE_WIRE;
 		d->max_request_packet_size = DEFAULT_MAX_REQUEST_PACKET_SIZE;
+		d->max_reply_packet_size   = DEFAULT_MAX_REPLY_PACKET_SIZE;
+		d->estimated_value_size    = DEFAULT_ESTIMATED_VALUE_SIZE;
+		d->max_oids_per_request    = DEFAULT_MAX_OIDS_PER_REQUEST;
 		d->min_interval            = DEFAULT_MIN_INTERVAL;
 		d->max_repetitions         = DEFAULT_MAX_REPETITIONS;
 		d->ignore_threshold        = DEFAULT_IGNORE_THRESHOLD;
@@ -208,6 +211,9 @@ dump_destination(msgpack_packer *pk, struct destination *dest)
 	msgpack_pack_map(pk, 9);
 	DUMPi(max_packets_on_the_wire);
 	DUMPi(max_request_packet_size);
+	DUMPi(max_reply_packet_size);
+	DUMPi(estimated_value_size);
+	DUMPi(max_oids_per_request);
 	DUMPi(min_interval);
 	DUMPi(max_repetitions);
 	DUMPi(ignore_threshold);
