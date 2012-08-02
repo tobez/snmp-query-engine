@@ -208,7 +208,7 @@ dump_destination(msgpack_packer *pk, struct destination *dest)
 	#define DUMPi(field) msgpack_pack_named_int(pk, #field, dest->field)
 	#define DUMPs(field) msgpack_pack_named_string(pk, #field, dest->field)
 	snprintf(buf, 512, "DEST(%s:%d)", inet_ntoa(dest->ip), dest->port); PACK;
-	msgpack_pack_map(pk, 9);
+	msgpack_pack_map(pk, 14);
 	DUMPi(max_packets_on_the_wire);
 	DUMPi(max_request_packet_size);
 	DUMPi(max_reply_packet_size);
