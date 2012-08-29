@@ -5,30 +5,15 @@ use warnings;
 use IO::Socket::INET;
 use Socket ':all';
 use Time::HiRes 'sleep';
-use Data::MessagePack;
+use Net::SNMP::QueryEngine::AnyEvent;
 use Data::Dump;
 
-use constant RT_SETOPT   => 1;
-use constant RT_INFO     => 3;
-use constant RT_GET      => 4;
-use constant RT_GETTABLE => 5;
-use constant RT_REPLY    => 0x10;
-use constant RT_ERROR    => 0x20;
+our $sqe = Net::SNMP::QueryEngine::AnyEvent->new;
 
-our $mp = Data::MessagePack->new()->prefer_integer;
-our $conn = IO::Socket::INET->new(PeerAddr => "127.0.0.1:7667", Proto => "tcp")
-or die "cannot connect to snmp-query-engine daemon: $!\n";
-
-dd request([RT_INFO,3203,@ARGV]);
-
-close $conn;
-
-sub request
-{
-	my $d = shift;
-	my $p = $mp->pack($d);
-	$conn->syswrite($p);
-	my $reply;
-	$conn->sysread($reply, 65536);
-	$mp->unpack($reply);
+if (@ARGV) {
+	$sqe->cmd(sub { my ($h,$ok,$r) = @_; dd $r; },
+		3, ++$sqe->{sqe}{cid}, 1);
+} else {
+	$sqe->info(sub { my ($h,$ok,$r) = @_; dd $r; });
 }
+$sqe->wait;
