@@ -344,9 +344,20 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 		cri->si->PS.oids_returned_from_snmp++;
 		if (si->table_oid) {
 			if (oid_belongs_to_table(&oid, &si->table_oid->oid)) {
-				got_table_oid(si, si->table_oid, &oid, &val);
+				if (si->table_oid->last_known_table_entry &&
+					oid_compare(&oid, &si->table_oid->last_known_table_entry->oid) < 0)
+				{
+					got_table_oid(si, si->table_oid, &oid, &BER_NON_INCREASING);
+					PS.oids_non_increasing++;
+					cri->si->PS.oids_non_increasing++;
+					table_done = 1;
+					break;
+				} else {
+					got_table_oid(si, si->table_oid, &oid, &val);
+				}
 			} else {
 				table_done = 1;
+				break;
 			}
 		} else {
 			TAILQ_FOREACH(oi, &si->oids_being_queried, oid_list) {

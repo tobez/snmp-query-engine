@@ -167,6 +167,9 @@ decode_error:
 	case VAL_IGNORED:
 		pack_error(pk, "ignored");
 		break;
+	case VAL_NON_INCREASING:
+		pack_error(pk, "non-increasing");
+		break;
 	default:
 		snprintf(unsupported, 30, "unsupported type 0x%02x", t);
 		pack_error(pk, unsupported);

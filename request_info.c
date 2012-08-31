@@ -40,6 +40,7 @@ pack_stats(struct program_stats *PS, msgpack_packer *pk)
 	STAT(udp_timeouts);
 	STAT(bad_snmp_responses);
 	STAT(good_snmp_responses);
+	STAT(oids_non_increasing);
 	STAT(oids_requested);
 	STAT(oids_returned_from_snmp);
 	STAT(oids_returned_to_client);

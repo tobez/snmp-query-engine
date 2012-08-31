@@ -101,6 +101,7 @@
 #define VAL_UNSUPPORTED      0x8c
 #define VAL_DECODE_ERROR     0x8d
 #define VAL_IGNORED          0x8e
+#define VAL_NON_INCREASING   0x8f
 
 #define MAX_OID 4294967295u  /* 2^35-1 to fit into 5 bytes, but we limit that to 2^32-1 */
 
@@ -127,6 +128,7 @@ struct program_stats
 	int64_t udp_timeouts;
 	int64_t good_snmp_responses;
 	int64_t bad_snmp_responses;
+	int64_t oids_non_increasing;
 	int64_t oids_requested;
 	int64_t oids_returned_from_snmp;
 	int64_t oids_returned_to_client;
@@ -166,6 +168,7 @@ extern struct ber BER_NULL;
 extern struct ber BER_TIMEOUT;
 extern struct ber BER_MISSING;
 extern struct ber BER_IGNORED;
+extern struct ber BER_NON_INCREASING;
 
 struct packet_builder
 {
@@ -361,6 +364,12 @@ extern int start_snmp_packet(struct packet_builder *pb, int version, const char 
 extern int add_encoded_oid_to_snmp_packet(struct packet_builder *pb, struct ber *oid);
 extern int finalize_snmp_packet(struct packet_builder *pb, struct ber *encoded_packet, unsigned char type, int max_repetitions);
 extern int oid_belongs_to_table(struct ber *oid, struct ber *table);
+extern int oid_compare(struct ber *aa, struct ber *bb);
+/* returns -9999 if there is a problem,
+ * returns < 0 if a precedes b,
+ * returns > 0 if a follows b,
+ * return 0 if a is b
+ */
 
 /* other locations */
 const char *thisprogname(void);

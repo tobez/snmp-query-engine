@@ -41,6 +41,7 @@ gettable_requests
 good_snmp_responses
 info_requests
 invalid_requests
+oids_non_increasing
 oids_ignored
 oids_requested
 oids_returned_from_snmp
@@ -73,6 +74,7 @@ gettable_requests
 good_snmp_responses
 info_requests
 invalid_requests
+oids_non_increasing
 oids_requested
 oids_returned_from_snmp
 oids_returned_to_client
@@ -88,6 +90,10 @@ total_sid_infos
 udp_timeouts
 uptime
 );
+my %CLIENT_STATS = map { $_ => $NUMBER } @CLIENT_STATS;
+my %GLOBAL_STATS = map { $_ => $NUMBER } @GLOBAL_STATS;
+$CLIENT_STATS{oids_non_increasing} = 0;
+$GLOBAL_STATS{oids_non_increasing} = 0;
 
 my $daemon_pid;
 if (!($daemon_pid = fork)) {
@@ -274,8 +280,8 @@ $r = request([RT_INFO,3556]);
 # TODO is($r->[2]{global}{snmp_sends}-$snmp_sends, 2, "4 client requests in 2 SNMP requests");
 
 $r = request_match("stats", [RT_INFO,5000], [RT_INFO|RT_REPLY,5000,
-	{ connection => { map { $_ => $NUMBER } @CLIENT_STATS },
-	  global => { map { $_ => $NUMBER } @GLOBAL_STATS }}]);
+	{ connection => \%CLIENT_STATS,
+	  global => \%GLOBAL_STATS}]);
 #print STDERR "OIDS requested: $r->[2]{connection}{oids_requested}\n";
 
 bailout:

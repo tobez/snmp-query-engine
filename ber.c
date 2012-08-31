@@ -22,6 +22,8 @@ static unsigned char BUF_MISSING[] = "\x8b";
 struct ber BER_MISSING = { BUF_MISSING, BUF_MISSING+2, 2, 2 };
 static unsigned char BUF_IGNORED[] = "\x8e";
 struct ber BER_IGNORED = { BUF_IGNORED, BUF_IGNORED+2, 2, 2 };
+static unsigned char BUF_NON_INCREASING[] = "\x8f";
+struct ber BER_NON_INCREASING = { BUF_NON_INCREASING, BUF_NON_INCREASING+2, 2, 2 };
 
 struct ber ber_init(void *buf, int size)
 {
@@ -791,4 +793,25 @@ oid_belongs_to_table(struct ber *oo, struct ber *tt)
 
 	if (memcmp(o.b, t.b, tlen) != 0) return 0;
 	return 1;
+}
+
+int
+oid_compare(struct ber *aa, struct ber *bb)
+{
+	unsigned char atype, btype;
+	unsigned alen, blen, clen;
+	struct ber a = ber_init(aa->buf, aa->max_len);
+	struct ber b = ber_init(bb->buf, bb->max_len);
+	int r;
+
+	if (decode_type_len(&a, &atype, &alen) < 0)	return -9999;
+	if (decode_type_len(&b, &btype, &blen) < 0)	return -9999;
+	if (atype != AT_OID || btype != AT_OID) return -9999;
+
+	clen = (alen < blen) ? alen : blen;
+	r = memcmp(a.b, b.b, clen);
+	if (r != 0)	return r;
+	if (alen > blen)	return 1;
+	if (alen < blen)	return -1;
+	return 0;
 }

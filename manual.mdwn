@@ -265,6 +265,9 @@ The following statistics are available *for connection*:
 **`invalid_requests`**
 :   number of invalid requests made during this connection
 
+**`oids_non_increasing`**
+:   number of table terminations due to non-increasing oids
+
 **`oids_requested`**
 :   number of oids requested as part of GET and GETTABLE processing
     during this connection
@@ -378,6 +381,9 @@ The following *global* statistics are available:
 
 **`invalid_requests`**
 :   total number of invalid client requests
+
+**`oids_non_increasing`**
+:   number of table terminations due to non-increasing oids
 
 **`oids_requested`**
 :   total number of oids requested as part of GET and GETTABLE processing
@@ -547,7 +553,13 @@ The second element will either be a value,
 or an array with a single element.  If it is
 an array, its only element will be an error
 description.  Possible errors are the same as in **GET**
-request.
+request, plus the following error specific to **GETTABLE**:
+
+non-increasing
+:   this oid is less than or equal than the
+    previous oid in the table;  there will be
+    no further attempts to continue iterating
+    the table
 
 The requested table oid is never present in the reply itself
 if there were no errors.
@@ -575,6 +587,17 @@ Example request 3:
 Example reply 3 ("table oid itself in error reply"):
 
     [GETTABLE|0x10, 41, [["1.3.6.1.2.1.1.5", ["timeout"]]]]
+
+Example request 4:
+
+    [GETTABLE, $id, "ip-of-some-misbehaving-host", 161, "1.3.6.1.2.1.1.5"]
+
+Example reply 4:
+
+    [GETTABLE|0x10, $id, [
+      ["1.3.6.1.2.1.1.5.0", "my.host.name"],
+      ["1.3.6.1.2.1.1.5.0", ["non-increasing"]],
+    ]]
 
 # SEE ALSO
 
