@@ -121,7 +121,11 @@ msgpack_pack_ber(struct msgpack_packer *pk, struct ber value)
 	case AT_COUNTER:
 	case AT_UNSIGNED:
 		if (decode_integer(&value, len, &u32) < 0)	goto decode_error;
-		msgpack_pack_uint64(pk, u32);
+		if (t == AT_INTEGER) {
+			msgpack_pack_int64(pk, (int32_t)(uint32_t)u32);
+		} else {
+			msgpack_pack_uint64(pk, u32);
+		}
 		break;
 	case AT_STRING:
 		msgpack_pack_raw(pk, len);
