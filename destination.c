@@ -104,6 +104,7 @@ flush_ignored_destination(struct destination *dest)
 
 		JLN(cri_slot, dest->client_requests_info, fd);
 	}
+	dest->packets_on_the_wire = 0;
 }
 
 void
