@@ -611,6 +611,7 @@ second_number:
 print_number:
 		if (!first && buf_size >= 1) {
 			*buf++ = '.';
+			buf_size--;
 		}
 		// XXX we probably want to replace snprintf() with something faster
 		if ( (printed = snprintf(buf, buf_size, "%u", x)) >= buf_size) {
