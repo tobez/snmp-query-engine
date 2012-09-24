@@ -796,23 +796,71 @@ oid_belongs_to_table(struct ber *oo, struct ber *tt)
 	return 1;
 }
 
+#define PROBLEM (-9999)
 int
 oid_compare(struct ber *aa, struct ber *bb)
 {
 	unsigned char atype, btype;
-	unsigned alen, blen, clen;
+	unsigned alen, blen;
 	struct ber a = ber_init(aa->buf, aa->max_len);
 	struct ber b = ber_init(bb->buf, bb->max_len);
-	int r;
+	unsigned char *as, *bs;
+	unsigned ax, bx, abytes, bbytes;
 
-	if (decode_type_len(&a, &atype, &alen) < 0)	return -9999;
-	if (decode_type_len(&b, &btype, &blen) < 0)	return -9999;
-	if (atype != AT_OID || btype != AT_OID) return -9999;
+	if (decode_type_len(&a, &atype, &alen) < 0)	return PROBLEM;
+	if (decode_type_len(&b, &btype, &blen) < 0)	return PROBLEM;
+	if (atype != AT_OID || btype != AT_OID) return PROBLEM;
 
-	clen = (alen < blen) ? alen : blen;
-	r = memcmp(a.b, b.b, clen);
-	if (r != 0)	return r;
-	if (alen > blen)	return 1;
-	if (alen < blen)	return -1;
+	as = a.b;
+	bs = b.b;
+
+	while (alen && blen) {
+		ax = 0; abytes = 0;
+		while (*as >= 0x80 && alen > 0) {
+			ax <<= 7;
+			ax |= *as & 0x7f;
+			as++;  alen--;
+			abytes++;
+		}
+		if (alen <= 0) {
+			errno = EINVAL;
+			return PROBLEM;
+		}
+		ax <<= 7;
+		ax |= *as & 0x7f;
+		as++;  alen--;
+		if (abytes > 4) {
+			errno = EINVAL;
+			return PROBLEM;
+		}
+
+		bx = 0; bbytes = 0;
+		while (*bs >= 0x80 && blen > 0) {
+			bx <<= 7;
+			bx |= *bs & 0x7f;
+			bs++;  blen--;
+			bbytes++;
+		}
+		if (blen <= 0) {
+			errno = EINVAL;
+			return PROBLEM;
+		}
+		bx <<= 7;
+		bx |= *bs & 0x7f;
+		bs++;  blen--;
+		if (bbytes > 4) {
+			errno = EINVAL;
+			return PROBLEM;
+		}
+
+		if (ax < bx)
+			return -1;
+		else if (ax > bx)
+			return 1;
+	}
+	if (alen)
+		return 1;
+	if (blen)
+		return -1;
 	return 0;
 }

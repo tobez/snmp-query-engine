@@ -128,6 +128,31 @@ test_encode_string(int *test, const char *test_string, int real_string_offset)
 }
 
 int
+test_oid_compare(int *test, const char *o1, const char *o2, int expected)
+{
+	char buf1[4096];
+	char buf2[4096];
+	struct ber oid1 = ber_init(buf1, 4096);
+	struct ber oid2 = ber_init(buf2, 4096);
+	int got;
+
+	(*test)++;
+	if (encode_string_oid(o1, -1, &oid1) < 0) {
+		fprintf(stderr, "test %d, encode_string_oid: unexpected failure, oid %s\n", *test, o1);
+		return 0;
+	}
+	if (encode_string_oid(o2, -1, &oid2) < 0) {
+		fprintf(stderr, "test %d, encode_string_oid: unexpected failure, oid %s\n", *test, o2);
+		return 0;
+	}
+	if ((got = oid_compare(&oid1, &oid2)) != expected) {
+		fprintf(stderr, "test %d, oid_compare(\"%s\",\"%s\"): expected %d, got %d\n", *test, o1, o2, expected, got);
+		return 0;
+	}
+	return 1;
+}
+
+int
 main(void)
 {
 	int success = 0;
@@ -179,6 +204,28 @@ main(void)
 		"above the books in front. And it still isn't enough. "
 		"Books are overflowing onto the tables and the sofas "
 		"and making little heaps under the windows.", 4);
+
+	success += test_oid_compare(&n_tests,
+		"1.3.6.1.4.1.6527.3.1.2.4.3.7.1.12.991735.35946496.1358.1",
+		"1.3.6.1.4.1.6527.3.1.2.4.3.7.1.12.10000745.35946496.1519.1",
+		-1);
+	success += test_oid_compare(&n_tests,
+		"1.3.6.1.4.1.6527.3.1.2.4.3.7.1.12.10000745.35946496.1519.1",
+		"1.3.6.1.4.1.6527.3.1.2.4.3.7.1.12.991735.35946496.1358.1",
+		+1);
+	success += test_oid_compare(&n_tests,
+		"1.3.6.1.4.1.6527.3.1.2.4.3.7.1.12.10000744.35946496.1519.1",
+		"1.3.6.1.4.1.6527.3.1.2.4.3.7.1.12.10000745.35946496.1519.1",
+		-1);
+	success += test_oid_compare(&n_tests,
+		"1.3.6.1.4.1.6527.3.1.2.4.3.7.1.12.10000745.35946496.1519.1",
+		"1.3.6.1.4.1.6527.3.1.2.4.3.7.1.12.10000744.35946496.1519.1",
+		+1);
+	success += test_oid_compare(&n_tests,
+		"1.3.6.1.4.1.6527.3.1.2.4.3.7.1.12.10000745.35946496.1519.1",
+		"1.3.6.1.4.1.6527.3.1.2.4.3.7.1.12.10000745.35946496.1519.1",
+		0);
+
 	fprintf(stderr, "%d of %d tests passed succesfully\n", success, n_tests);
 
 	{
