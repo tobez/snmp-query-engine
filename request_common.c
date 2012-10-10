@@ -149,6 +149,9 @@ msgpack_pack_ber(struct msgpack_packer *pk, struct ber value)
 		msgpack_pack_raw(pk, len);
 		msgpack_pack_raw_body(pk, strip, len);
 		break;
+	case AT_OID:
+		msgpack_pack_oid(pk, value);
+		break;
 	case AT_NO_SUCH_OBJECT:
 		pack_error(pk, "no-such-object");
 		break;
