@@ -105,6 +105,9 @@ free_client_request_info(struct client_requests_info *cri)
 	while (si != NULL) {
 		si_temp = TAILQ_NEXT(si, sid_list);
 		free_sid_info(si);
+		cri->dest->packets_on_the_wire--;
+		if (cri->dest->packets_on_the_wire < 0)
+			cri->dest->packets_on_the_wire = 0;
 		si = si_temp;
 	}
 	TAILQ_INIT(&cri->sid_infos);
