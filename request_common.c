@@ -125,7 +125,7 @@ msgpack_pack_ber(struct msgpack_packer *pk, struct ber value)
 			/* XXX quick fix, not fully correct! */
 			if (len == 1 && (u32 & 0x80)) {
 				msgpack_pack_int64(pk, ((int32_t)(uint32_t)u32) - 256);
-			} else if (len == 2) {
+			} else if (len == 2 && (u32 & 0x8000)) {
 				msgpack_pack_int64(pk, ((int32_t)(uint32_t)u32) - 65536);
 			} else {
 				msgpack_pack_int64(pk, (int32_t)(uint32_t)u32);
