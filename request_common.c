@@ -122,7 +122,14 @@ msgpack_pack_ber(struct msgpack_packer *pk, struct ber value)
 	case AT_UNSIGNED:
 		if (decode_integer(&value, len, &u32) < 0)	goto decode_error;
 		if (t == AT_INTEGER) {
-			msgpack_pack_int64(pk, (int32_t)(uint32_t)u32);
+			/* XXX quick fix, not fully correct! */
+			if (len == 1 && (u32 & 0x80)) {
+				msgpack_pack_int64(pk, ((int32_t)(uint32_t)u32) - 256);
+			} else if (len == 2) {
+				msgpack_pack_int64(pk, ((int32_t)(uint32_t)u32) - 65536);
+			} else {
+				msgpack_pack_int64(pk, (int32_t)(uint32_t)u32);
+			}
 		} else {
 			msgpack_pack_uint64(pk, u32);
 		}
