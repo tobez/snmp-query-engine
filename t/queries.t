@@ -59,6 +59,7 @@ total_oid_infos
 total_sid_infos
 total_timers_sec
 total_timers_usec
+udp_receive_buffer_size
 udp_timeouts
 uptime
 );

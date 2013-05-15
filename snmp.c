@@ -95,6 +95,7 @@ create_snmp_socket(void)
 	n = 10 * 1024 * 1024;
 	while (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &n, sizeof(n)) < 0)
 		n /= 2;
+	PS.udp_receive_buffer_size = n;
 
 	snmp = new_socket_info(fd);
 	on_read(snmp, snmp_receive);

@@ -151,6 +151,8 @@ struct program_stats
 
 	int64_t destination_throttles; /* due to max_packets_on_the_wire limit */
 	int64_t destination_ignores;
+
+	int64_t udp_receive_buffer_size;
 };
 
 extern struct timeval prog_start;

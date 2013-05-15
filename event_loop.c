@@ -40,6 +40,7 @@ new_socket_info(int fd)
 	si->PS.destination_throttles = -42;
 	si->PS.oids_ignored = -42;
 	si->PS.destination_ignores = -42;
+	si->PS.udp_receive_buffer_size = -42;
 	gettimeofday(&si->created, NULL);
 
 	si->fd = fd;
