@@ -92,7 +92,7 @@ create_snmp_socket(void)
 		croak(1, "create_snmp_socket: socket");
 
 	/* try a very large receive buffer size */
-	n = 10 * 1024 * 1024;
+	n = 100 * 1024 * 1024;
 	while (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &n, sizeof(n)) < 0)
 		n /= 2;
 	PS.udp_receive_buffer_size = n;
