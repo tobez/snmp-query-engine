@@ -67,6 +67,7 @@ flush_ignored_destination(struct destination *dest)
 	struct sid_info *si, *si_temp;
 	struct oid_info *oi, *oi_temp;
 	struct cid_info *ci;
+	int current_packets_on_the_wire = dest->packets_on_the_wire;
 
 	fd = 0;
 	JLF(cri_slot, dest->client_requests_info, fd);
@@ -105,6 +106,9 @@ flush_ignored_destination(struct destination *dest)
 		JLN(cri_slot, dest->client_requests_info, fd);
 	}
 	dest->packets_on_the_wire = 0;
+	PS.packets_on_the_wire -= current_packets_on_the_wire;
+	if (PS.packets_on_the_wire < 0)
+		PS.packets_on_the_wire = 0;
 }
 
 void
@@ -132,6 +136,10 @@ maybe_query_destination(struct destination *dest)
 		}
 	}
 
+	if (PS.packets_on_the_wire >= PS.max_packets_on_the_wire) {
+		PS.global_throttles++;
+		return;
+	}
 	if (dest->packets_on_the_wire >= dest->max_packets_on_the_wire) {
 		PS.destination_throttles++;
 //fprintf(stderr, "%s: max_packets_on_the_wire(%d)\n", inet_ntoa(dest->ip), dest->packets_on_the_wire);

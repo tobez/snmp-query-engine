@@ -108,6 +108,9 @@ free_client_request_info(struct client_requests_info *cri)
 		cri->dest->packets_on_the_wire--;
 		if (cri->dest->packets_on_the_wire < 0)
 			cri->dest->packets_on_the_wire = 0;
+		PS.packets_on_the_wire--;
+		if (PS.packets_on_the_wire < 0)
+			PS.packets_on_the_wire = 0;
 		si = si_temp;
 	}
 	TAILQ_INIT(&cri->sid_infos);

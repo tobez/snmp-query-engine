@@ -153,6 +153,9 @@ struct program_stats
 	int64_t destination_ignores;
 
 	int64_t udp_receive_buffer_size;
+	int64_t packets_on_the_wire;
+	int64_t max_packets_on_the_wire;
+	int64_t global_throttles;
 };
 
 extern struct timeval prog_start;

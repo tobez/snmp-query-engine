@@ -65,6 +65,9 @@ pack_stats(struct program_stats *PS, msgpack_packer *pk)
 	STAT(destination_ignores);
 
 	STAT(udp_receive_buffer_size);
+	STAT(packets_on_the_wire);
+	STAT(max_packets_on_the_wire);
+	STAT(global_throttles);
 
 	#undef STAT
 	return n;

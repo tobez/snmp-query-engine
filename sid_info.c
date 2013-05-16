@@ -230,6 +230,9 @@ sid_timer(struct sid_info *si)
 	si->cri->dest->packets_on_the_wire--;
 	if (si->cri->dest->packets_on_the_wire < 0)
 		si->cri->dest->packets_on_the_wire = 0;
+	PS.packets_on_the_wire--;
+	if (PS.packets_on_the_wire < 0)
+		PS.packets_on_the_wire = 0;
 // fprintf(stderr, "%s: sid_timer->(%d)\n", inet_ntoa(si->cri->dest->ip), si->cri->dest->packets_on_the_wire);
 	sid_stop_timing(si);
 	if (si->retries_left > 0) {

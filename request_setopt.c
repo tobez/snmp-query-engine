@@ -29,6 +29,7 @@ static void *option2index; /* a JudySL tree */
 #define OPT_max_reply_size       11
 #define OPT_estimated_value_size 12
 #define OPT_max_oids_per_request 13
+#define OPT_global_max_packets   14
 
 static void
 build_option2index(void)
@@ -39,6 +40,7 @@ build_option2index(void)
 	ADD(version);
 	ADD(community);
 	ADD(max_packets);
+	ADD(global_max_packets);
 	ADD(max_req_size);
 	ADD(max_reply_size);
 	ADD(estimated_value_size);
@@ -112,6 +114,11 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 < 1 || v->via.u64 > 1000)
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid max packets");
 			d.max_packets_on_the_wire = v->via.u64;
+			break;
+		case OPT_global_max_packets:
+			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 < 1 || v->via.u64 > 2000000)
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid global max packets");
+			PS.max_packets_on_the_wire = v->via.u64;
 			break;
 		case OPT_max_req_size:
 			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 < 500 || v->via.u64 > 50000)

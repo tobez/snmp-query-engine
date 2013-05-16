@@ -38,14 +38,17 @@ destination_throttles
 get_requests
 getopt_requests
 gettable_requests
+global_throttles
 good_snmp_responses
 info_requests
 invalid_requests
-oids_non_increasing
+max_packets_on_the_wire
 oids_ignored
+oids_non_increasing
 oids_requested
 oids_returned_from_snmp
 oids_returned_to_client
+packets_on_the_wire
 setopt_requests
 snmp_retries
 snmp_sends
@@ -124,6 +127,9 @@ request_match("setopt bad community", [RT_SETOPT,2011,"127.0.0.1",161,{community
 request_match("setopt bad max_packets 1", [RT_SETOPT,2012,"127.0.0.1",161,{max_packets=>"meow"}], [RT_SETOPT|RT_ERROR,2012,qr/invalid max packets/]);
 request_match("setopt bad max_packets 2", [RT_SETOPT,2013,"127.0.0.1",161,{max_packets=>0}], [RT_SETOPT|RT_ERROR,2013,qr/invalid max packets/]);
 request_match("setopt bad max_packets 3", [RT_SETOPT,2014,"127.0.0.1",161,{max_packets=>30000}], [RT_SETOPT|RT_ERROR,2014,qr/invalid max packets/]);
+request_match("setopt bad global_max_packets 1", [RT_SETOPT,42012,"127.0.0.1",161,{global_max_packets=>"meow"}], [RT_SETOPT|RT_ERROR,42012,qr/invalid global max packets/]);
+request_match("setopt bad global_max_packets 2", [RT_SETOPT,42013,"127.0.0.1",161,{global_max_packets=>0}], [RT_SETOPT|RT_ERROR,42013,qr/invalid global max packets/]);
+request_match("setopt bad global_max_packets 3", [RT_SETOPT,42014,"127.0.0.1",161,{global_max_packets=>3000000}], [RT_SETOPT|RT_ERROR,42014,qr/invalid global max packets/]);
 request_match("setopt bad max req size 1", [RT_SETOPT,2015,"127.0.0.1",161,{max_req_size=>"foo"}], [RT_SETOPT|RT_ERROR,2015,qr/invalid max request size/]);
 request_match("setopt bad max req size 2", [RT_SETOPT,2016,"127.0.0.1",161,{max_req_size=>480}], [RT_SETOPT|RT_ERROR,2016,qr/invalid max request size/]);
 request_match("setopt bad max req size 3", [RT_SETOPT,2017,"127.0.0.1",161,{max_req_size=>52000}], [RT_SETOPT|RT_ERROR,2017,qr/invalid max request size/]);
@@ -188,6 +194,9 @@ $r = request_match("change community to a bad one", [RT_SETOPT,3000,$target,161,
 $r = request([RT_INFO,2252]);
 is($r->[2]{global}{destination_ignores}, 0, "ignored destinations 0");
 is($r->[2]{global}{oids_ignored}, 0, "ignored oids 0");
+is($r->[2]{global}{max_packets_on_the_wire}, 1_000_000, "default global max packets");
+
+$r = request([RT_SETOPT,42016,"127.0.0.1",161,{global_max_packets=>100_000}]);
 
 request_match("times out", [RT_GET,41,$target,161, ["1.3.6.1.2.1.1.5.0"]],
 			  [RT_GET|RT_REPLY,41,[["1.3.6.1.2.1.1.5.0",["timeout"]]]]);
@@ -198,6 +207,7 @@ for my $id (2241..2250) {
 $r = request([RT_INFO,2251]);
 is($r->[2]{global}{destination_ignores}, 1, "ignored destinations");
 is($r->[2]{global}{oids_ignored}, 10, "ignored oids");
+is($r->[2]{global}{max_packets_on_the_wire}, 100_000, "global max packets changed ok");
 
 request_match("change community to a good one", [RT_SETOPT,2253,$target,161, {community=>"public"}], [RT_SETOPT|RT_REPLY,2253,
 	{ip=>$target, port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2, min_interval => 10, max_repetitions => 10, ignore_threshold => 1, ignore_duration => 2000}]);
