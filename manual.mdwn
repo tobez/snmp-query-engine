@@ -116,6 +116,14 @@ Supported options:
     This is a per destination/client option which does
     not affect other clients.
 
+**`global_max_packets`**
+:   Maximum global number of SNMP packets being "on the wire"
+    at any given time.
+    This is a **global** option which affects all destinations
+    and all clients.
+    See also `max_packets_on_the_wire` statistic for the **INFO**
+    request.
+
 **`max_packets`**
 :   Maximum number of SNMP packets to the destination being "on the wire"
     at any given time.  The `snmp-query-engine` will avoid sending
@@ -373,6 +381,10 @@ The following *global* statistics are available:
 **`gettable_requests`**
 :   total number of GETTABLE requests
 
+**`global_throttles`**
+:   number of times a request was postponed because
+    `packets_on_the_wire` reached `max_packets_on_the_wire`
+
 **`good_snmp_responses`**
 :   total number of good SNMP responses received
 
@@ -381,6 +393,13 @@ The following *global* statistics are available:
 
 **`invalid_requests`**
 :   total number of invalid client requests
+
+**`max_packets_on_the_wire`**
+:   configured global maximum of SNMP requests "in progress";
+    when `packets_on_the_wire` reaches this number, no new
+    SNMP requests will be sent until `packets_on_the_wire`
+    falls below `max_packets_on_the_wire` again;
+    see `global_max_packets` `SETOPT` parameter
 
 **`oids_non_increasing`**
 :   number of table terminations due to non-increasing oids
@@ -397,6 +416,9 @@ The following *global* statistics are available:
 **`oids_ignored`**
 :   total number of oids ignored via `ignore_threshold` and `ignore_duration`
     mechanism
+
+**`packets_on_the_wire`**
+:   number of SNMP requests "in progress"
 
 **`setopt_requests`**
 :   total number of SETOPT requests
@@ -440,11 +462,15 @@ The following *global* statistics are available:
 **`total_timers_usec`**
 :   total number of timers
 
+**`udp_receive_buffer_size`**
+:   the size of UDP receive buffer for SNMP socket
+
 **`udp_timeouts`**
 :   total number of "soft" timeouts
 
 **`uptime`**
 :   daemon uptime in milliseconds
+
 
 ## GET
 

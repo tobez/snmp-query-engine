@@ -1,16 +1,16 @@
-.TH SNMP-QUERY-ENGINE 1 "May 2012" 
+.TH SNMP\-QUERY\-ENGINE 1 "May 2012" 
 .SH NAME
 .PP
-snmp-query-engine - multiplexing SNMP query engine
+snmp\-query\-engine \- multiplexing SNMP query engine
 .SH VERSION
 .PP
-This document describes snmp-query-engine version 0.1
+This document describes snmp\-query\-engine version 0.1
 .SH SYNOPSIS
 .PP
-snmp-query-engine
+snmp\-query\-engine
 .SH DESCRIPTION
 .PP
-The \f[C]snmp-query-engine\f[] daemon accepts multiple client
+The \f[C]snmp\-query\-engine\f[] daemon accepts multiple client
 connections and performs SNMP queries towards multiple destinations on
 behalf of its clients, taking care of multiplexing and throttling the
 requests.
@@ -18,22 +18,23 @@ This allows querying large number of devices for large amounts of SNMP
 information quickly, while controlling the load on the devices induced
 by multiple SNMP queries.
 .PP
-Clients communicate with the \f[C]snmp-query-engine\f[] daemon via TCP.
+Clients communicate with the \f[C]snmp\-query\-engine\f[] daemon via
+TCP.
 Both requests and responses are encoded using MessagePack format,
 http://msgpack.org/.
 .SH OPTIONS
 .TP
-.B -h
+.B \-h
 produce usage text and quit
 .RS
 .RE
 .TP
-.B -p \f[B]prt\f[]
+.B \-p \f[B]prt\f[]
 listen on port \f[B]prt\f[] instead of default \f[B]7667\f[]
 .RS
 .RE
 .TP
-.B -q
+.B \-q
 quiet operation
 .RS
 .RE
@@ -52,13 +53,13 @@ integer: 1 (\f[B]SETOPT\f[]), 2 (\f[B]GETOPT\f[]), 3 (\f[B]INFO\f[]), 4
 The second element must be a \f[B]request id\f[], represented by a
 positive integer.
 It is a good idea for every request within a single client session to
-have a unique request id, although request ids may be reused - provided
+have a unique request id, although request ids may be reused \- provided
 that the previous request with the same id is no longer active (that is,
 the client already got a response).
 .RS
 .RE
 .PP
-The rest of request parameters are request type-specific, and are
+The rest of request parameters are request type\-specific, and are
 described below.
 .PP
 All responses will be an array of at least two elements.
@@ -68,11 +69,11 @@ The \f[B]second element\f[] will be the \f[B]request id\f[].
 In case of an error, the third, and last, element will be a textual
 description of the error.
 In case of a successfull reply, the rest of response array elements are
-request type-specific, and are described below.
+request type\-specific, and are described below.
 .SS SETOPT
 .PP
 The \f[B]SETOPT\f[] request allows the client to change several
-per-destination and per-destination/client options.
+per\-destination and per\-destination/client options.
 .PP
 Please note that setting values for options that are specific for a
 destination, and not for a destination/client session, will affect other
@@ -81,7 +82,7 @@ clients making requests towards the same destination.
 SETOPT parameters:
 .TP
 .B parameter 2
-destination IP (v4 only) address in a dot-decimal notation
+destination IP (v4 only) address in a dot\-decimal notation
 .RS
 .RE
 .TP
@@ -114,11 +115,21 @@ clients.
 .RS
 .RE
 .TP
+.B \f[B]\f[C]global_max_packets\f[]\f[]
+Maximum global number of SNMP packets being "on the wire" at any given
+time.
+This is a \f[B]global\f[] option which affects all destinations and all
+clients.
+See also \f[C]max_packets_on_the_wire\f[] statistic for the
+\f[B]INFO\f[] request.
+.RS
+.RE
+.TP
 .B \f[B]\f[C]max_packets\f[]\f[]
 Maximum number of SNMP packets to the destination being "on the wire" at
 any given time.
-The \f[C]snmp-query-engine\f[] will avoid sending any new SNMP requests
-exceeding this number until getting a reply or a timeout.
+The \f[C]snmp\-query\-engine\f[] will avoid sending any new SNMP
+requests exceeding this number until getting a reply or a timeout.
 The default is \f[B]3\f[].
 This is a per destination option which affects other clients.
 .RS
@@ -153,7 +164,7 @@ This is a per destination option which affects other clients.
 .B \f[B]\f[C]estimated_value_size\f[]\f[]
 The expected size of a returned value in bytes.
 The default is \f[B]9\f[], which corresponds to the largest possible
-64-bit counter.
+64\-bit counter.
 This is a per destination option which affects other clients.
 .RS
 .RE
@@ -166,7 +177,7 @@ This is a per destination option which affects other clients.
 .RE
 .TP
 .B \f[B]\f[C]timeout\f[]\f[]
-Time, in milliseconds, after which the SNMP request will be re-sent (up
+Time, in milliseconds, after which the SNMP request will be re\-sent (up
 to a configurable number of retries).
 The default is \f[B]2000\f[] (which is probably too little).
 This is a per destination/client option which does not affect other
@@ -175,7 +186,7 @@ clients.
 .RE
 .TP
 .B \f[B]\f[C]retries\f[]\f[]
-Number of times a request will be re-sent (including the first send),
+Number of times a request will be re\-sent (including the first send),
 after which a timeout will be returned to the client.
 The default is \f[B]3\f[].
 This is a per destination/client option which does not affect other
@@ -222,13 +233,13 @@ This is a per destination option which affects other clients.
 option values for a given destination and client.
 .SS GETOPT
 .PP
-The \f[B]GETOPT\f[] request allows the client to query per-destination
-and per-destination/client options.
+The \f[B]GETOPT\f[] request allows the client to query per\-destination
+and per\-destination/client options.
 .PP
 GETOPT parameters:
 .TP
 .B parameter 2
-destination IP (v4 only) address in a dot-decimal notation
+destination IP (v4 only) address in a dot\-decimal notation
 .RS
 .RE
 .TP
@@ -303,7 +314,7 @@ number of invalid requests made during this connection
 .RE
 .TP
 .B \f[B]\f[C]oids_non_increasing\f[]\f[]
-number of table terminations due to non-increasing oids
+number of table terminations due to non\-increasing oids
 .RS
 .RE
 .TP
@@ -459,6 +470,12 @@ total number of GETTABLE requests
 .RS
 .RE
 .TP
+.B \f[B]\f[C]global_throttles\f[]\f[]
+number of times a request was postponed because
+\f[C]packets_on_the_wire\f[] reached \f[C]max_packets_on_the_wire\f[]
+.RS
+.RE
+.TP
 .B \f[B]\f[C]good_snmp_responses\f[]\f[]
 total number of good SNMP responses received
 .RS
@@ -474,8 +491,17 @@ total number of invalid client requests
 .RS
 .RE
 .TP
+.B \f[B]\f[C]max_packets_on_the_wire\f[]\f[]
+configured global maximum of SNMP requests "in progress"; when
+\f[C]packets_on_the_wire\f[] reaches this number, no new SNMP requests
+will be sent until \f[C]packets_on_the_wire\f[] falls below
+\f[C]max_packets_on_the_wire\f[] again; see \f[C]global_max_packets\f[]
+\f[C]SETOPT\f[] parameter
+.RS
+.RE
+.TP
 .B \f[B]\f[C]oids_non_increasing\f[]\f[]
-number of table terminations due to non-increasing oids
+number of table terminations due to non\-increasing oids
 .RS
 .RE
 .TP
@@ -497,6 +523,11 @@ total number of oids returned back to clients
 .B \f[B]\f[C]oids_ignored\f[]\f[]
 total number of oids ignored via \f[C]ignore_threshold\f[] and
 \f[C]ignore_duration\f[] mechanism
+.RS
+.RE
+.TP
+.B \f[B]\f[C]packets_on_the_wire\f[]\f[]
+number of SNMP requests "in progress"
 .RS
 .RE
 .TP
@@ -567,6 +598,11 @@ total number of timers
 .RS
 .RE
 .TP
+.B \f[B]\f[C]udp_receive_buffer_size\f[]\f[]
+the size of UDP receive buffer for SNMP socket
+.RS
+.RE
+.TP
 .B \f[B]\f[C]udp_timeouts\f[]\f[]
 total number of "soft" timeouts
 .RS
@@ -589,7 +625,7 @@ depending on the values of \f[I]\f[C]max_req_size\f[]\f[],
 GET parameters:
 .TP
 .B parameter 2
-destination IP (v4 only) address in a dot-decimal notation
+destination IP (v4 only) address in a dot\-decimal notation
 .RS
 .RE
 .TP
@@ -605,25 +641,25 @@ an array of oids to get
 .PP
 \f[B]GET\f[] reply consists of an array, each element of which
 corresponds to a single requested oid.
-Each such element is itself a two-element array.
+Each such element is itself a two\-element array.
 The first element will be oid itself.
 The second element will either be a value, or an array with a single
 element.
 If it is an array, its only element will be an error description.
 Possible errors are:
 .TP
-.B no-such-object
+.B no\-such\-object
 SNMP reply returned "no such object" for this oid
 .RS
 .RE
 .TP
-.B no-such-instance
+.B no\-such\-instance
 SNMP reply returned "no such instance" for this oid
 .RS
 .RE
 .TP
-.B end-of-mib
-SNMP reply returned "end-of-mib" for this oid
+.B end\-of\-mib
+SNMP reply returned "end\-of\-mib" for this oid
 .RS
 .RE
 .TP
@@ -647,13 +683,13 @@ the oid not found in the reply
 .RS
 .RE
 .TP
-.B decode-error
+.B decode\-error
 there was an error decoding the value
 .RS
 .RE
 .TP
 .B unsupported type 0xHH
-the \f[C]snmp-query-engine\f[] does not support values of this type
+the \f[C]snmp\-query\-engine\f[] does not support values of this type
 (yet)
 .RS
 .RE
@@ -677,7 +713,7 @@ Example reply:
 [GET|0x10,\ $id,\ [
 \ \ \ ["1.3.6.1.2.1.1.5.0",\ "my.host.name"],
 \ \ \ ["1.3.6.1.2.1.25.1.1.0",\ 215485727],
-\ \ \ ["1.3.66",\ ["no-such-object"]],
+\ \ \ ["1.3.66",\ ["no\-such\-object"]],
 \ ],
 ]
 \f[]
@@ -687,12 +723,13 @@ Example reply:
 Clients should use the \f[B]GETTABLE\f[] request to obtain a table of
 oids from a destination.
 A single \f[B]GETTABLE\f[] request will correspond to one or more SNMP
-get-next (for SNMP version 1) or get-bulk (for SNMP version 2) queries.
+get\-next (for SNMP version 1) or get\-bulk (for SNMP version 2)
+queries.
 .PP
 GETTABLE parameters:
 .TP
 .B parameter 2
-destination IP (v4 only) address in a dot-decimal notation
+destination IP (v4 only) address in a dot\-decimal notation
 .RS
 .RE
 .TP
@@ -708,7 +745,7 @@ an oid of a table to get
 .PP
 \f[B]GETTABLE\f[] reply consists of an array, each element of which
 corresponds to a single oid from the requested table.
-Each such element is itself a two-element array.
+Each such element is itself a two\-element array.
 The first element will be oid itself.
 The second element will either be a value, or an array with a single
 element.
@@ -716,7 +753,7 @@ If it is an array, its only element will be an error description.
 Possible errors are the same as in \f[B]GET\f[] request, plus the
 following error specific to \f[B]GETTABLE\f[]:
 .TP
-.B non-increasing
+.B non\-increasing
 this oid is less than or equal than the previous oid in the table; there
 will be no further attempts to continue iterating the table
 .RS
@@ -777,7 +814,7 @@ Example request 4:
 .IP
 .nf
 \f[C]
-[GETTABLE,\ $id,\ "ip-of-some-misbehaving-host",\ 161,\ "1.3.6.1.2.1.1.5"]
+[GETTABLE,\ $id,\ "ip\-of\-some\-misbehaving\-host",\ 161,\ "1.3.6.1.2.1.1.5"]
 \f[]
 .fi
 .PP
@@ -787,14 +824,14 @@ Example reply 4:
 \f[C]
 [GETTABLE|0x10,\ $id,\ [
 \ \ ["1.3.6.1.2.1.1.5.0",\ "my.host.name"],
-\ \ ["1.3.6.1.2.1.1.5.0",\ ["non-increasing"]],
+\ \ ["1.3.6.1.2.1.1.5.0",\ ["non\-increasing"]],
 ]]
 \f[]
 .fi
 .SH SEE ALSO
 .PP
 There is a Perl module which serves as a client to
-\f[C]snmp-query-engine\f[], \f[B]Net::SNMP::QueryEngine::AnyEvent\f[].
+\f[C]snmp\-query\-engine\f[], \f[B]Net::SNMP::QueryEngine::AnyEvent\f[].
 It can be found on CPAN and on github.
 .SH ACKNOWLEDGEMENTS
 .PP
