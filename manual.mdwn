@@ -519,7 +519,7 @@ timeout
     possible to get this error for only some
     of the oids
 
-ignore
+ignored
 :   the oid was requested during time when its
     destination was in the "ignore" state
     (see `ignore_threshold` and `ignore_duration`
