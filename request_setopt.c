@@ -161,7 +161,7 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 			d.max_repetitions = v->via.u64;
 			break;
 		case OPT_ignore_threshold:
-			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 < 0 || v->via.u64 > 1000)
+			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 > 1000)
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid ignore threshold");
 			d.ignore_threshold = v->via.u64;
 			if (cri->dest->ignore_threshold != d.ignore_threshold)
