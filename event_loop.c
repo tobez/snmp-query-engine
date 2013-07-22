@@ -44,6 +44,7 @@ new_socket_info(int fd)
 	si->PS.packets_on_the_wire = -42;
 	si->PS.max_packets_on_the_wire = -42;
 	si->PS.global_throttles = -42;
+	si->PS.program_version = -42;
 	gettimeofday(&si->created, NULL);
 
 	si->fd = fd;

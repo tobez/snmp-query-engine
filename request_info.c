@@ -68,6 +68,7 @@ pack_stats(struct program_stats *PS, msgpack_packer *pk)
 	STAT(packets_on_the_wire);
 	STAT(max_packets_on_the_wire);
 	STAT(global_throttles);
+	STAT(program_version);
 
 	#undef STAT
 	return n;

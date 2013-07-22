@@ -139,6 +139,7 @@ struct program_stats
 	int64_t total_timers_sec;
 	int64_t total_timers_usec;
 	int64_t uptime;  /* in msec */
+	int64_t program_version; /* such as 2013072200 */
 
 	int64_t active_sid_infos;
 	int64_t total_sid_infos;

@@ -8,7 +8,7 @@ snmp-query-engine - multiplexing SNMP query engine
 
 # VERSION
 
-This document describes snmp-query-engine version 0.1
+This document describes snmp-query-engine version 2013072200.
 
 # SYNOPSIS
 
@@ -470,6 +470,9 @@ The following *global* statistics are available:
 
 **`uptime`**
 :   daemon uptime in milliseconds
+
+**`program_version`**
+:   version of the engine program
 
 
 ## GET

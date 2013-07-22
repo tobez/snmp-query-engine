@@ -65,6 +65,7 @@ total_timers_usec
 udp_receive_buffer_size
 udp_timeouts
 uptime
+program_version
 );
 
 my @CLIENT_STATS = qw(
