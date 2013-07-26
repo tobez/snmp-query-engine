@@ -11,12 +11,8 @@
 static struct socket_info *snmp = NULL;
 
 static void
-snmp_receive(struct socket_info *snmp)
+snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *buf, int n)
 {
-	struct sockaddr_in from;
-	socklen_t len;
-	char buf[65000];
-	int n;
 	struct ber enc, *e;
 	unsigned char t;
 	unsigned l;
@@ -25,17 +21,9 @@ snmp_receive(struct socket_info *snmp)
 	struct destination *dest;
 	struct sid_info *si;
 
-	/* XXX if several datagrams are ready we need a good way to bypass another
-	 * kevent/epoll_wait call after reading only one of them. */
-	len = sizeof(from);
-	if ( (n = recvfrom(snmp->fd, buf, 65000, 0, (struct sockaddr *)&from, &len)) < 0)
-		croak(1, "snmp_receive: recvfrom");
-//fprintf(stderr, "got UDP datagram (%d bytes) from %s:%d\n", n, inet_ntoa(from.sin_addr), ntohs(from.sin_port));
-//dump_buf(stderr, buf, n);
-
-	dest = find_destination(&from.sin_addr, ntohs(from.sin_port));
+	dest = find_destination(&from->sin_addr, ntohs(from->sin_port));
 	if (!dest) {
-		fprintf(stderr, "destination %s:%d is not knowing, ignoring packet\n", inet_ntoa(from.sin_addr), ntohs(from.sin_port));
+		fprintf(stderr, "destination %s:%d is not knowing, ignoring packet\n", inet_ntoa(from->sin_addr), ntohs(from->sin_port));
 		return;
 	}
 	dest->packets_on_the_wire--;
@@ -81,11 +69,31 @@ bad_snmp_packet:
 	maybe_query_destination(dest);
 }
 
+static void
+snmp_receive(struct socket_info *snmp)
+{
+	struct sockaddr_in from;
+	socklen_t len;
+	char buf[65000];
+	int n;
+
+	while (1) {
+		len = sizeof(from);
+		if ( (n = recvfrom(snmp->fd, buf, 65000, 0, (struct sockaddr *)&from, &len)) < 0) {
+			if (errno == EAGAIN)
+				return;
+			croak(1, "snmp_receive: recvfrom");
+		}
+		snmp_process_datagram(snmp, &from, buf, n);
+	}
+}
+
 void
 create_snmp_socket(void)
 {
 	int fd;
 	int n;
+	int flags;
 
 	if (snmp)
 		croakx(1, "create_snmp_socket: socket already exists");
@@ -93,6 +101,13 @@ create_snmp_socket(void)
 	fd = socket(PF_INET, SOCK_DGRAM, 0);
 	if (fd < 0)
 		croak(1, "create_snmp_socket: socket");
+
+	flags = fcntl(fd, F_GETFL, 0);
+	if (flags < 0)
+		croak(1, "create_snmp_socket: fcntl(getfl)");
+	flags |= O_NONBLOCK;
+	if (fcntl(fd, F_SETFL, flags) < 0)
+		croak(1, "create_snmp_socket: fcntl(setfl)");
 
 	/* try a very large receive buffer size */
 	n = 100 * 1024 * 1024;
