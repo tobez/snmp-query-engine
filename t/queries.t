@@ -244,11 +244,11 @@ request_match("3rd time lucky", [RT_GET,110,$target,161, ["1.3.6.1.2.1.1.5.0", "
 request_match("change version to SNMP v1", [RT_SETOPT,3002,$target,161, {version=>1}], [RT_SETOPT|RT_REPLY,3002,
 	{ip=>$target, port=>161, community=>"public", version=>1, max_packets => 3, max_req_size => 1400, timeout => 1500, retries => 2, min_interval => 10, max_repetitions => 10, }]);
 
-request_match("try request SNMP v1", [RT_GET,43,$target,161, ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0", "1.3.66"]],
+$r = request_match("try request SNMP v1", [RT_GET,43,$target,161, ["1.3.6.1.2.1.1.5.0", ".1.3.6.1.2.1.25.1.1.0", "1.3.66"]],
 			  [RT_GET|RT_REPLY,43,[
-			  ["1.3.6.1.2.1.1.5.0",undef],
-			  ["1.3.6.1.2.1.25.1.1.0",undef],
-			  ["1.3.66",undef]]]);
+			  ["1.3.6.1.2.1.1.5.0",["noSuchName"]],
+			  ["1.3.6.1.2.1.25.1.1.0",["noSuchName"]],
+			  ["1.3.66",["noSuchName"]]]]);
 
 $r = request_match("ifDescr SNMPv1 table", [RT_GETTABLE,555,$target,161,"1.3.6.1.2.1.2.2.1.2"], [RT_GETTABLE|RT_REPLY,555,THERE]);
 
