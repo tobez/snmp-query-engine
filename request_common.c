@@ -186,6 +186,11 @@ decode_error:
 	case VAL_NON_INCREASING:
 		pack_error(pk, "non-increasing");
 		break;
+	case VAL_STRING_ERROR:
+		msgpack_pack_array(pk, 1);
+		msgpack_pack_raw(pk, len);
+		msgpack_pack_raw_body(pk, value.b, len);
+		break;
 	default:
 		snprintf(unsupported, 30, "unsupported type 0x%02x", t);
 		pack_error(pk, unsupported);

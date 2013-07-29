@@ -102,6 +102,7 @@
 #define VAL_DECODE_ERROR     0x8d
 #define VAL_IGNORED          0x8e
 #define VAL_NON_INCREASING   0x8f
+#define VAL_STRING_ERROR     0x90
 
 #define MAX_OID 4294967295u  /* 2^35-1 to fit into 5 bytes, but we limit that to 2^32-1 */
 
@@ -336,6 +337,8 @@ extern struct ber ber_dup(struct ber *e);
 extern struct ber ber_rewind(struct ber o);
 extern void ber_dump(FILE *f, struct ber *e);
 extern int ber_equal(struct ber *b1, struct ber *b2);
+extern int ber_is_null(struct ber *ber);
+extern struct ber ber_error_status(int error_status);
 
 extern int encode_type_len(unsigned char type, unsigned i, struct ber *e);
 extern int encode_integer(unsigned i, struct ber *e, int force_size);
@@ -452,9 +455,9 @@ extern void sid_start_timing(struct sid_info *si);
 extern void sid_stop_timing(struct sid_info *si);
 extern void check_timed_out_requests(void);
 extern void process_sid_info_response(struct sid_info *si, struct ber *e);
-extern void oid_done(struct sid_info *si, struct oid_info *oi, struct ber *val, int op);
+extern void oid_done(struct sid_info *si, struct oid_info *oi, struct ber *val, int op, int packet_error_status);
 extern void all_oids_done(struct sid_info *si, struct ber *val);
-extern void got_table_oid(struct sid_info *si, struct oid_info *table_oi, struct ber *oid, struct ber *val);
+extern void got_table_oid(struct sid_info *si, struct oid_info *table_oi, struct ber *oid, struct ber *val, int packet_error_status);
 extern void sid_timer(struct sid_info *si);
 extern void dump_sid_info(msgpack_packer *pk, struct sid_info *si);
 

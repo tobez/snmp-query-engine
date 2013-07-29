@@ -78,7 +78,7 @@ flush_ignored_destination(struct destination *dest)
 		while (si != NULL) {
 			si_temp = TAILQ_NEXT(si, sid_list);
 			if (si->table_oid) {
-				oid_done(si, si->table_oid, &BER_IGNORED, RT_GETTABLE);
+				oid_done(si, si->table_oid, &BER_IGNORED, RT_GETTABLE, 0);
 				si->table_oid = NULL;
 			} else {
 				all_oids_done(si, &BER_IGNORED);

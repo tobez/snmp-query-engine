@@ -25,6 +25,12 @@ struct ber BER_IGNORED = { BUF_IGNORED, BUF_IGNORED+2, 2, 2 };
 static unsigned char BUF_NON_INCREASING[] = "\x8f";
 struct ber BER_NON_INCREASING = { BUF_NON_INCREASING, BUF_NON_INCREASING+2, 2, 2 };
 
+int
+ber_is_null(struct ber *ber)
+{
+	return ber->len >= 2 && ber->buf[0] == 5 && ber->buf[1] == 0;
+}
+
 struct ber ber_init(void *buf, int size)
 {
 	struct ber e;
@@ -61,6 +67,80 @@ ber_equal(struct ber *b1, struct ber *b2)
 	if (b1->len != b2->len)
 		return 0;
 	return memcmp(b1->buf, b2->buf, b1->len) == 0;
+}
+
+struct ber
+ber_error_status(int error_status)
+{
+	char error_string[40];
+	char buf[64];
+	struct ber b;
+
+	switch (error_status) {
+	case 0:
+		strcpy(error_string, "noError");
+		break;
+	case 1:
+		strcpy(error_string, "tooBig");
+		break;
+	case 2:
+		strcpy(error_string, "noSuchName");
+		break;
+	case 3:
+		strcpy(error_string, "badValue");
+		break;
+	case 4:
+		strcpy(error_string, "readOnly");
+		break;
+	case 5:
+		strcpy(error_string, "genErr");
+		break;
+	case 6:
+		strcpy(error_string, "noAccess");
+		break;
+	case 7:
+		strcpy(error_string, "wrongType");
+		break;
+	case 8:
+		strcpy(error_string, "wrongLength");
+		break;
+	case 9:
+		strcpy(error_string, "wrongEncoding");
+		break;
+	case 10:
+		strcpy(error_string, "wrongValue");
+		break;
+	case 11:
+		strcpy(error_string, "noCreation");
+		break;
+	case 12:
+		strcpy(error_string, "inconsistentValue");
+		break;
+	case 13:
+		strcpy(error_string, "resourceUnavailable");
+		break;
+	case 14:
+		strcpy(error_string, "commitFailed");
+		break;
+	case 15:
+		strcpy(error_string, "undoFailed");
+		break;
+	case 16:
+		strcpy(error_string, "authorizationError");
+		break;
+	case 17:
+		strcpy(error_string, "notWritable");
+		break;
+	case 18:
+		strcpy(error_string, "inconsistentName");
+		break;
+	default:
+		sprintf(error_string, "error-status %d", error_status);
+	}
+	b = ber_init(buf, 64);
+	encode_string(error_string, &b);
+	b.buf[0] = VAL_STRING_ERROR;
+	return ber_rewind(ber_dup(&b));
 }
 
 int

@@ -243,7 +243,7 @@ sid_timer(struct sid_info *si)
 	si->cri->si->PS.snmp_timeouts++;
 
 	if (si->table_oid) {
-		oid_done(si, si->table_oid, &BER_TIMEOUT, RT_GETTABLE);
+		oid_done(si, si->table_oid, &BER_TIMEOUT, RT_GETTABLE, 0);
 		si->table_oid = NULL;
 	} else {
 		all_oids_done(si, &BER_TIMEOUT);
@@ -255,7 +255,7 @@ sid_timer(struct sid_info *si)
 }
 
 void
-oid_done(struct sid_info *si, struct oid_info *oi, struct ber *val, int op)
+oid_done(struct sid_info *si, struct oid_info *oi, struct ber *val, int op, int error_status)
 {
 	struct client_requests_info *cri;
 	struct cid_info *ci;
@@ -265,7 +265,10 @@ oid_done(struct sid_info *si, struct oid_info *oi, struct ber *val, int op)
 	if (!ci || ci->n_oids == 0)
 		croakx(2, "oid_done: cid_info unexpectedly missing");
 	/* XXX free old value? */
-	oi->value = ber_rewind(ber_dup(val));
+	if (ber_is_null(val) && error_status)
+		oi->value = ber_error_status(error_status);
+	else
+		oi->value = ber_rewind(ber_dup(val));
 	oi->sid = 0;
 	if (op != RT_GETTABLE)
 		TAILQ_REMOVE(&si->oids_being_queried, oi, oid_list);
@@ -278,7 +281,7 @@ oid_done(struct sid_info *si, struct oid_info *oi, struct ber *val, int op)
 }
 
 void
-got_table_oid(struct sid_info *si, struct oid_info *table_oi, struct ber *oid, struct ber *val)
+got_table_oid(struct sid_info *si, struct oid_info *table_oi, struct ber *oid, struct ber *val, int error_status)
 {
 	struct client_requests_info *cri;
 	struct cid_info *ci;
@@ -296,7 +299,10 @@ got_table_oid(struct sid_info *si, struct oid_info *table_oi, struct ber *oid, s
 	oi->cid = table_oi->cid;
 	oi->fd  = ci->fd;
 	oi->oid = ber_dup(oid);
-	oi->value = ber_rewind(ber_dup(val));
+	if (ber_is_null(val) && error_status)
+		oi->value = ber_error_status(error_status);
+	else
+		oi->value = ber_rewind(ber_dup(val));
 	oi->sid = 0;
 	table_oi->last_known_table_entry = oi;
 
@@ -314,7 +320,7 @@ all_oids_done(struct sid_info *si, struct ber *val)
 	struct oid_info *oi, *oi_temp;
 	/* XXX handle si->table_oid stuff as well */
 	TAILQ_FOREACH_SAFE(oi, &si->oids_being_queried, oid_list, oi_temp) {
-		oid_done(si, oi, val, RT_GET);
+		oid_done(si, oi, val, RT_GET, 0);
 	}
 }
 
@@ -350,13 +356,13 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 				if (si->table_oid->last_known_table_entry &&
 					oid_compare(&oid, &si->table_oid->last_known_table_entry->oid) < 0)
 				{
-					got_table_oid(si, si->table_oid, &oid, &BER_NON_INCREASING);
+					got_table_oid(si, si->table_oid, &oid, &BER_NON_INCREASING, error_status);
 					PS.oids_non_increasing++;
 					cri->si->PS.oids_non_increasing++;
 					table_done = 1;
 					break;
 				} else {
-					got_table_oid(si, si->table_oid, &oid, &val);
+					got_table_oid(si, si->table_oid, &oid, &val, error_status);
 				}
 			} else {
 				table_done = 1;
@@ -365,7 +371,7 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 		} else {
 			TAILQ_FOREACH(oi, &si->oids_being_queried, oid_list) {
 				if (ber_equal(&oid, &oi->oid)) {
-					oid_done(si, oi, &val, RT_GET);
+					oid_done(si, oi, &val, RT_GET, error_status);
 					break;
 				}
 			}
