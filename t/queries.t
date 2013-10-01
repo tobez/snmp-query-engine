@@ -63,6 +63,8 @@ total_sid_infos
 total_timers_sec
 total_timers_usec
 udp_receive_buffer_size
+udp_send_buffer_size
+udp_send_buffer_overflow
 udp_timeouts
 uptime
 program_version

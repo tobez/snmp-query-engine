@@ -115,6 +115,12 @@ create_snmp_socket(void)
 		n /= 2;
 	PS.udp_receive_buffer_size = n;
 
+	/* additionally, try a very large send buffer size :) */
+	n = 100 * 1024 * 1024;
+	while (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &n, sizeof(n)) < 0)
+		n /= 2;
+	PS.udp_send_buffer_size = n;
+
 	snmp = new_socket_info(fd);
 	on_read(snmp, snmp_receive);
 }
@@ -125,8 +131,18 @@ void snmp_send(struct destination *dest, struct ber *packet)
 	dest->packets_on_the_wire++;
 	PS.packets_on_the_wire++;
 //fprintf(stderr, "%s: snmp_send->(%d)\n", inet_ntoa(dest->ip), dest->packets_on_the_wire);
-	if (sendto(snmp->fd, packet->buf, packet->len, 0, (struct sockaddr *)&dest->dest_addr, sizeof(dest->dest_addr)) != packet->len)
+	if (sendto(snmp->fd, packet->buf, packet->len, 0,
+			   (struct sockaddr *)&dest->dest_addr,
+			   sizeof(dest->dest_addr))
+		!= packet->len)
+	{
+		if (errno == EAGAIN) {
+			PS.udp_send_buffer_overflow++;
+			return;
+		}
 		croak(1, "snmp_send: sendto");
+	}
 //fprintf(stderr, "UDP datagram of %d bytes sent to %s:%d\n", packet->len, inet_ntoa(dest->dest_addr.sin_addr), ntohs(dest->dest_addr.sin_port));
 //dump_buf(stderr, packet->buf, packet->len);
 }
+

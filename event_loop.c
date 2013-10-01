@@ -41,6 +41,8 @@ new_socket_info(int fd)
 	si->PS.oids_ignored = -42;
 	si->PS.destination_ignores = -42;
 	si->PS.udp_receive_buffer_size = -42;
+	si->PS.udp_send_buffer_size = -42;
+	si->PS.udp_send_buffer_overflow = -42;
 	si->PS.packets_on_the_wire = -42;
 	si->PS.max_packets_on_the_wire = -42;
 	si->PS.global_throttles = -42;

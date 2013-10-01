@@ -4,7 +4,7 @@
 snmp\-query\-engine \- multiplexing SNMP query engine
 .SH VERSION
 .PP
-This document describes snmp\-query\-engine version 2013072900.
+This document describes snmp\-query\-engine version 2013100100.
 .SH SYNOPSIS
 .PP
 snmp\-query\-engine
@@ -600,6 +600,17 @@ total number of timers
 .TP
 .B \f[B]\f[C]udp_receive_buffer_size\f[]\f[]
 the size of UDP receive buffer for SNMP socket
+.RS
+.RE
+.TP
+.B \f[B]\f[C]udp_send_buffer_size\f[]\f[]
+the size of UDP send buffer for SNMP socket
+.RS
+.RE
+.TP
+.B \f[B]\f[C]udp_send_buffer_overflow\f[]\f[]
+number of times a UDP packet could not be sent due to a send buffer
+overflow
 .RS
 .RE
 .TP

@@ -8,7 +8,7 @@ snmp-query-engine - multiplexing SNMP query engine
 
 # VERSION
 
-This document describes snmp-query-engine version 2013072900.
+This document describes snmp-query-engine version 2013100100.
 
 # SYNOPSIS
 
@@ -464,6 +464,12 @@ The following *global* statistics are available:
 
 **`udp_receive_buffer_size`**
 :   the size of UDP receive buffer for SNMP socket
+
+**`udp_send_buffer_size`**
+:   the size of UDP send buffer for SNMP socket
+
+**`udp_send_buffer_overflow`**
+:   number of times a UDP packet could not be sent due to a send buffer overflow
 
 **`udp_timeouts`**
 :   total number of "soft" timeouts
