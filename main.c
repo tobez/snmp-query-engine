@@ -18,7 +18,13 @@ usage(char *err)
 	fprintf(f, "    %s [options]\n", thisprogname());
 	fprintf(f, "Usage parameters:\n");
 	fprintf(f, "\t-h\t\tproduce usage text and quit\n");
-	fprintf(f, "\t-p prt\tlisten on port prt instead of default 7667\n");
+	fprintf(f, "\t-p port\t\tlisten on port prt instead of default 7667\n");
+	if (0) {
+		fprintf(f, "\t-f\t\tstay in foreground\n");
+		fprintf(f, "\t-p pidfile\tstore process ID in pidfile\n\t\t\t(default: do not store process ID)\n");
+		fprintf(f, "\t-l logfile\tprint statistics and verbose output\n\t\t\tinto logfile (default: use stdout)\n");
+		fprintf(f, "\t\t\tSend HUP signal to reopen the logfile\n");
+	}
 	fprintf(f, "\t-q\t\tquiet operation\n");
 	exit(err ? 1 : 0);
 }
