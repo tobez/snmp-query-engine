@@ -12,6 +12,9 @@
  * info request:
  * [ 0, $cid ]
  *
+ * dest_info request:
+ * [ RT_DEST_INFO, $cid, $ip, $port ]
+ *
  */
 
 static int
@@ -31,6 +34,7 @@ pack_stats(struct program_stats *PS, msgpack_packer *pk)
 	STAT(info_requests);
 	STAT(get_requests);
 	STAT(gettable_requests);
+	STAT(dest_info_requests);
 
 	STAT(snmp_retries);
 	STAT(snmp_sends);
@@ -45,6 +49,9 @@ pack_stats(struct program_stats *PS, msgpack_packer *pk)
 	STAT(oids_returned_from_snmp);
 	STAT(oids_returned_to_client);
 	STAT(oids_ignored);
+
+	STAT(octets_received);
+	STAT(octets_sent);
 
 	STAT(active_timers_sec);
 	STAT(active_timers_usec);
@@ -126,6 +133,59 @@ handle_info_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	pack_stats(&si->PS, pk);
 
 send:
+	tcp_send(si, buffer->data, buffer->size);
+	msgpack_sbuffer_free(buffer);
+	msgpack_packer_free(pk);
+	return 0;
+}
+
+static int
+pack_dest_stats(struct destination *dest, msgpack_packer *pk)
+{
+	int n = 0;
+
+	#define STAT(what) if (dest->what >= 0) { n++; if (pk) msgpack_pack_named_int(pk, #what, dest->what); }
+
+	STAT(octets_received);
+	STAT(octets_sent);
+
+	#undef STAT
+	return n;
+}
+
+int
+handle_dest_info_request(struct socket_info *si, unsigned cid, msgpack_object *o)
+{
+	msgpack_sbuffer* buffer;
+	msgpack_packer* pk;
+	unsigned port = 65536;
+	struct in_addr ip;
+	struct client_requests_info *cri;
+
+	if (o->via.array.size != 4)
+		return error_reply(si, RT_DEST_INFO|RT_ERROR, cid, "bad request length");
+
+	if (o->via.array.ptr[RI_DEST_INFO_PORT].type == MSGPACK_OBJECT_POSITIVE_INTEGER)
+		port = o->via.array.ptr[RI_DEST_INFO_PORT].via.u64;
+	if (port > 65535)
+		return error_reply(si, RT_DEST_INFO|RT_ERROR, cid, "bad port number");
+
+	if (!object2ip(&o->via.array.ptr[RI_DEST_INFO_IP], &ip))
+		return error_reply(si, RT_DEST_INFO|RT_ERROR, cid, "bad IP");
+
+	PS.dest_info_requests++;
+	si->PS.dest_info_requests++;
+
+	buffer = msgpack_sbuffer_new();
+	pk = msgpack_packer_new(buffer, msgpack_sbuffer_write);
+	msgpack_pack_array(pk, 3);
+	msgpack_pack_int(pk, RT_DEST_INFO|RT_REPLY);
+	msgpack_pack_int(pk, cid);
+
+	cri = get_client_requests_info(&ip, port, si);
+	msgpack_pack_map(pk, pack_dest_stats(cri->dest, NULL));
+	pack_dest_stats(cri->dest, pk);
+
 	tcp_send(si, buffer->data, buffer->size);
 	msgpack_sbuffer_free(buffer);
 	msgpack_packer_free(pk);

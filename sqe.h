@@ -39,12 +39,13 @@
 #include <msgpack.h>
 #include "bsdqueue.h"
 
-#define RT_UNKNOWN  0
-#define RT_SETOPT   1
-#define RT_GETOPT   2
-#define RT_INFO     3
-#define RT_GET      4
-#define RT_GETTABLE 5
+#define RT_UNKNOWN   0
+#define RT_SETOPT    1
+#define RT_GETOPT    2
+#define RT_INFO      3
+#define RT_GET       4
+#define RT_GETTABLE  5
+#define RT_DEST_INFO 6
 
 #define RT_REPLY  0x10           /* ORed with RT type */
 #define RT_ERROR  0x20           /* ORed with RT type */
@@ -67,6 +68,9 @@
 #define RI_GETTABLE_PORT 3
 #define RI_GETTABLE_OID  4
 #define RI_GETTABLE_MREP 5
+
+#define RI_DEST_INFO_IP     2
+#define RI_DEST_INFO_PORT   3
 
 #define AT_INTEGER          2
 #define AT_STRING           4
@@ -120,6 +124,7 @@ struct program_stats
 	int64_t info_requests;
 	int64_t get_requests;
 	int64_t gettable_requests;
+	int64_t dest_info_requests;
 
 	int64_t snmp_sends;
 	int64_t snmp_v1_sends;
@@ -134,6 +139,9 @@ struct program_stats
 	int64_t oids_returned_from_snmp;
 	int64_t oids_returned_to_client;
 	int64_t oids_ignored;
+
+	int64_t octets_received;
+	int64_t octets_sent;
 
 	int64_t active_timers_sec;
 	int64_t active_timers_usec;
@@ -259,6 +267,10 @@ struct destination
 	int max_repetitions;
 	int ignore_threshold;
 	int ignore_duration;
+
+	/* destination-specific stats */
+	int64_t octets_received;
+	int64_t octets_sent;
 };
 
 struct client_requests_info
@@ -487,6 +499,7 @@ extern int handle_getopt_request(struct socket_info *si, unsigned cid, msgpack_o
 
 /* request_info.c */
 extern int handle_info_request(struct socket_info *si, unsigned cid, msgpack_object *o);
+extern int handle_dest_info_request(struct socket_info *si, unsigned cid, msgpack_object *o);
 
 /* request_get.c */
 extern int handle_get_request(struct socket_info *si, unsigned cid, msgpack_object *o);

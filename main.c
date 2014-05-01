@@ -38,7 +38,7 @@ main(int argc, char **argv)
 	gettimeofday(&prog_start, NULL);
 	bzero(&PS, sizeof(PS));
 	PS.max_packets_on_the_wire = 1000000;
-	PS.program_version = 2013100100;
+	PS.program_version = 2014050100;
 
 	while ( (o = getopt(argc, argv, "hp:q")) != -1) {
 		switch (o) {

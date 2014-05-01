@@ -106,6 +106,9 @@ client_input(struct socket_info *si)
 		case RT_INFO:
 			ok = handle_info_request(si, cid, o);
 			break;
+		case RT_DEST_INFO:
+			ok = handle_dest_info_request(si, cid, o);
+			break;
 		case RT_GET:
 			ok = handle_get_request(si, cid, o);
 			break;

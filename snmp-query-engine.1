@@ -4,7 +4,7 @@
 snmp\-query\-engine \- multiplexing SNMP query engine
 .SH VERSION
 .PP
-This document describes snmp\-query\-engine version 2013100100.
+This document describes snmp\-query\-engine version 2014050100.
 .SH SYNOPSIS
 .PP
 snmp\-query\-engine
@@ -45,7 +45,7 @@ All requests are arrays of at least two elements.
 .B parameter 0
 The first element must be a request type represented by a small positive
 integer: 1 (\f[B]SETOPT\f[]), 2 (\f[B]GETOPT\f[]), 3 (\f[B]INFO\f[]), 4
-(\f[B]GET\f[]), 5 (\f[B]GETTABLE\f[]).
+(\f[B]GET\f[]), 5 (\f[B]GETTABLE\f[]), 6 (\f[B]DEST INFO\f[]).
 .RS
 .RE
 .TP
@@ -283,6 +283,11 @@ number of all requests made during this connection
 .RS
 .RE
 .TP
+.B \f[B]\f[C]dest_info_requests\f[]\f[]
+number of DEST INFO requests made during this connection
+.RS
+.RE
+.TP
 .B \f[B]\f[C]get_requests\f[]\f[]
 number of GET requests made during this connection
 .RS
@@ -443,6 +448,11 @@ total number of all client requests
 .RS
 .RE
 .TP
+.B \f[B]\f[C]dest_info_requests\f[]\f[]
+total number of DEST INFO requests
+.RS
+.RE
+.TP
 .B \f[B]\f[C]destination_throttles\f[]\f[]
 number of times an SNMP query was postponed due to \f[C]min_interval\f[]
 and \f[C]max_packets\f[] settings
@@ -523,6 +533,16 @@ total number of oids returned back to clients
 .B \f[B]\f[C]oids_ignored\f[]\f[]
 total number of oids ignored via \f[C]ignore_threshold\f[] and
 \f[C]ignore_duration\f[] mechanism
+.RS
+.RE
+.TP
+.B \f[B]\f[C]octets_received\f[]\f[]
+total number of payload octets received via SNMP
+.RS
+.RE
+.TP
+.B \f[B]\f[C]octets_sent\f[]\f[]
+total number of payload octets sent to SNMP destinations
 .RS
 .RE
 .TP
@@ -844,6 +864,37 @@ Example reply 4:
 ]]
 \f[]
 .fi
+.SS DEST INFO
+.PP
+The \f[B]DEST INFO\f[] request allows the client to request
+per\-destination statistics.
+.PP
+DEST INFO parameters:
+.TP
+.B parameter 2
+destination IP (v4 only) address in a dot\-decimal notation
+.RS
+.RE
+.TP
+.B parameter 3
+destination port number
+.RS
+.RE
+.PP
+\f[B]DEST INFO\f[] reply will consist of a map per\-destination
+statistics.
+.PP
+The following statistics are available:
+.TP
+.B \f[B]\f[C]octets_received\f[]\f[]
+number of payload octets received from the destination
+.RS
+.RE
+.TP
+.B \f[B]\f[C]octets_sent\f[]\f[]
+number of payload octets sent to the destination
+.RS
+.RE
 .SH SEE ALSO
 .PP
 There is a Perl module which serves as a client to

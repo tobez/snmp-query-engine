@@ -12,16 +12,18 @@ use Socket ':all';
 use Test::More;
 use Sys::Hostname;
 
-use constant RT_SETOPT   => 1;
-use constant RT_GETOPT   => 2;
-use constant RT_INFO     => 3;
-use constant RT_GET      => 4;
-use constant RT_GETTABLE => 5;
-use constant RT_REPLY    => 0x10;
-use constant RT_ERROR    => 0x20;
+use constant RT_SETOPT    => 1;
+use constant RT_GETOPT    => 2;
+use constant RT_INFO      => 3;
+use constant RT_GET       => 4;
+use constant RT_GETTABLE  => 5;
+use constant RT_DEST_INFO => 6;
+use constant RT_REPLY     => 0x10;
+use constant RT_ERROR     => 0x20;
 
 sub THERE () { return bless \my $dummy, 't::Present' }
 our $NUMBER = qr/^\d+$/;
+our $NON_ZERO = qr/^[1-9]\d*$/;
 
 my @GLOBAL_STATS = qw(
 active_cid_infos
@@ -48,6 +50,8 @@ oids_non_increasing
 oids_requested
 oids_returned_from_snmp
 oids_returned_to_client
+octets_received
+octets_sent
 packets_on_the_wire
 setopt_requests
 snmp_retries
@@ -177,6 +181,18 @@ request_match("oids is not an array 2", [RT_GET,25,"127.0.0.1",161, {}], [RT_GET
 request_match("oids is not an array 3", [RT_GET,26,"127.0.0.1",161, "oids"], [RT_GET|RT_ERROR,26,qr/oids must be an array/i]);
 request_match("oids is an empty array", [RT_GET,27,"127.0.0.1",161, []], [RT_GET|RT_ERROR,27,qr/oids is an empty array/i]);
 
+request_match("destinfo length 1", [RT_DEST_INFO,6600], [RT_DEST_INFO|RT_ERROR, 6600, qr/bad request length/i]);
+request_match("destinfo length 2", [RT_DEST_INFO,6600,"127.0.0.1"], [RT_DEST_INFO|RT_ERROR, 6600, qr/bad request length/i]);
+request_match("destinfo port 1", [RT_DEST_INFO,6601,"127.0.0.1",-2], [RT_DEST_INFO|RT_ERROR, 6601, qr/bad port number/i]);
+request_match("destinfo port 2", [RT_DEST_INFO,6602,"127.0.0.1",[]], [RT_DEST_INFO|RT_ERROR, 6602, qr/bad port number/i]);
+request_match("destinfo port 3", [RT_DEST_INFO,6603,"127.0.0.1",66666], [RT_DEST_INFO|RT_ERROR, 6603, qr/bad port number/i]);
+request_match("destinfo ip 1", [RT_DEST_INFO,6611,666,161], [RT_DEST_INFO|RT_ERROR, 6611, qr/bad IP/i]);
+request_match("destinfo ip 2", [RT_DEST_INFO,6612,[],161], [RT_DEST_INFO|RT_ERROR, 6612, qr/bad IP/i]);
+request_match("destinfo ip 3", [RT_DEST_INFO,6613,"257.12.22.13",161], [RT_DEST_INFO|RT_ERROR, 6613, qr/bad IP/i]);
+
+request_match("destinfo zero", [RT_DEST_INFO,6620,"127.0.0.1",161], [RT_DEST_INFO|RT_REPLY, 6620,
+			  { octets_received => 0, octets_sent => 0}]);
+
 my $target   = "127.0.0.1";
 my $hostname = hostname;
 my $uptime   = qr/^\d+$/;
@@ -298,6 +314,9 @@ $r = request_match("stats", [RT_INFO,5000], [RT_INFO|RT_REPLY,5000,
 	  global => \%GLOBAL_STATS}]);
 #print STDERR "OIDS requested: $r->[2]{connection}{oids_requested}\n";
 
+request_match("destinfo non-zero", [RT_DEST_INFO,6630,"127.0.0.1",161], [RT_DEST_INFO|RT_REPLY, 6630,
+			  { octets_received => $NON_ZERO, octets_sent => $NON_ZERO}]);
+
 bailout:
 Time::HiRes::sleep(0.2);
 close $conn;
@@ -319,7 +338,7 @@ sub request
 	my $d = shift;
 	my $p = $mp->pack($d);
 	$conn->syswrite($p);
-	my $reply;
+	my $reply = "";
 	$conn->sysread($reply, 65536);
 	$mp->unpack($reply);
 }

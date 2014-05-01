@@ -8,7 +8,7 @@ snmp-query-engine - multiplexing SNMP query engine
 
 # VERSION
 
-This document describes snmp-query-engine version 2013100100.
+This document describes snmp-query-engine version 2014050100.
 
 # SYNOPSIS
 
@@ -48,7 +48,7 @@ All requests are arrays of at least two elements.
 parameter 0
 :   The first element must be a request type
     represented by a small positive integer:
-    1 (**SETOPT**), 2 (**GETOPT**), 3 (**INFO**), 4 (**GET**), 5 (**GETTABLE**).
+    1 (**SETOPT**), 2 (**GETOPT**), 3 (**INFO**), 4 (**GET**), 5 (**GETTABLE**), 6 (**DEST INFO**).
 
 parameter 1
 :   The second element must be a **request id**,
@@ -255,6 +255,9 @@ The following statistics are available *for connection*:
 **`client_requests`**
 :   number of all requests made during this connection
 
+**`dest_info_requests`**
+:   number of DEST INFO requests made during this connection
+
 **`get_requests`**
 :   number of GET requests made during this connection
 
@@ -364,6 +367,9 @@ The following *global* statistics are available:
 **`client_requests`**
 :   total number of all client requests
 
+**`dest_info_requests`**
+:   total number of DEST INFO requests
+
 **`destination_throttles`**
 :   number of times an SNMP query was postponed
     due to `min_interval` and `max_packets` settings
@@ -416,6 +422,12 @@ The following *global* statistics are available:
 **`oids_ignored`**
 :   total number of oids ignored via `ignore_threshold` and `ignore_duration`
     mechanism
+
+**`octets_received`**
+:   total number of payload octets received via SNMP
+
+**`octets_sent`**
+:   total number of payload octets sent to SNMP destinations
 
 **`packets_on_the_wire`**
 :   number of SNMP requests "in progress"
@@ -633,6 +645,30 @@ Example reply 4:
       ["1.3.6.1.2.1.1.5.0", "my.host.name"],
       ["1.3.6.1.2.1.1.5.0", ["non-increasing"]],
     ]]
+
+## DEST INFO
+
+The **DEST INFO** request allows the client
+to request per-destination statistics.
+
+DEST INFO parameters:
+
+parameter 2
+:   destination IP (v4 only) address in a dot-decimal notation
+
+parameter 3
+:   destination port number
+
+**DEST INFO** reply will consist of a map per-destination
+statistics.
+
+The following statistics are available:
+
+**`octets_received`**
+:   number of payload octets received from the destination
+
+**`octets_sent`**
+:   number of payload octets sent to the destination
 
 # SEE ALSO
 
