@@ -1,7 +1,7 @@
 /*
  * Part of `snmp-query-engine`.
  *
- * Copyright 2012-2013, Anton Berezin <tobez@tobez.org>
+ * Copyright 2012-2014, Anton Berezin <tobez@tobez.org>
  * Modified BSD license.
  * (See LICENSE file in the distribution.)
  *
@@ -468,7 +468,7 @@ extern void build_snmp_query(struct client_requests_info *cri);
 extern void sid_start_timing(struct sid_info *si);
 extern void sid_stop_timing(struct sid_info *si);
 extern void check_timed_out_requests(void);
-extern void process_sid_info_response(struct sid_info *si, struct ber *e);
+extern int process_sid_info_response(struct sid_info *si, struct ber *e);
 extern void oid_done(struct sid_info *si, struct oid_info *oi, struct ber *val, int op, int packet_error_status);
 extern void all_oids_done(struct sid_info *si, struct ber *val);
 extern void got_table_oid(struct sid_info *si, struct oid_info *table_oi, struct ber *oid, struct ber *val, int packet_error_status);

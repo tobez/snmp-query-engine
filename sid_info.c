@@ -1,7 +1,7 @@
 /*
  * Part of `snmp-query-engine`.
  *
- * Copyright 2012-2013, Anton Berezin <tobez@tobez.org>
+ * Copyright 2012-2014, Anton Berezin <tobez@tobez.org>
  * Modified BSD license.
  * (See LICENSE file in the distribution.)
  *
@@ -324,7 +324,7 @@ all_oids_done(struct sid_info *si, struct ber *val)
 	}
 }
 
-void
+int
 process_sid_info_response(struct sid_info *si, struct ber *e)
 {
 	unsigned error_status;
@@ -402,10 +402,11 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 	bzero(&cri->dest->ignore_until, sizeof(cri->dest->ignore_until));
 	#undef CHECK
 
-	return;
+	return 1;
 bad_snmp_packet:
 	PS.bad_snmp_responses++;
 	fprintf(stderr, "sid %u: bad SNMP packet, ignoring: %s\n", si->sid, trace);
+	return 0;
 }
 
 void

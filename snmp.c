@@ -1,7 +1,7 @@
 /*
  * Part of `snmp-query-engine`.
  *
- * Copyright 2012-2013, Anton Berezin <tobez@tobez.org>
+ * Copyright 2012-2014, Anton Berezin <tobez@tobez.org>
  * Modified BSD license.
  * (See LICENSE file in the distribution.)
  *
@@ -59,8 +59,8 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 	}
 
 //	fprintf(stderr, "this packet appears to be legit, sid %u(%u)\n", sid, si->sid);
-	process_sid_info_response(si, e);
-	free_sid_info(si);
+	if (process_sid_info_response(si, e))
+		free_sid_info(si);
 	maybe_query_destination(dest);
 
 	return;

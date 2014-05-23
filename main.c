@@ -1,7 +1,7 @@
 /*
  * Part of `snmp-query-engine`.
  *
- * Copyright 2012-2013, Anton Berezin <tobez@tobez.org>
+ * Copyright 2012-2014, Anton Berezin <tobez@tobez.org>
  * Modified BSD license.
  * (See LICENSE file in the distribution.)
  *
@@ -38,7 +38,7 @@ main(int argc, char **argv)
 	gettimeofday(&prog_start, NULL);
 	bzero(&PS, sizeof(PS));
 	PS.max_packets_on_the_wire = 1000000;
-	PS.program_version = 2014050100;
+	PS.program_version = 2014052300;
 
 	while ( (o = getopt(argc, argv, "hp:q")) != -1) {
 		switch (o) {
