@@ -16,5 +16,4 @@ requires at least msgpack 0.5.7, previous versions
 have bugs.  Unfortunately, msgpack website has changed
 its layout substantially, so it is not easy to find
 the release source anymore.  One possibility is to
-fetch 0.5.7 from
-`http://msgpack.sourcearchive.com/downloads/0.5.7-3/msgpack_0.5.7.orig.tar.gz`.
+fetch 0.5.7 from http://msgpack.org/releases/cpp/msgpack-0.5.7.tar.gz
