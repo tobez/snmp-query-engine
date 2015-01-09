@@ -10,3 +10,11 @@ while controlling the load on the devices
 induced by multiple SNMP queries.
 
 See `manual.mdwn` for more.
+
+With regard to msgpack dependency:  snmp-query-engine
+requires at least msgpack 0.5.7, previous versions
+have bugs.  Unfortunately, msgpack website has changed
+its layout substantially, so it is not easy to find
+the release source anymore.  One possibility is to
+fetch 0.5.7 from
+`http://msgpack.sourcearchive.com/downloads/0.5.7-3/msgpack_0.5.7.orig.tar.gz`.
