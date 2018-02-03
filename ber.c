@@ -353,7 +353,7 @@ encode_integer(unsigned i, struct ber *e, int force_size)
 		l = 2;
 	else if (i <= 16777215)
 		l = 3;
-	else if (i < 4294967295u)
+	else if (i <= 4294967295u)
 		l = 4;
 	else {
 		errno = ERANGE;
