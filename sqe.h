@@ -38,7 +38,7 @@
 #include <Judy.h>
 #include <msgpack.h>
 
-#ifndef MSGPACK_OBJECT_RAW
+#if MSGPACK_VERSION_MAJOR > 0 || MSGPACK_VERSION_MINOR > 5
 #define MSGPACK_OBJECT_RAW MSGPACK_OBJECT_BIN
 #define MSGPACK_STR_PTR(x) x.bin.ptr
 #define MSGPACK_STR_SIZE(x) x.bin.size
