@@ -18,8 +18,8 @@ error_reply(struct socket_info *si, unsigned code, unsigned cid, char *error)
 	msgpack_pack_array(pk, 3);
 	msgpack_pack_unsigned_int(pk, code);
 	msgpack_pack_unsigned_int(pk, cid);
-	msgpack_pack_raw(pk, l);
-	msgpack_pack_raw_body(pk, error, l);
+	msgpack_pack_bin(pk, l);
+	msgpack_pack_bin_body(pk, error, l);
 
 	tcp_send(si, buffer->data, buffer->size);
 	msgpack_sbuffer_free(buffer);
@@ -31,8 +31,8 @@ int
 msgpack_pack_named_int(msgpack_packer *pk, char *name, int64_t val)
 {
 	int l = strlen(name);
-	msgpack_pack_raw(pk, l);
-	msgpack_pack_raw_body(pk, name, l);
+	msgpack_pack_bin(pk, l);
+	msgpack_pack_bin_body(pk, name, l);
 	msgpack_pack_int64(pk, val);
 	/* XXX */
 	return 0;
@@ -42,11 +42,11 @@ int
 msgpack_pack_named_string(msgpack_packer *pk, char *name, char *val)
 {
 	int l = strlen(name);
-	msgpack_pack_raw(pk, l);
-	msgpack_pack_raw_body(pk, name, l);
+	msgpack_pack_bin(pk, l);
+	msgpack_pack_bin_body(pk, name, l);
 	l = strlen(val);
-	msgpack_pack_raw(pk, l);
-	msgpack_pack_raw_body(pk, val, l);
+	msgpack_pack_bin(pk, l);
+	msgpack_pack_bin_body(pk, val, l);
 	/* XXX */
 	return 0;
 }
@@ -55,8 +55,8 @@ int
 msgpack_pack_string(msgpack_packer *pk, char *s)
 {
 	int l = strlen(s);
-	msgpack_pack_raw(pk, l);
-	msgpack_pack_raw_body(pk, s, l);
+	msgpack_pack_bin(pk, l);
+	msgpack_pack_bin_body(pk, s, l);
 	/* XXX */
 	return 0;
 }
@@ -88,8 +88,8 @@ pack_error(msgpack_packer *pk, char *error)
 {
 	int l = strlen(error);
 	msgpack_pack_array(pk, 1);
-	msgpack_pack_raw(pk, l);
-	msgpack_pack_raw_body(pk, error, l);
+	msgpack_pack_bin(pk, l);
+	msgpack_pack_bin_body(pk, error, l);
 }
 
 void
@@ -100,8 +100,8 @@ msgpack_pack_oid(struct msgpack_packer *pk, struct ber oid)
 
 	stroid = oid2str(oid);
 	l = strlen(stroid);
-	msgpack_pack_raw(pk, l);
-	msgpack_pack_raw_body(pk, stroid, l);
+	msgpack_pack_bin(pk, l);
+	msgpack_pack_bin_body(pk, stroid, l);
 }
 
 void
@@ -137,8 +137,8 @@ msgpack_pack_ber(struct msgpack_packer *pk, struct ber value)
 		}
 		break;
 	case AT_STRING:
-		msgpack_pack_raw(pk, len);
-		msgpack_pack_raw_body(pk, value.b, len);
+		msgpack_pack_bin(pk, len);
+		msgpack_pack_bin_body(pk, value.b, len);
 		break;
 	case AT_NULL:
 		msgpack_pack_nil(pk);
@@ -155,8 +155,8 @@ msgpack_pack_ber(struct msgpack_packer *pk, struct ber value)
 		if (decode_ipv4_address(&value, len, &ip) < 0)	goto decode_error;
 		strip = inet_ntoa(ip);
 		len = strlen(strip);
-		msgpack_pack_raw(pk, len);
-		msgpack_pack_raw_body(pk, strip, len);
+		msgpack_pack_bin(pk, len);
+		msgpack_pack_bin_body(pk, strip, len);
 		break;
 	case AT_OID:
 		msgpack_pack_oid(pk, value);
@@ -188,8 +188,8 @@ decode_error:
 		break;
 	case VAL_STRING_ERROR:
 		msgpack_pack_array(pk, 1);
-		msgpack_pack_raw(pk, len);
-		msgpack_pack_raw_body(pk, value.b, len);
+		msgpack_pack_bin(pk, len);
+		msgpack_pack_bin_body(pk, value.b, len);
 		break;
 	default:
 		snprintf(unsupported, 30, "unsupported type 0x%02x", t);

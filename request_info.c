@@ -120,15 +120,15 @@ handle_info_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 
 	key = "global";
 	l = strlen(key);
-	msgpack_pack_raw(pk, l);
-	msgpack_pack_raw_body(pk, key, l);
+	msgpack_pack_bin(pk, l);
+	msgpack_pack_bin_body(pk, key, l);
 	msgpack_pack_map(pk, pack_stats(&PS, NULL));
 	pack_stats(&PS, pk);
 
 	key = "connection";
 	l = strlen(key);
-	msgpack_pack_raw(pk, l);
-	msgpack_pack_raw_body(pk, key, l);
+	msgpack_pack_bin(pk, l);
+	msgpack_pack_bin_body(pk, key, l);
 	msgpack_pack_map(pk, pack_stats(&si->PS, NULL));
 	pack_stats(&si->PS, pk);
 
