@@ -50,7 +50,7 @@ allocate_oid_info_list(struct oid_info_head *list, msgpack_object *o, struct cid
 	for (i = 0; i < o->via.array.size; i++) {
 		if (o->via.array.ptr[i].type != MSGPACK_OBJECT_RAW) goto not_good;
 		e = ber_init(tmp_buf, 2048);
-		if (encode_string_oid(o->via.array.ptr[i].via.raw.ptr, o->via.array.ptr[i].via.raw.size, &e) < 0)	goto not_good;
+		if (encode_string_oid(MSGPACK_STR_PTR(o->via.array.ptr[i].via), MSGPACK_STR_SIZE(o->via.array.ptr[i].via), &e) < 0)	goto not_good;
 
 		oi = malloc(sizeof(*oi));
 		if (!oi)
@@ -80,7 +80,7 @@ allocate_oid_info(msgpack_object *o, struct cid_info *ci)
 
 	if (o->type != MSGPACK_OBJECT_RAW) return NULL;
 	e = ber_init(tmp_buf, 2048);
-	if (encode_string_oid(o->via.raw.ptr, o->via.raw.size, &e) < 0)	return NULL;
+	if (encode_string_oid(MSGPACK_STR_PTR(o->via), MSGPACK_STR_SIZE(o->via), &e) < 0)	return NULL;
 
 	oi = malloc(sizeof(*oi));
 	if (!oi)

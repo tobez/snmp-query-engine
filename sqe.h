@@ -37,6 +37,18 @@
 
 #include <Judy.h>
 #include <msgpack.h>
+
+#ifndef MSGPACK_OBJECT_RAW
+#define MSGPACK_OBJECT_RAW MSGPACK_OBJECT_BIN
+#define MSGPACK_STR_PTR(x) x.bin.ptr
+#define MSGPACK_STR_SIZE(x) x.bin.size
+#define msgpack_pack_raw msgpack_pack_bin
+#define msgpack_pack_raw_body msgpack_pack_bin_body
+#else
+#define MSGPACK_STR_PTR(x) x.raw.ptr
+#define MSGPACK_STR_SIZE(x) x.raw.size
+#endif
+
 #include "bsdqueue.h"
 
 #define RT_UNKNOWN   0
