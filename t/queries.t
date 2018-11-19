@@ -321,7 +321,7 @@ bailout:
 Time::HiRes::sleep(0.2);
 close $conn;
 Time::HiRes::sleep(0.2);
-kill 15, $daemon_pid;
+END { kill 15, $daemon_pid if $daemon_pid };
 
 done_testing;
 

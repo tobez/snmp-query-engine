@@ -19,7 +19,7 @@ STDOBJ=event_loop.o carp.o client_input.o client_listen.o opts.o util.o destinat
 	snmp.o request_common.o request_setopt.o request_getopt.o \
 	request_info.o request_get.o request_gettable.o timers.o
 
-STDLINK=$(STDOBJ) $(LIBPATH) -lJudy -lmsgpack
+STDLINK=$(STDOBJ) $(LIBPATH) -lJudy -lmsgpackc
 
 clean:
 	rm -f *.o snmp-query-engine test_ber test_msgpack *.core core

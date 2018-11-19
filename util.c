@@ -13,14 +13,14 @@ object_strdup(msgpack_object *o)
 {
 	char *s;
 
-	if (o->type != MSGPACK_OBJECT_RAW)
+	if (o->type != MSGPACK_OBJECT_BIN)
 		return NULL;
 
-	s = malloc(o->via.raw.size + 1);
+	s = malloc(o->via.bin.size + 1);
 	if (!s)
-		croak(1, "object_strdup: malloc(%d)", o->via.raw.size + 1);
-	memcpy(s, o->via.raw.ptr, o->via.raw.size);
-	s[o->via.raw.size] = 0;
+		croak(1, "object_strdup: malloc(%d)", o->via.bin.size + 1);
+	memcpy(s, o->via.bin.ptr, o->via.bin.size);
+	s[o->via.bin.size] = 0;
 	return s;
 }
 
@@ -28,10 +28,10 @@ char *
 object2string(msgpack_object *o, char s[], int bufsize)
 {
 	switch (o->type) {
-	case MSGPACK_OBJECT_RAW:
-		if (o->via.raw.size >= bufsize)    return NULL;
-		memcpy(s, o->via.raw.ptr, o->via.raw.size);
-		s[o->via.raw.size] = 0;
+	case MSGPACK_OBJECT_BIN:
+		if (o->via.bin.size >= bufsize)    return NULL;
+		memcpy(s, o->via.bin.ptr, o->via.bin.size);
+		s[o->via.bin.size] = 0;
 		break;
 	case MSGPACK_OBJECT_POSITIVE_INTEGER:
 		if (snprintf(s, bufsize, "%"PRIu64, o->via.u64) >= bufsize)
@@ -48,10 +48,10 @@ int
 object_string_eq(msgpack_object *o, char *s)
 {
 	int l;
-	if (o->type != MSGPACK_OBJECT_RAW) return 0;
+	if (o->type != MSGPACK_OBJECT_BIN) return 0;
 	l = strlen(s);
-	if (o->via.raw.size != l) return 0;
-	return strncmp(o->via.raw.ptr, s, l) == 0;
+	if (o->via.bin.size != l) return 0;
+	return strncmp(o->via.bin.ptr, s, l) == 0;
 }
 
 int

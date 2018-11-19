@@ -37,6 +37,11 @@
 
 #include <Judy.h>
 #include <msgpack.h>
+
+#if MSGPACK_VERSION_MAJOR == 0 && MSGPACK_VERSION_MINOR < 6
+#error libmsgpackc is too old, at least v0.6 needed
+#endif
+
 #include "bsdqueue.h"
 
 #define RT_UNKNOWN   0
