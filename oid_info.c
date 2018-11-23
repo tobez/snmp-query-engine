@@ -48,9 +48,15 @@ allocate_oid_info_list(struct oid_info_head *list, msgpack_object *o, struct cid
 	struct ber e;
 
 	for (i = 0; i < o->via.array.size; i++) {
-		if (o->via.array.ptr[i].type != MSGPACK_OBJECT_BIN) goto not_good;
-		e = ber_init(tmp_buf, 2048);
-		if (encode_string_oid(o->via.array.ptr[i].via.bin.ptr, o->via.array.ptr[i].via.bin.size, &e) < 0)	goto not_good;
+		if (o->via.array.ptr[i].type == MSGPACK_OBJECT_BIN) {
+			e = ber_init(tmp_buf, 2048);
+			if (encode_string_oid(o->via.array.ptr[i].via.bin.ptr, o->via.array.ptr[i].via.bin.size, &e) < 0)	goto not_good;
+		} else if (o->via.array.ptr[i].type == MSGPACK_OBJECT_STR) {
+			e = ber_init(tmp_buf, 2048);
+			if (encode_string_oid(o->via.array.ptr[i].via.str.ptr, o->via.array.ptr[i].via.str.size, &e) < 0)	goto not_good;
+		} else {
+			goto not_good;
+		}
 
 		oi = malloc(sizeof(*oi));
 		if (!oi)
@@ -78,9 +84,15 @@ allocate_oid_info(msgpack_object *o, struct cid_info *ci)
 	char tmp_buf[2048];
 	struct ber e;
 
-	if (o->type != MSGPACK_OBJECT_BIN) return NULL;
-	e = ber_init(tmp_buf, 2048);
-	if (encode_string_oid(o->via.bin.ptr, o->via.bin.size, &e) < 0)	return NULL;
+	if (o->type == MSGPACK_OBJECT_BIN) {
+		e = ber_init(tmp_buf, 2048);
+		if (encode_string_oid(o->via.bin.ptr, o->via.bin.size, &e) < 0)	return NULL;
+	} else if (o->type == MSGPACK_OBJECT_STR) {
+		e = ber_init(tmp_buf, 2048);
+		if (encode_string_oid(o->via.str.ptr, o->via.str.size, &e) < 0)	return NULL;
+	} else {
+		return NULL;
+	}
 
 	oi = malloc(sizeof(*oi));
 	if (!oi)

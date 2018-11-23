@@ -117,8 +117,10 @@ our $mp = Data::MessagePack->new()->prefer_integer;
 our $conn = IO::Socket::INET->new(PeerAddr => "127.0.0.1:7668", Proto => "tcp")
 	or die "cannot connect to snmp-query-engine daemon: $!\n";
 
+$mp->utf8(1);
 request_match("defaults via getopt", [RT_GETOPT,2000,"127.0.0.1",161], [RT_GETOPT|RT_REPLY,2000,
 	{ip=>"127.0.0.1", port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 2000, retries => 3, min_interval => 10, max_repetitions => 10, ignore_threshold => 0, ignore_duration => 300000, max_reply_size => 1472, estimated_value_size => 9, max_oids_per_request => 64 }]);
+$mp->utf8(0);
 request_match("defaults via setopt", [RT_SETOPT,2001,"127.0.0.1",161, {}], [RT_SETOPT|RT_REPLY,2001,
 	{ip=>"127.0.0.1", port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 2000, retries => 3, min_interval => 10, max_repetitions => 10, ignore_threshold => 0, ignore_duration => 300000, max_reply_size => 1472, estimated_value_size => 9, max_oids_per_request => 64 }]);
 request_match("setopt bad length", [RT_SETOPT,2002,"127.0.0.1",161], [RT_SETOPT|RT_ERROR,2002,qr/bad request length/]);
@@ -220,9 +222,11 @@ $r = request([RT_SETOPT,42016,"127.0.0.1",161,{global_max_packets=>100_000}]);
 request_match("times out", [RT_GET,41,$target,161, ["1.3.6.1.2.1.1.5.0"]],
 			  [RT_GET|RT_REPLY,41,[["1.3.6.1.2.1.1.5.0",["timeout"]]]]);
 for my $id (2241..2250) {
+	$mp->utf8(!$mp->get_utf8);
 	request_match("ignored $id", [RT_GET,$id,$target,161, ["1.3.6.1.2.1.1.5.0"]],
 				  [RT_GET|RT_REPLY,$id,[["1.3.6.1.2.1.1.5.0",["ignored"]]]]);
 }
+$mp->utf8(0);
 $r = request([RT_INFO,2251]);
 is($r->[2]{global}{destination_ignores}, 1, "ignored destinations");
 is($r->[2]{global}{oids_ignored}, 10, "ignored oids");
