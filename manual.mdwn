@@ -8,7 +8,7 @@ snmp-query-engine - multiplexing SNMP query engine
 
 # VERSION
 
-This document describes snmp-query-engine version 2014052300.
+This document describes snmp-query-engine version 2023053100.
 
 # SYNOPSIS
 
@@ -107,12 +107,65 @@ to GETOPT.
 Supported options:
 
 **`version`**
-:   SNMP version, 1 for SNMP 1, 2 for SNMP 2c;  default is **2**.
+:   SNMP version, 1 for SNMP 1, 2 for SNMP 2c, 3 for SNMP 3;  default is **2**.
     This is a per destination/client option which does
     not affect other clients.
 
 **`community`**
 :   SNMP community;  default is **"public"**.
+    This is a per destination/client option which does
+    not affect other clients.
+
+**`engineid`**
+:   Authoritative SNMP engine ID of the destination (for SNMPv3).  The default is **""**.
+    Valid values must be (optionally space-separated) hex strings, for example
+    "39 6a 66 39 4d 5a 35 6b 68 49 72 61".
+    This is a per destination/client option which does
+    not affect other clients.
+
+**`username`**
+:   User name (for SNMPv3);  default is **""**.
+    This is a per destination/client option which does
+    not affect other clients.
+
+**`authprotocol`**
+:   Authentication protocol (for SNMPv3);  default is **"sha1"**.
+    Valid values are "md5" and "sha1" (but "md5" is currently not implemented).
+    This is a per destination/client option which does
+    not affect other clients.
+
+**`authpassword`**
+:   Authentication password (for SNMPv3);  default is **""**.
+    The `authpassword` is never returned by **GETOPT**
+    (instead, `authkul` is computed and returned).
+    This is a per destination/client option which does
+    not affect other clients.
+
+**`authkul`**
+:   Localized authentication key (for SNMPv3);  default is **""**.
+    Valid values must be (optionally space-separated) hex strings.
+    It is an error to specify both `authpassword` and `authkul`.
+    This is a per destination/client option which does
+    not affect other clients.
+
+**`privprotocol`**
+:   Privacy protocol (for SNMPv3);  default is **"aes"**.
+    Valid values are "des", "aes", "aes192", "aes256", and "aes256c".
+    Only "aes" and "aes256c" are currently implemented.
+    This is a per destination/client option which does
+    not affect other clients.
+
+**`privpassword`**
+:   Privacy password (for SNMPv3);  default is **""**.
+    The `privpassword` is never returned by **GETOPT**
+    (instead, `privkul` is computed and returned).
+    This is a per destination/client option which does
+    not affect other clients.
+
+**`privkul`**
+:   Localized privacy key (for SNMPv3);  default is **""**.
+    Valid values must be (optionally space-separated) hex strings.
+    It is an error to specify both `privpassword` and `privkul`.
     This is a per destination/client option which does
     not affect other clients.
 
@@ -316,6 +369,10 @@ The following statistics are available *for connection*:
 :   number of SNMP version 2c packets sent
     during this connection
 
+**`snmp_v3_sends`**
+:   number of SNMP version 3 packets sent
+    during this connection
+
 **`total_cid_infos`**
 :   number of GET and GETTABLE requests made during this connection
 
@@ -453,6 +510,9 @@ The following *global* statistics are available:
 **`snmp_v2c_sends`**
 :   total number of SNMP version 2c packets sent
 
+**`snmp_v3_sends`**
+:   total number of SNMP version 3 packets sent
+
 **`total_cid_infos`**
 :   total number of GET and GETTABLE requests made
 
@@ -555,6 +615,9 @@ decode-error
 unsupported type 0xHH
 :   the `snmp-query-engine` does not support
     values of this type (yet)
+
+XXXv3
+:   there are SNMPv3-related errors
 
 Example request:
 
@@ -680,7 +743,7 @@ and on github.
 
 # ACKNOWLEDGEMENTS
 
-This work is in part sponsored by Telia Denmark.
+This work is in part sponsored by Telia Denmark and by Fibia P/S.
 
 Thanks to Henrik Andersen and Lars Thegler for discussions
 and insights.
