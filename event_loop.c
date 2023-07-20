@@ -320,6 +320,8 @@ event_loop(void)
 	struct kevent ke[10];
 	int nev, i, ms;
 	struct timespec to;
+
+    fprintf(stderr, "kqueue event loop started\n");
 	while (1) {
 		ms = ms_to_next_timer();
 		to.tv_sec = ms / 1000;
@@ -380,6 +382,7 @@ event_loop(void)
 {
 	struct epoll_event ev[10];
 	int nev, i, ms;
+    fprintf(stderr, "epoll event loop started\n");
 	while (1) {
 		ms = ms_to_next_timer();
 		nev = epoll_wait(ep, ev, 10, ms);

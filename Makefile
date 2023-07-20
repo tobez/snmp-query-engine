@@ -8,21 +8,22 @@
 #
 CC?=	cc
 OPTIMIZE=	-O3 -g
-INCPATH=	-I/usr/local/include -I/opt/local/include
-LIBPATH=	-L/usr/local/lib -L/opt/local/lib
+INCPATH=	-I/usr/local/include -I/opt/local/include -I/opt/homebrew/include
+LIBPATH=	-L/usr/local/lib -L/opt/local/lib -L/opt/homebrew/lib
 CFLAGS=	-Wall -Wno-unused-function -Werror $(OPTIMIZE) $(INCPATH)
 
-all: snmp-query-engine test_ber test_msgpack
+all: snmp-query-engine test_ber test_msgpack test_v3
 
 STDOBJ=event_loop.o carp.o client_input.o client_listen.o opts.o util.o destination.o \
 	client_requests_info.o cid_info.o ber.o oid_info.o sid_info.o \
 	snmp.o request_common.o request_setopt.o request_getopt.o \
-	request_info.o request_get.o request_gettable.o timers.o
+	request_info.o request_get.o request_gettable.o timers.o \
+	v3_keys.o v3_crypto.o
 
-STDLINK=$(STDOBJ) $(LIBPATH) -lJudy -lmsgpackc
+STDLINK=$(STDOBJ) $(LIBPATH) -lJudy -lmsgpackc -lcrypto
 
 clean:
-	rm -f *.o snmp-query-engine test_ber test_msgpack *.core core
+	rm -f *.o snmp-query-engine test_ber test_msgpack test_v3 *.core core
 
 snmp-query-engine: main.o $(STDOBJ)
 	$(CC) $(CFLAGS) -o snmp-query-engine main.o $(STDLINK)
@@ -90,11 +91,20 @@ request_gettable.o: request_gettable.c sqe.h
 timers.o: timers.c sqe.h
 	$(CC) -c $(CFLAGS) -o timers.o timers.c
 
+v3_keys.o: v3_keys.c sqe.h
+	$(CC) -c $(CFLAGS) -o v3_keys.o v3_keys.c
+
+v3_crypto.o: v3_crypto.c sqe.h
+	$(CC) -c $(CFLAGS) -o v3_crypto.o v3_crypto.c
+
 test_ber: test_ber.c $(STDOBJ)
 	$(CC) $(CFLAGS) -o test_ber test_ber.c $(STDLINK)
 
 test_msgpack: test_msgpack.c $(STDOBJ)
 	$(CC) $(CFLAGS) -o test_msgpack test_msgpack.c $(STDLINK)
+
+test_v3: test_v3.c $(STDOBJ)
+	$(CC) $(CFLAGS) -o test_v3 test_v3.c $(STDLINK)
 
 test: snmp-query-engine
 	prove t/queries.t

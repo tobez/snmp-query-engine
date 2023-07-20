@@ -60,6 +60,11 @@ main(int argc, char **argv)
 	if (argc != 0)
 		usage("extraneous arguments");
 
+    if (populate_well_known_oids() < 0) {
+        fprintf(stderr, "unable to populate well-known oids: %s\n", strerror(errno));
+        exit(1);
+    }
+
 	create_snmp_socket();
 	create_listening_socket(port);
 	event_loop();

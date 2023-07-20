@@ -32,7 +32,7 @@ new_sid_info(struct client_requests_info *cri)
 	si->retries_left = cri->retries;
 	si->version = cri->version;
 	TAILQ_INIT(&si->oids_being_queried);
-	if (start_snmp_packet(&si->pb, si->version, cri->community, sid) < 0)
+	if (start_snmp_packet(&si->pb, si->version, sid, cri->v3, cri->community) < 0)
 		croak(2, "new_sid_info: start_snmp_get_packet");
 	*si_slot = si;
 	TAILQ_INSERT_TAIL(&cri->sid_infos, si, sid_list);
@@ -84,11 +84,15 @@ build_snmp_query(struct client_requests_info *cri)
 		PS.oids_requested++;
 		cri->si->PS.oids_requested++;
 
-		if ( (si->sid_offset_in_a_packet =
-			  finalize_snmp_packet(&si->pb, &si->packet,
-								   cri->version == 0 ? PDU_GET_NEXT_REQUEST : PDU_GET_BULK_REQUEST,
-								   si->table_oid->max_repetitions)) < 0)
-			croak(2, "build_snmp_query: finalize_snmp_packet");
+        if (finalize_snmp_packet(&si->pb,
+                                 &si->packet,
+								 cri->version == 3 ? cri->v3 : NULL,
+                                 &si->pi,
+                                 cri->version == 0
+                                   ? PDU_GET_NEXT_REQUEST
+                                   : PDU_GET_BULK_REQUEST,
+                                 si->table_oid->max_repetitions) < 0)
+                croak(2, "build_snmp_query: finalize_snmp_packet");
 	} else {
 		int oids_in_request = 0;
 		int estimated_values_size = 0;
@@ -119,7 +123,7 @@ build_snmp_query(struct client_requests_info *cri)
 			ci->n_oids_being_queried++;
 			TAILQ_INSERT_TAIL(&si->oids_being_queried, oi, oid_list);
 		}
-		if ( (si->sid_offset_in_a_packet = finalize_snmp_packet(&si->pb, &si->packet, PDU_GET_REQUEST, 0)) < 0)
+		if (finalize_snmp_packet(&si->pb, &si->packet, cri->version == 3 ? cri->v3 : NULL, &si->pi, PDU_GET_REQUEST, 0) < 0)
 			croak(2, "build_snmp_query: finalize_snmp_packet");
 	}
 	sid_start_timing(si);
@@ -130,6 +134,9 @@ build_snmp_query(struct client_requests_info *cri)
 	if (si->version == 0) {
 		PS.snmp_v1_sends++;
 		si->cri->si->PS.snmp_v1_sends++;
+	} else if (si->version == 3) {
+		PS.snmp_v3_sends++;
+		si->cri->si->PS.snmp_v3_sends++;
 	} else {
 		PS.snmp_v2c_sends++;
 		si->cri->si->PS.snmp_v2c_sends++;
@@ -180,7 +187,50 @@ free_sid_info(struct sid_info *si)
 	free(si);
 }
 
-void resend_query_with_new_sid(struct sid_info *si)
+void regenerate_v3_packet(struct sid_info *si)
+{
+	struct oid_info *oi;
+	unsigned char pdu_type;
+	int max_repetitions;
+
+	// free packet things (not full free_sid_info()!)
+	free(si->packet.buf);
+	si->packet.buf = 0;
+
+	// repeat packet building with the same oids:
+	// - start (look at new_sid_info)
+	if (start_snmp_packet(&si->pb, si->version, si->sid, si->cri->v3, si->cri->community) < 0) {
+		croak(2, "regenerate_v3_packet: start_snmp_get_packet");
+	}
+
+	// - iterate oids_being_queried (look at build_snmp_query)
+
+	if (si->table_oid && si->table_oid->last_known_table_entry) {
+		if (add_encoded_oid_to_snmp_packet(&si->pb, &si->table_oid->last_known_table_entry->oid) < 0) {
+			croak(2, "regenerate_v3_packet: add_encoded_oid_to_snmp_packet (table)");
+		}
+	} else {
+		TAILQ_FOREACH(oi, &si->oids_being_queried, oid_list) {
+			if (add_encoded_oid_to_snmp_packet(&si->pb, &oi->oid) < 0) {
+				croak(2, "regenerate_v3_packet: add_encoded_oid_to_snmp_packet");
+			}
+		}
+	}
+
+	// - finalize (look at build_snmp_query)
+	pdu_type = PDU_GET_REQUEST;
+	max_repetitions = 0;
+	if (si->table_oid) {
+		pdu_type = PDU_GET_BULK_REQUEST;
+		max_repetitions = si->table_oid->max_repetitions;
+	}
+	if (finalize_snmp_packet(&si->pb, &si->packet, si->cri->version == 3 ? si->cri->v3 : NULL, &si->pi, pdu_type, max_repetitions) < 0) {
+		croak(2, "build_snmp_query: finalize_snmp_packet");
+	}
+}
+
+void
+resend_query_with_new_sid(struct sid_info *si)
 {
 	struct sid_info **si_slot;
 	struct oid_info *oi;
@@ -188,10 +238,15 @@ void resend_query_with_new_sid(struct sid_info *si)
 
 	JLD(rc, si->cri->dest->sid_info, si->sid);
 	si->sid = next_sid();
-	si->packet.buf[si->sid_offset_in_a_packet+0] = (si->sid >> 24) & 0xff;
-	si->packet.buf[si->sid_offset_in_a_packet+1] = (si->sid >> 16) & 0xff;
-	si->packet.buf[si->sid_offset_in_a_packet+2] = (si->sid >> 8) & 0xff;
-	si->packet.buf[si->sid_offset_in_a_packet+3] = si->sid & 0xff;
+
+	if (si->cri->version == 3 && si->cri->v3) {
+		regenerate_v3_packet(si);
+	} else {
+		si->packet.buf[si->pi.sid_offset+0] = (si->sid >> 24) & 0xff;
+		si->packet.buf[si->pi.sid_offset+1] = (si->sid >> 16) & 0xff;
+		si->packet.buf[si->pi.sid_offset+2] = (si->sid >> 8) & 0xff;
+		si->packet.buf[si->pi.sid_offset+3] = si->sid & 0xff;
+	}
 
 	TAILQ_FOREACH(oi, &si->oids_being_queried, oid_list) {
 		oi->sid = si->sid;
@@ -212,6 +267,9 @@ void resend_query_with_new_sid(struct sid_info *si)
 	if (si->version == 0) {
 		PS.snmp_v1_sends++;
 		si->cri->si->PS.snmp_v1_sends++;
+	} else if (si->version == 3) {
+		PS.snmp_v3_sends++;
+		si->cri->si->PS.snmp_v3_sends++;
 	} else {
 		PS.snmp_v2c_sends++;
 		si->cri->si->PS.snmp_v2c_sends++;

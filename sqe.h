@@ -12,6 +12,7 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -134,6 +135,7 @@ struct program_stats
 	int64_t snmp_sends;
 	int64_t snmp_v1_sends;
 	int64_t snmp_v2c_sends;
+	int64_t snmp_v3_sends;
 	int64_t snmp_retries;
 	int64_t snmp_timeouts;
 	int64_t udp_timeouts;
@@ -192,14 +194,30 @@ extern struct ber BER_MISSING;
 extern struct ber BER_IGNORED;
 extern struct ber BER_NON_INCREASING;
 
+struct packet_info
+{
+	bool v3;
+	/// @brief offset in packet to 4 bytes of sid (request-id/message-id);
+	/// impl: v3: adjust for gdata and packet_sequence, v1/v2: adjust for pdu and packet_sequence
+	unsigned sid_offset;
+	/// @brief offset in packet to 12 bytes of msgAuthenticationParameters in SNMPv3 (HMAC-SHA-96);
+	/// impl: adjust for sec_params_seq, sec_params_string, and packet_sequence
+	unsigned authp_offset;
+	/// @brief offset in packet to 8 bytes of msgPrivacyParameters in SNMPv3 (salt/iv);
+	/// impl: adjust for sec_params_seq, sec_params_string, and packet_sequence
+	unsigned privp_offset;
+};
+
 struct packet_builder
 {
+	struct ber e;
 	unsigned char *packet_sequence;
+	unsigned char *encrypted_pdu;
+	unsigned char *decrypted_scoped_pdu;
 	unsigned char *pdu;
 	unsigned char *oid_sequence;
 	unsigned char *max_repetitions;
-	int sid_offset;
-	struct ber e;
+	struct packet_info pi;
 };
 
 struct send_buf
@@ -278,6 +296,51 @@ struct destination
 	int64_t octets_sent;
 };
 
+#define V3O_ENGINE_ID_MAXLEN 64
+#define V3O_USERNAME_MAXSIZE 64
+#define V3O_AUTHPASS_MAXSIZE 64
+#define V3O_PRIVPASS_MAXSIZE 64
+#define V3O_AUTHKUL_MAXSIZE  32
+#define V3O_PRIVKUL_MAXSIZE  32
+
+#define V3O_AUTH_PROTO_MD5 1
+#define V3O_AUTH_PROTO_SHA1 2
+
+#define V3O_PRIV_PROTO_DES 1
+#define V3O_PRIV_PROTO_AES128 2
+#define V3O_PRIV_PROTO_AES192 21
+#define V3O_PRIV_PROTO_AES256 22
+#define V3O_PRIV_PROTO_AES192_CISCO 31
+#define V3O_PRIV_PROTO_AES256_CISCO 32
+#define V3O_PRIV_PROTO_AES V3O_PRIV_PROTO_AES128
+
+#define V3F_REPORTABLE		0x04
+#define V3F_ENCRYPTED		0x02
+#define V3F_AUTHENTICATED	0x01
+
+struct snmpv3info {
+	// these can be set via setopt and (mostly) obtained via getopt
+	unsigned  engine_id_len;
+	u_int8_t  engine_id[V3O_ENGINE_ID_MAXLEN];
+	char      username[V3O_USERNAME_MAXSIZE];
+	int       auth_proto;
+	char      authpass[V3O_AUTHPASS_MAXSIZE];
+	unsigned  authkul_len;
+	u_int8_t  authkul[V3O_AUTHKUL_MAXSIZE];
+	int       priv_proto;
+	char      privpass[V3O_PRIVPASS_MAXSIZE];
+	unsigned  privkul_len;
+	u_int8_t  privkul[V3O_AUTHKUL_MAXSIZE];
+	// these cannot be set via setopt or obtained via getopt
+	unsigned  x_privkul_len;
+	u_int8_t  x_privkul[V3O_AUTHKUL_MAXSIZE]; // expanded kul if expansion is needed, or privkul copy if not
+	unsigned  msg_max_size;
+	// these are for packets we receive from the network
+	u_int32_t engine_boots;
+	u_int32_t engine_time;
+	u_int8_t  msg_flags;
+};
+
 struct client_requests_info
 {
 	struct destination *dest;
@@ -292,6 +355,7 @@ struct client_requests_info
 	char     community[256];
 	int      timeout;
 	int      retries;
+	struct snmpv3info *v3;
 };
 
 struct cid_info
@@ -324,7 +388,7 @@ struct sid_info
 
 	struct packet_builder pb;
 	struct ber packet;
-	int sid_offset_in_a_packet;
+	struct packet_info pi;
 	/* For a given SNMP request, either table_oid is not NULL,
 	 * or oids_being_queried is non-empty.  This distinguishes
 	 * between table walks and normal gets. */
@@ -359,14 +423,22 @@ extern int ber_equal(struct ber *b1, struct ber *b2);
 extern int ber_is_null(struct ber *ber);
 extern struct ber ber_error_status(int error_status);
 
+extern struct ber usmStatsNotInTimeWindows;
+extern struct ber usmStatsWrongDigests;
+
+extern int populate_well_known_oids(void);
+
 extern int encode_type_len(unsigned char type, unsigned i, struct ber *e);
 extern int encode_integer(unsigned i, struct ber *e, int force_size);
 extern int encode_string(const char *s, struct ber *e);
+extern int encode_bytes(const unsigned char *p, int n, struct ber *e);
 extern int encode_string_oid(const char *oid, int oid_len, struct ber *e);
 extern int encode_store_length(struct ber *e, unsigned char *s);
 
 extern int decode_type_len(struct ber *e, unsigned char *type, unsigned *len);
 extern int decode_integer(struct ber *e, int int_len, unsigned *value);
+extern int decode_string(struct ber *e, unsigned char *s, unsigned s_size, unsigned *s_len); // adds nul byte, needs space for it
+extern int decode_octets(struct ber *e, unsigned char *s, unsigned s_size, unsigned *s_len);  // does not add nul byte
 extern int decode_ipv4_address(struct ber *e, int l, struct in_addr *ip);
 extern int decode_counter64(struct ber *e, int int_len, unsigned long long *value);
 extern int decode_timeticks(struct ber *e, int int_len, unsigned long long *value);
@@ -379,7 +451,7 @@ extern int decode_composite(struct ber *e, unsigned char comp_type, int *composi
 /* In decode_any() and decode_oid(),
  * the dst buffer will point inside the src buffer,
  * so if you are going to use it past the life of the src
- * buffer, do not forget to encode_dup(dst) afterwards.
+ * buffer, do not forget to ber_dup(dst) afterwards.
  */
 extern int decode_any(struct ber *src, struct ber *dst);
 extern int decode_oid(struct ber *src, struct ber *dst);
@@ -387,10 +459,22 @@ extern int decode_oid(struct ber *src, struct ber *dst);
 extern int build_get_request_packet(int version, const char *community,
 									const char *oid_list,
 									unsigned request_id, struct ber *e);
-extern int start_snmp_packet(struct packet_builder *pb, int version, const char *community,
-							 unsigned request_id);
+
+extern int
+start_snmp_packet(struct packet_builder* pb,
+                  int version,
+                  unsigned request_id,
+                  const struct snmpv3info* v3,
+                  const char* community);
+
 extern int add_encoded_oid_to_snmp_packet(struct packet_builder *pb, struct ber *oid);
-extern int finalize_snmp_packet(struct packet_builder *pb, struct ber *encoded_packet, unsigned char type, int max_repetitions);
+extern int
+finalize_snmp_packet(struct packet_builder* pb,
+                     struct ber* out_encoded_packet,
+					 const struct snmpv3info* v3,
+                     struct packet_info* out_pi,
+                     unsigned char type,
+                     int max_repetitions);
 extern int oid_belongs_to_table(struct ber *oid, struct ber *table);
 extern int oid_compare(struct ber *aa, struct ber *bb);
 /* returns -9999 if there is a problem,
@@ -436,6 +520,7 @@ extern void new_client_connection(int fd);
 /* util.c */
 extern char *object_strdup(msgpack_object *o);
 extern char *object2string(msgpack_object *o, char s[], int bufsize);
+extern size_t object_hexstring_to_buffer(msgpack_object *o, uint8_t *buf, size_t bufsize);
 extern int object_string_eq(msgpack_object *o, char *s);
 extern int object2ip(msgpack_object *o, struct in_addr *ip); /* 1 = success, 0 = failure */
 extern unsigned next_sid(void);
@@ -469,10 +554,10 @@ extern void dump_cid_info(msgpack_packer *pk, struct cid_info *ci);
 extern struct sid_info *new_sid_info(struct client_requests_info *cri);
 extern struct sid_info *find_sid_info(struct destination *dest, unsigned sid);
 extern void free_sid_info(struct sid_info *si);
+extern void resend_query_with_new_sid(struct sid_info *si);
 extern void build_snmp_query(struct client_requests_info *cri);
 extern void sid_start_timing(struct sid_info *si);
 extern void sid_stop_timing(struct sid_info *si);
-extern void check_timed_out_requests(void);
 extern int process_sid_info_response(struct sid_info *si, struct ber *e);
 extern void oid_done(struct sid_info *si, struct oid_info *oi, struct ber *val, int op, int packet_error_status);
 extern void all_oids_done(struct sid_info *si, struct ber *val);
@@ -511,5 +596,61 @@ extern int handle_get_request(struct socket_info *si, unsigned cid, msgpack_obje
 
 /* request_gettable.c */
 extern int handle_gettable_request(struct socket_info *si, unsigned cid, msgpack_object *o);
+
+/* v3_keys.c */
+extern bool
+password_to_key(int algorithm,
+                void* pass,
+             	unsigned pass_size,
+                void* keybuf,
+                unsigned keybufsize,
+                unsigned* out_keylen,
+                char** out_error);
+
+extern bool
+key_to_kul(int algorithm,
+           void* key,
+           unsigned key_size,
+           void* engine_id,
+           unsigned engine_id_size,
+           void* out_kul,
+           unsigned out_kul_size,
+           unsigned* out_kul_len,
+           char** out_error);
+
+extern bool
+password_to_kul(int alg,
+                void* pass,
+                unsigned pass_size,
+                void* engine_id,
+                unsigned engine_id_size,
+                void* out_kul,
+                unsigned out_kul_size,
+                unsigned* out_kul_len,
+                char** out_error);
+
+extern bool
+expand_kul(int authalg,
+           int privalg,
+           void* kul,
+           unsigned kul_size,
+           void* engine_id,
+           unsigned engine_id_size,
+           void* out_x_kul,
+           unsigned out_x_kul_size,
+           unsigned* out_x_kul_len,
+           char** out_error);
+
+/* v3_crypto.c */
+extern int encrypt_in_place(unsigned char *buf, int buf_len, unsigned char *privp, const struct snmpv3info *v3);
+extern int decrypt_in_place(unsigned char *buf, int buf_len, unsigned char *privp, const struct snmpv3info *v3);
+
+extern int
+hmac_message(const struct snmpv3info* v3,
+             unsigned char* out,
+             unsigned out_size,
+             unsigned char* msg,
+             unsigned msg_len,
+             unsigned char* auth_param);
 
 #endif

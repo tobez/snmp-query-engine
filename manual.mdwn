@@ -130,7 +130,9 @@ Supported options:
 
 **`authprotocol`**
 :   Authentication protocol (for SNMPv3);  default is **"sha1"**.
-    Valid values are "md5" and "sha1" (but "md5" is currently not implemented).
+    Valid values are "md5", "sha1", and "sha".
+    "sha" is synonymous to "sha1".
+    "md5" is currently not implemented.
     This is a per destination/client option which does
     not affect other clients.
 
@@ -150,7 +152,7 @@ Supported options:
 
 **`privprotocol`**
 :   Privacy protocol (for SNMPv3);  default is **"aes"**.
-    Valid values are "des", "aes", "aes192", "aes256", and "aes256c".
+    Valid values are "des", "aes", "aes192", "aes256", "aes192c", and "aes256c".
     Only "aes" and "aes256c" are currently implemented.
     This is a per destination/client option which does
     not affect other clients.
@@ -205,6 +207,7 @@ Supported options:
     `max_reply_size`, the request will be
     split into smaller pieces.
     This option is only relevant for `get* requests.
+    This is also the value that is used to set msgMaxSize of SNMPv3.
     The default is **1472**.
     This is a per destination option which affects other clients.
 

@@ -30,6 +30,14 @@ static void *option2index; /* a JudySL tree */
 #define OPT_estimated_value_size 12
 #define OPT_max_oids_per_request 13
 #define OPT_global_max_packets   14
+#define OPT_engineid			 15
+#define OPT_username			 16
+#define OPT_authprotocol		 17
+#define OPT_authpassword		 18
+#define OPT_authkul			 	 19
+#define OPT_privprotocol		 20
+#define OPT_privpassword		 21
+#define OPT_privkul			 	 22
 
 static void
 build_option2index(void)
@@ -51,6 +59,14 @@ build_option2index(void)
 	ADD(max_repetitions);
 	ADD(ignore_threshold);
 	ADD(ignore_duration);
+	ADD(engineid)
+	ADD(username)
+	ADD(authprotocol)
+	ADD(authpassword)
+	ADD(authkul)
+	ADD(privprotocol)
+	ADD(privpassword)
+	ADD(privkul)
 	#undef ADD
 }
 
@@ -61,12 +77,18 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	struct in_addr ip;
 	struct client_requests_info *cri;
 	struct destination d;
+	struct snmpv3info v3;
+	int need_v3 = 0;
 	struct client_requests_info c;
 	msgpack_sbuffer* buffer;
 	msgpack_packer* pk;
 	msgpack_object *h, *v;
 	msgpack_object_type t;
 	int i;
+	int seen_authpassword = 0;
+	int seen_authkul = 0;
+	int seen_privpassword = 0;
+	int seen_privkul = 0;
 
 	if (o->via.array.size != 5)
 		return error_reply(si, RT_SETOPT|RT_ERROR, cid, "bad request length");
@@ -85,6 +107,11 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	cri = get_client_requests_info(&ip, port, si);
 	memcpy(&d, cri->dest, sizeof(d));
 	memcpy(&c, cri, sizeof(c));
+	bzero(&v3, sizeof(v3));
+	if (c.v3) {
+		memcpy(&v3, cri->v3, sizeof(v3));
+		need_v3 = 1;
+	}
 
 	if (!option2index)
 		build_option2index();
@@ -102,11 +129,13 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 		t = v->type;
 		switch (*val) {
 		case OPT_version:
-			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || (v->via.u64 != 1 && v->via.u64 != 2))
+			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || (v->via.u64 < 1 && v->via.u64 > 3))
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid SNMP version");
-			c.version = v->via.u64 - 1;
-			break;
-		case OPT_community:
+			c.version = v->via.u64;
+            if (c.version != 3)
+                c.version--;
+            break;
+        case OPT_community:
 			if (!object2string(v, c.community, 256))
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid SNMP community");
 			break;
@@ -174,22 +203,169 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 			if (cri->dest->ignore_duration != d.ignore_duration)
 				bzero(&d.ignore_until, sizeof(cri->dest->ignore_until));
 			break;
+		case OPT_engineid:
+			v3.engine_id_len = object_hexstring_to_buffer(v, v3.engine_id, V3O_ENGINE_ID_MAXLEN);
+			if (v3.engine_id_len < 0)
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid engineid hexstring");
+			need_v3 = 1;
+			break;
+		case OPT_username:
+			if (!object2string(v, v3.username, V3O_USERNAME_MAXSIZE))
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid username");
+			need_v3 = 1;
+			break;
+		case OPT_authprotocol:
+			if (object_string_eq(v, "md5")) {
+				v3.auth_proto = V3O_AUTH_PROTO_MD5;
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "auth protocol md5 is not implemented");
+			} else if (object_string_eq(v, "sha1")) {
+				v3.auth_proto = V3O_AUTH_PROTO_SHA1;
+			} else if (object_string_eq(v, "sha")) {
+				v3.auth_proto = V3O_AUTH_PROTO_SHA1;
+			} else {
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid auth protocol");
+			}
+			need_v3 = 1;
+			break;
+		case OPT_authpassword:
+			if (!object2string(v, v3.authpass, V3O_AUTHPASS_MAXSIZE))
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid auth password");
+			seen_authpassword = 1;
+			v3.authkul_len = 0;
+			need_v3 = 1;
+			break;
+		case OPT_authkul:
+			v3.authkul_len = object_hexstring_to_buffer(v, v3.authkul, V3O_AUTHKUL_MAXSIZE);
+			if (v3.authkul_len < 0)
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid authkul hexstring");
+			seen_authkul = 1;
+			v3.authpass[0] = 0;
+			need_v3 = 1;
+			break;
+		case OPT_privprotocol:
+			if (object_string_eq(v, "des")) {
+				v3.priv_proto = V3O_PRIV_PROTO_DES;
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "priv protocol des is not implemented");
+			} else if (object_string_eq(v, "aes")) {
+				v3.priv_proto = V3O_PRIV_PROTO_AES;
+			} else if (object_string_eq(v, "aes128")) {
+				v3.priv_proto = V3O_PRIV_PROTO_AES128;
+			} else if (object_string_eq(v, "aes192")) {
+				v3.priv_proto = V3O_PRIV_PROTO_AES192;
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "priv protocol aes192 is not implemented");
+			} else if (object_string_eq(v, "aes256")) {
+				v3.priv_proto = V3O_PRIV_PROTO_AES256;
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "priv protocol aes256 is not implemented");
+			} else if (object_string_eq(v, "aes192c")) {
+				v3.priv_proto = V3O_PRIV_PROTO_AES192_CISCO;
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "priv protocol aes192c is not implemented");
+			} else if (object_string_eq(v, "aes256c")) {
+				v3.priv_proto = V3O_PRIV_PROTO_AES256_CISCO;
+			} else {
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid priv protocol");
+			}
+			need_v3 = 1;
+			break;
+		case OPT_privpassword:
+			if (!object2string(v, v3.privpass, V3O_PRIVPASS_MAXSIZE))
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid priv password");
+			seen_privpassword = 1;
+			v3.privkul_len = 0;
+			need_v3 = 1;
+			break;
+		case OPT_privkul:
+			v3.privkul_len = object_hexstring_to_buffer(v, v3.privkul, V3O_PRIVKUL_MAXSIZE);
+			if (v3.privkul_len < 0)
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid privkul hexstring");
+			seen_privkul = 1;
+			v3.privpass[0] = 0;
+			need_v3 = 1;
+			break;
 		default:
 			return error_reply(si, RT_SETOPT|RT_ERROR, cid, "bad option key");
 		}
 	}
 
-	PS.setopt_requests++;
-	si->PS.setopt_requests++;
+	if (seen_authpassword && seen_authkul)
+		return error_reply(si, RT_SETOPT|RT_ERROR, cid, "authpassword and authkul are mutually exclusive");
+	if (seen_privpassword && seen_privkul)
+		return error_reply(si, RT_SETOPT|RT_ERROR, cid, "privpassword and privkul are mutually exclusive");
 
-	memcpy(cri, &c, sizeof(c));       /* This is safe to do, I am sure */
-	memcpy(cri->dest, &d, sizeof(d)); /* This is safe to do, I am sure */
+	if (need_v3 && v3.authpass[0]) {
+		char *err;
+
+        if (!password_to_kul(v3.auth_proto,
+                             v3.authpass,
+							 strlen(v3.authpass),
+                             v3.engine_id,
+							 v3.engine_id_len,
+							 v3.authkul,
+                             V3O_AUTHKUL_MAXSIZE,
+                             &v3.authkul_len,
+                             &err))
+		{
+            fprintf(stderr, "handle_setopt_request: authkul calculation error: "
+                    "password_to_kul: %s\n", err);
+            return error_reply(si, RT_SETOPT | RT_ERROR, cid, "authpass to kul calculation error");
+        }
+    }
+
+	if (need_v3 && v3.privpass[0]) {
+		char *err;
+
+        if (!password_to_kul(v3.auth_proto,
+                             v3.privpass,
+							 strlen(v3.privpass),
+                             v3.engine_id,
+							 v3.engine_id_len,
+							 v3.privkul,
+                             V3O_PRIVKUL_MAXSIZE,
+                             &v3.privkul_len,
+                             &err))
+		{
+            fprintf(stderr, "handle_setopt_request: privkul calculation error: "
+                    "password_to_kul: %s\n", err);
+            return error_reply(si, RT_SETOPT | RT_ERROR, cid, "privpass to kul calculation error");
+        }
+
+        if (!expand_kul(v3.auth_proto,
+                        v3.priv_proto,
+                        v3.privkul,
+                        v3.privkul_len,
+                        v3.engine_id,
+                        v3.engine_id_len,
+                        v3.x_privkul,
+                        V3O_PRIVKUL_MAXSIZE,
+                        &v3.x_privkul_len,
+                        &err))
+		{
+            fprintf(stderr, "handle_setopt_request: privkul calculation error: "
+                    "expand_kul: %s\n", err);
+            return error_reply(si, RT_SETOPT | RT_ERROR, cid, "expand kul calculation error");
+        }
+    }
+
+    PS.setopt_requests++;
+    si->PS.setopt_requests++;
+
+    memcpy(cri, &c, sizeof(c));       /* This is safe to do, I am sure */
+    memcpy(cri->dest, &d, sizeof(d)); /* This is safe to do, I am sure */
+    if (need_v3) {
+		v3.msg_max_size = d.max_reply_packet_size; // always just copy
+		if (!cri->v3) {
+			cri->v3 = malloc(sizeof(v3));
+			if (!cri->v3)
+				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "malloc v3 problem");
+		}
+		memcpy(cri->v3, &v3, sizeof(v3));
+	}
+
 	buffer = msgpack_sbuffer_new();
 	pk = msgpack_packer_new(buffer, msgpack_sbuffer_write);
 	msgpack_pack_array(pk, 3);
 	msgpack_pack_int(pk, RT_SETOPT|RT_REPLY);
 	msgpack_pack_int(pk, cid);
-	msgpack_pack_options(pk, &c);
+	msgpack_pack_options(pk, cri);
 
 	tcp_send(si, buffer->data, buffer->size);
 	msgpack_sbuffer_free(buffer);

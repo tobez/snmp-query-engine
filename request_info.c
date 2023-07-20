@@ -40,6 +40,7 @@ pack_stats(struct program_stats *PS, msgpack_packer *pk)
 	STAT(snmp_sends);
 	STAT(snmp_v1_sends);
 	STAT(snmp_v2c_sends);
+	STAT(snmp_v3_sends);
 	STAT(snmp_timeouts);
 	STAT(udp_timeouts);
 	STAT(bad_snmp_responses);

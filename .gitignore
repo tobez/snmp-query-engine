@@ -2,8 +2,13 @@ test_ber
 test_ber.dSYM/
 test_msgpack
 test_msgpack.dSYM/
+test_v3
+test_v3.dSYM/
 *.o
 .*.swp
 snmp-query-engine
 *.core
 core
+.vscode/
+devel/*.dump
+devel/v3.pl

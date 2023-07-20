@@ -46,7 +46,7 @@ struct ber ber_dup(struct ber *eo)
 	struct ber en;
 
 	if (!buf)
-		croak(2, "encode_dup: malloc(buf(%d))", eo->len);
+		croak(2, "ber_dup: malloc(buf(%d))", eo->len);
 	en = ber_init(buf, eo->len);
 	memcpy(buf, eo->buf, eo->len);
 	en.len = eo->len;
@@ -203,51 +203,6 @@ build_get_request_packet(int version, const char *community,
 }
 
 int
-start_snmp_packet(struct packet_builder *pb, int version, const char *community,
-				  unsigned request_id)
-{
-	unsigned char *packet_buf;
-	struct ber *e;
-
-	bzero(pb, sizeof(*pb));
-	packet_buf = malloc(65000);
-	if (!packet_buf)
-		croak(2, "start_get_request_packet: malloc(packet_buf)");
-	pb->e = ber_init(packet_buf, 65000);
-	e = &pb->e;
-
-	SPACECHECK2;
-	pb->packet_sequence = e->b;
-   	pb->packet_sequence[0] = AT_SEQUENCE;
-	EXTEND2;
-
-	if (version < 0 || version > 1) {
-		errno = EINVAL;
-		return -1;
-	}
-	if (encode_integer((unsigned)version, e, 0) < 0)	return -1;
-	if (encode_string(community, e) < 0)	return -1;
-
-	SPACECHECK2;
-	pb->pdu = e->b;
-	pb->pdu[0] = PDU_GET_REQUEST;
-	EXTEND2;
-
-	if (encode_integer(request_id, e, 4) < 0)	return -1;
-	pb->sid_offset = e->b - e->buf - 4;
-	if (encode_integer(0, e, 0) < 0)	return -1; /* error-status */
-	if (encode_integer(0, e, 0) < 0)	return -1; /* error-index */
-	pb->max_repetitions  = e->b - 1;
-
-	SPACECHECK2;
-	pb->oid_sequence = e->b;
-	pb->oid_sequence[0] = AT_SEQUENCE;
-	EXTEND2;
-
-	return 0;
-}
-
-int
 add_encoded_oid_to_snmp_packet(struct packet_builder *pb, struct ber *oid)
 {
 	struct ber *e;
@@ -270,8 +225,142 @@ add_encoded_oid_to_snmp_packet(struct packet_builder *pb, struct ber *oid)
 	return 0;
 }
 
+/// @brief Initialize SNMP packet builder structure pb with necessary fields.
+/// @param pb 			packet builder structure to work with
+/// @param version 		SNMP version to use (0 = SNMPv1, 1 = SNMPv2c, 3 = SNMPv3)
+/// @param request_id   a request id
+/// @param v3 		    a pointer to snmpv3options structure;  must not be NULL if version == 3
+/// @param community    an SNMP community string;  must not be NULL if version != 3
+/// @return 0 for success, -1 for failure, in which case errno is set
 int
-finalize_snmp_packet(struct packet_builder *pb, struct ber *encoded_packet, unsigned char type, int max_repetitions)
+start_snmp_packet(struct packet_builder* pb,
+                  int version,
+                  unsigned request_id,
+                  const struct snmpv3info* v3,
+                  const char* community)
+{
+	unsigned char *packet_buf;
+	struct ber *e;
+
+	memset(pb, 0, sizeof(*pb));
+	packet_buf = malloc(65000);
+	if (!packet_buf)
+		croak(2, "start_snmp_packet: malloc(packet_buf)");
+	pb->e = ber_init(packet_buf, 65000);
+	e = &pb->e;
+
+	SPACECHECK2;
+	pb->packet_sequence = e->b;
+   	pb->packet_sequence[0] = AT_SEQUENCE;
+	EXTEND2;
+
+	if (version != 0 && version != 1 && version != 3) {
+		errno = EINVAL;
+		return -1;
+	}
+	if (encode_integer((unsigned)version, e, 0) < 0)	return -1;
+
+	if (version == 3) {
+		int l;
+		unsigned char *gdata, *sec_params_string, *sec_params_seq;
+		unsigned char msg_flags = V3F_AUTHENTICATED | V3F_ENCRYPTED | V3F_REPORTABLE;
+		unsigned int msg_security_model = 3;  // HACK authFlag | privFlag
+		unsigned char zeroes[32];
+
+		pb->pi.v3 = true;
+		memset(zeroes, 0, 32);
+
+		SPACECHECK2;
+		gdata = e->b;
+		gdata[0] = AT_SEQUENCE;
+		EXTEND2;
+
+		/* We just set msgID to be the same as request-id in the PDU */
+		if (encode_integer(request_id, e, 0) < 0)	return -1; // XXX always 4 bytes?
+		pb->pi.sid_offset = e->b - e->buf - 4;
+		if (encode_integer(v3->msg_max_size, e, 2) < 0)	return -1;
+		if (encode_bytes(&msg_flags, 1, e) < 0)	return -1;
+		if (encode_integer(msg_security_model, e, 0) < 0)	return -1;
+
+		l = encode_store_length(e, gdata);
+		if (l < 0)	return -1;
+		pb->pi.sid_offset += l;
+
+		SPACECHECK2;
+		sec_params_string = e->b;
+		sec_params_string[0] = AT_STRING;
+		EXTEND2;
+
+		SPACECHECK2;
+		sec_params_seq = e->b;
+		sec_params_seq[0] = AT_SEQUENCE;
+		EXTEND2;
+
+		if (encode_bytes(v3->engine_id, v3->engine_id_len, e) < 0)	return -1;
+
+		if (encode_integer(v3->engine_boots, e, 0) < 0)	return -1;
+		if (encode_integer(v3->engine_time, e, 0) < 0)	return -1;
+
+		if (encode_string(v3->username, e) < 0)	return -1;
+		pb->pi.authp_offset = e->b - e->buf + 2;
+		if (encode_bytes(zeroes, 12, e) < 0)	return -1;
+		pb->pi.privp_offset = e->b - e->buf + 2;
+		if (encode_bytes(zeroes, 8, e) < 0)	return -1;
+
+		l = encode_store_length(e, sec_params_seq);
+		if (l < 0)	return -1;
+		pb->pi.authp_offset += l;
+		pb->pi.privp_offset += l;
+
+		l = encode_store_length(e, sec_params_string);
+		if (l < 0)	return -1;
+		pb->pi.authp_offset += l;
+		pb->pi.privp_offset += l;
+
+		SPACECHECK2;
+		pb->encrypted_pdu = e->b;
+		pb->encrypted_pdu[0] = AT_STRING;
+		EXTEND2;
+
+		SPACECHECK2;
+		pb->decrypted_scoped_pdu = e->b;
+		pb->decrypted_scoped_pdu[0] = AT_SEQUENCE;
+		EXTEND2;
+
+		if (encode_bytes(v3->engine_id, v3->engine_id_len, e) < 0)	return -1;
+		if (encode_bytes(zeroes, 0, e) < 0)	return -1;
+
+	} else {
+		if (encode_string(community, e) < 0)	return -1;
+	}
+
+	SPACECHECK2;
+	pb->pdu = e->b;
+	pb->pdu[0] = PDU_GET_REQUEST;
+	EXTEND2;
+
+	if (encode_integer(request_id, e, 4) < 0)	return -1;
+	if (version != 3)
+		pb->pi.sid_offset = e->b - e->buf - 4;
+	if (encode_integer(0, e, 0) < 0)	return -1; /* error-status */
+	if (encode_integer(0, e, 0) < 0)	return -1; /* error-index */
+	pb->max_repetitions  = e->b - 1;
+
+	SPACECHECK2;
+	pb->oid_sequence = e->b;
+	pb->oid_sequence[0] = AT_SEQUENCE;
+	EXTEND2;
+
+	return 0;
+}
+
+int
+finalize_snmp_packet(struct packet_builder* pb,
+                     struct ber* out_encoded_packet,
+					 const struct snmpv3info* v3,
+                     struct packet_info* out_pi,
+                     unsigned char type,
+                     int max_repetitions)
 {
 	struct ber *e;
 	int l;
@@ -284,17 +373,70 @@ finalize_snmp_packet(struct packet_builder *pb, struct ber *encoded_packet, unsi
 			max_repetitions = 255;
 		pb->max_repetitions[0] = (unsigned char)max_repetitions;
 	}
-	if ( (l = encode_store_length(e, pb->oid_sequence)) < 0)	return -1;
-	if ( (l = encode_store_length(e, pb->pdu)) < 0)	return -1;
-	pb->sid_offset += l;
+
+	l = encode_store_length(e, pb->oid_sequence);
+	if (l < 0)	return -1;
+
+	l = encode_store_length(e, pb->pdu);
+	if (l < 0)	return -1;
 	pb->pdu[0] = type;
-	if ( (l = encode_store_length(e, pb->packet_sequence)) < 0)	return -1;
-	pb->sid_offset += l;
-	*encoded_packet = ber_dup(e);
-	free(e->buf);
-	return pb->sid_offset;
+
+	if (!pb->pi.v3)
+		pb->pi.sid_offset += l;
+
+	if (pb->decrypted_scoped_pdu) {
+		l = encode_store_length(e, pb->decrypted_scoped_pdu);
+		if (l < 0)	return -1;
+		l = encrypt_in_place(pb->decrypted_scoped_pdu, e->b - pb->decrypted_scoped_pdu, e->buf + pb->pi.privp_offset, v3);
+		if (l < 0)	return -1;
+	}
+
+	if (pb->encrypted_pdu) {
+		l = encode_store_length(e, pb->encrypted_pdu);
+		if (l < 0)	return -1;
+	}
+
+	l = encode_store_length(e, pb->packet_sequence);
+	if (l < 0)	return -1;
+	pb->pi.sid_offset += l;
+    pb->pi.authp_offset += l;
+    pb->pi.privp_offset += l;
+
+	// authenticate
+	if (pb->pi.v3 && v3) {
+		fprintf(stderr, "Before hmac_message:\n");
+    	ber_dump(stderr, e);
+    	if (hmac_message(v3,
+                      	 e->buf + pb->pi.authp_offset,
+                     	 12,
+                         e->buf,
+                         e->len,
+                         e->buf + pb->pi.authp_offset) < 0) {
+			return -1;
+		}
+		fprintf(stderr, "After hmac_message:\n");
+        ber_dump(stderr, e);
+        fprintf(stderr, "\n");
+{
+FILE *ff = fopen("/tmp/finalized-v3.bin", "w");
+//ber_dump(ff, e);
+fwrite(e->buf, 1, e->len, ff);
+fclose(ff);
+//exit(1);
 }
 
+	}
+
+	*out_encoded_packet = ber_dup(e);
+	*out_pi = pb->pi;
+	free(e->buf);
+	return pb->pi.sid_offset;
+}
+
+/// @brief Stores actual length of a composite starting at s and ending at e->b, moving memory block if needed;  think of it as a finalizer for the composite.
+/// @param e the ber structure
+/// @param s start of a composite
+/// @return -1 on failure, adjustment size (0,1,2) on success
 int
 encode_store_length(struct ber *e, unsigned char *s)
 {
@@ -328,6 +470,10 @@ encode_store_length(struct ber *e, unsigned char *s)
 	return 0;
 }
 
+/// @brief Encodes a null-terminated string s as an OCTET STRING into a ber structure e
+/// @param s string
+/// @param e ber structure pointer
+/// @return 0 on success, -1 on failure (sets errno)
 int
 encode_string(const char *s, struct ber *e)
 {
@@ -340,6 +486,25 @@ encode_string(const char *s, struct ber *e)
 	memmove(e->b, s, i);
 	e->b   += i;
 	e->len += i;
+	return 0;
+}
+
+/// @brief Encodes n bytes at p as an OCTET STRING into a ber structure e
+/// @param p bytes pointer
+/// @param n number of bytes to encode
+/// @param e ber structure pointer
+/// @return 0 on success, -1 on failure (sets errno)
+int
+encode_bytes(const unsigned char *p, int n, struct ber *e)
+{
+	if (encode_type_len(AT_STRING, n, e) < 0)	return -1;
+	if (e->len + n > e->max_len) {
+		errno = EMSGSIZE;
+		return -1;
+	}
+	memmove(e->b, p, n);
+	e->b   += n;
+	e->len += n;
 	return 0;
 }
 
@@ -419,6 +584,48 @@ decode_ipv4_address(struct ber *e, int l, struct in_addr *ip)
 	if (decode_integer(e, l, &int_ip) < 0)
 		return -1;
 	ip->s_addr = htonl(int_ip);
+	return 0;
+}
+
+int
+decode_octets(struct ber *e, unsigned char *s, unsigned s_size, unsigned *s_len)
+{
+	unsigned char t;
+    if (decode_type_len(e, &t, s_len) < 0) return -1;
+	if (t != AT_STRING) {
+		errno = EINVAL;
+		return -1;
+	}
+	if (*s_len > s_size) {
+		errno = EMSGSIZE;
+		return -1;
+	}
+	memcpy(s, e->b, *s_len);
+
+    e->b += *s_len;
+    e->len += *s_len;
+	return 0;
+}
+
+// just like decode_octets but expects space for nul byte at the end and adds said nul byte
+int
+decode_string(struct ber *e, unsigned char *s, unsigned s_size, unsigned *s_len)
+{
+	unsigned char t;
+    if (decode_type_len(e, &t, s_len) < 0) return -1;
+	if (t != AT_STRING) {
+		errno = EINVAL;
+		return -1;
+	}
+	if (*s_len >= s_size) {
+		errno = EMSGSIZE;
+		return -1;
+	}
+	memcpy(s, e->b, *s_len);
+	s[*s_len] = 0;
+
+    e->b += *s_len;
+    e->len += *s_len;
 	return 0;
 }
 
@@ -942,5 +1149,29 @@ oid_compare(struct ber *aa, struct ber *bb)
 		return 1;
 	if (blen)
 		return -1;
+	return 0;
+}
+
+struct ber usmStatsNotInTimeWindows;
+struct ber usmStatsWrongDigests;
+
+int
+populate_well_known_oids(void)
+{
+    char tmp_buf[2048];
+    struct ber e;
+
+    e = ber_init(tmp_buf, 2048);
+    if (encode_string_oid("1.3.6.1.6.3.15.1.1.2.0", -1, &e) < 0) {
+        return -1;
+	}
+	usmStatsNotInTimeWindows = ber_dup(&e);
+
+    e = ber_init(tmp_buf, 2048);
+    if (encode_string_oid("1.3.6.1.6.3.15.1.1.5.0", -1, &e) < 0) {
+        return -1;
+	}
+	usmStatsWrongDigests = ber_dup(&e);
+
 	return 0;
 }

@@ -62,13 +62,39 @@ msgpack_pack_string(msgpack_packer *pk, char *s)
 }
 
 int
+msgpack_pack_named_hex_buffer(msgpack_packer *pk, char *name, unsigned char *buf, int sz)
+{
+	char *s = malloc(sz*2 + 1);
+	char *t;
+	if (!s)	return -1;
+	t = s;
+	while (sz) {
+		int n = (*buf) >> 4;
+		if (n < 10) *t++ = n + '0'; else *t++ = n - 10 + 'a';
+		n = (*buf) & 0x0f;
+		if (n < 10) *t++ = n + '0'; else *t++ = n - 10 + 'a';
+		buf++;
+		sz--;
+	}
+	*t = 0;
+	msgpack_pack_named_string(pk, name, s);
+	free(s);
+	return 0;
+}
+
+int
 msgpack_pack_options(msgpack_packer *pk, struct client_requests_info *cri)
 {
-	msgpack_pack_map(pk, 15);
+	int map_size = 15;
+
+	if (cri->v3)
+		map_size += 6;
+
+	msgpack_pack_map(pk, map_size);
 	msgpack_pack_named_string(pk, "ip", inet_ntoa(cri->dest->ip));
 	msgpack_pack_named_int(pk, "port", cri->dest->port);
 	msgpack_pack_named_string(pk, "community", cri->community);
-	msgpack_pack_named_int(pk, "version", cri->version + 1);
+	msgpack_pack_named_int(pk, "version", cri->version <= 1 ? cri->version + 1 : cri->version);
 	msgpack_pack_named_int(pk, "max_packets", cri->dest->max_packets_on_the_wire);
 	msgpack_pack_named_int(pk, "max_req_size", cri->dest->max_request_packet_size);
 	msgpack_pack_named_int(pk, "max_reply_size", cri->dest->max_reply_packet_size);
@@ -80,6 +106,47 @@ msgpack_pack_options(msgpack_packer *pk, struct client_requests_info *cri)
 	msgpack_pack_named_int(pk, "max_repetitions", cri->dest->max_repetitions);
 	msgpack_pack_named_int(pk, "ignore_threshold", cri->dest->ignore_threshold);
 	msgpack_pack_named_int(pk, "ignore_duration", cri->dest->ignore_duration);
+	if (cri->v3) {
+		char *s = "";
+		msgpack_pack_named_string(pk, "username", cri->v3->username);
+		msgpack_pack_named_hex_buffer(pk, "engineid", cri->v3->engine_id, cri->v3->engine_id_len);
+		switch (cri->v3->auth_proto) {
+		case V3O_AUTH_PROTO_MD5:
+			s = "md5";
+			break;
+		case V3O_AUTH_PROTO_SHA1:
+			s = "sha1";
+			break;
+		default:
+			s = "?";
+			break;
+		}
+		msgpack_pack_named_string(pk, "authprotocol", s);
+		msgpack_pack_named_hex_buffer(pk, "authkul", cri->v3->authkul, cri->v3->authkul_len);
+		switch (cri->v3->priv_proto) {
+		case V3O_PRIV_PROTO_DES:
+		case V3O_PRIV_PROTO_AES128:
+			s = "aes";
+			break;
+		case V3O_PRIV_PROTO_AES192:
+			s = "aes192";
+			break;
+		case V3O_PRIV_PROTO_AES256:
+			s = "aes256";
+			break;
+		case V3O_PRIV_PROTO_AES192_CISCO:
+			s = "aes192c";
+			break;
+		case V3O_PRIV_PROTO_AES256_CISCO:
+			s = "aes256c";
+			break;
+		default:
+			s = "?";
+			break;
+		}
+		msgpack_pack_named_string(pk, "privprotocol", s);
+		msgpack_pack_named_hex_buffer(pk, "privkul", cri->v3->privkul, cri->v3->privkul_len);
+	}
 	return 0;
 }
 

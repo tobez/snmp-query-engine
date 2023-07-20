@@ -56,6 +56,62 @@ object2string(msgpack_object *o, char s[], int bufsize)
 	return s;
 }
 
+size_t
+object_hexstring_to_buffer(msgpack_object *o, uint8_t *buf, size_t bufsize)
+{
+	const char *s = NULL;
+	uint32_t sz;
+	int digits = 0;
+	uint8_t b = 0;
+	uint8_t nibble;
+	size_t l = 0;
+
+	switch (o->type) {
+	case MSGPACK_OBJECT_BIN:
+		sz = o->via.bin.size;
+		s = o->via.bin.ptr;
+		break;
+
+	case MSGPACK_OBJECT_STR:
+		sz = o->via.str.size;
+		s = o->via.str.ptr;
+		break;
+	
+	default:
+		return -1;
+	}
+
+	while (sz) {
+		if (*s >= '0' && *s <= '9') {
+			nibble = *s - '0';
+		} else if (*s >= 'a' && *s <= 'f') {
+			nibble = *s - 'a' + 10;
+		} else if (*s >= 'A' && *s <= 'F') {
+			nibble = *s - 'A' + 10;
+		} else if (*s == ' ') {
+			s++;
+			sz--;
+			continue;
+		} else {
+			return -1;
+		}
+		s++;
+		sz--;
+		if (digits % 2 == 0) {
+			b = nibble << 4;
+		} else {
+			b |= nibble;
+			if (l >= bufsize)
+				return -1;
+			buf[l++] = b;
+		}
+		digits++;
+	}
+	if (digits % 2 != 0)
+		return -1;
+	return l;
+}
+
 int
 object_string_eq(msgpack_object *o, char *s)
 {
@@ -98,6 +154,8 @@ next_sid(void)
 	sid &= 0xffffffff;
 	if (sid == 0)
 		sid++;
+	// hack to make sure it will be coded as 4 bytes while being DER
+	sid |= 0x01000000;
 	return sid;
 }
 
