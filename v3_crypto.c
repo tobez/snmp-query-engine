@@ -82,7 +82,7 @@ hmac_message(const struct snmpv3info* v3,
 /// @brief Encrypt SNMPv3 PDU in-place
 /// @param buf Points to the buffer to encrypt
 /// @param buf_len Length of the buffer to encrypt
-/// @param privp Points to SNMPv3 privacy parameters that will be written during encryption
+/// @param privp Points to 8 bytes of SNMPv3 privacy parameters that will be initialized during encryption
 /// @param v3 SNMPv3 information to use during decryption
 /// @return 0 on success, -1 on failure
 int
