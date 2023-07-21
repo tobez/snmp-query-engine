@@ -345,6 +345,26 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
         }
     }
 
+	if (need_v3 && seen_privkul) {
+		char *err;
+
+        if (!expand_kul(v3.auth_proto,
+                        v3.priv_proto,
+                        v3.privkul,
+                        v3.privkul_len,
+                        v3.engine_id,
+                        v3.engine_id_len,
+                        v3.x_privkul,
+                        V3O_PRIVKUL_MAXSIZE,
+                        &v3.x_privkul_len,
+                        &err))
+		{
+            fprintf(stderr, "handle_setopt_request: x_privkul calculation error: "
+                    "expand_kul: %s\n", err);
+            return error_reply(si, RT_SETOPT | RT_ERROR, cid, "x_privkul calculation error");
+        }
+	}
+
     PS.setopt_requests++;
     si->PS.setopt_requests++;
 
