@@ -19,7 +19,7 @@ do_accept(struct socket_info *lsi)
 	if ( (fd = accept(lsi->fd, (struct sockaddr *)&addr, &len)) < 0)
 		croak(1, "do_accept: accept");
 	if (!opt_quiet)
-		fprintf(stderr, "incoming connection from %s!\n", inet_ntoa(addr.sin_addr));
+		fprintf(stderr, "%s: incoming connection from %s!\n", timestring(), inet_ntoa(addr.sin_addr));
 	new_client_connection(fd);
 }
 

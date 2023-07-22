@@ -71,7 +71,7 @@ flush_buffers(struct socket_info *si)
 	int i, n, tot;
 
 	if (!si->n_send_bufs) {
-		fprintf(stderr, "flush_buffers: fd %d: unexpectedly nothing to flush\n", si->fd);
+		fprintf(stderr, "%s: flush_buffers: fd %d: unexpectedly nothing to flush\n", timestring(), si->fd);
 		on_write(si, NULL);
 		return;
 	}
@@ -89,11 +89,11 @@ flush_buffers(struct socket_info *si)
 	if ( (n = writev(si->fd, io_buf, i)) < 0) {
 		switch (errno) {
 		case EPIPE:
-			fprintf(stderr, "flush_buffers: EPIPE during writev\n");
+			fprintf(stderr, "%s: flush_buffers: EPIPE during writev\n", timestring());
 			if (si->eof_handler)	si->eof_handler(si);
 			return;
 		case ECONNRESET:
-			fprintf(stderr, "flush_buffers: ECONNRESET during writev\n");
+			fprintf(stderr, "%s: flush_buffers: ECONNRESET during writev\n", timestring());
 			if (si->eof_handler)	si->eof_handler(si);
 			return;
 		}
@@ -321,7 +321,7 @@ event_loop(void)
 	int nev, i, ms;
 	struct timespec to;
 
-    fprintf(stderr, "kqueue event loop started\n");
+    fprintf(stderr, "%s: kqueue event loop started\n", timestring());
 	while (1) {
 		ms = ms_to_next_timer();
 		to.tv_sec = ms / 1000;
@@ -382,7 +382,7 @@ event_loop(void)
 {
 	struct epoll_event ev[10];
 	int nev, i, ms;
-    fprintf(stderr, "epoll event loop started\n");
+    fprintf(stderr, "%s: epoll event loop started\n", timestring());
 	while (1) {
 		ms = ms_to_next_timer();
 		nev = epoll_wait(ep, ev, 10, ms);
