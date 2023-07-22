@@ -6,6 +6,9 @@
  * (See LICENSE file in the distribution.)
  *
  */
+#include <time.h>
+#include <sys/time.h>
+
 #include "sqe.h"
 
 char *
@@ -190,3 +193,25 @@ oid2str(struct ber o)
 	return oid2str_buf;
 }
 
+static char timestring_buf[256];
+
+char *
+timestring(void)
+{
+    struct timeval now;
+    struct tm time_info;
+    char secs[64];
+    char tz[32];
+
+    gettimeofday(&now, NULL);
+    localtime_r(&now.tv_sec, &time_info);
+
+    // Format the time string
+    strftime(secs, sizeof(secs), "%Y-%m-%dT%H:%M:%S.", &time_info);
+    strftime(tz, sizeof(tz), "%z", &time_info);
+
+    snprintf(timestring_buf, sizeof(timestring_buf),
+			 "%s%03ld%s", secs, now.tv_usec / 1000, tz);
+
+    return timestring_buf;
+}

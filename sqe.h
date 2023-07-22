@@ -526,6 +526,7 @@ extern int object2ip(msgpack_object *o, struct in_addr *ip); /* 1 = success, 0 =
 extern unsigned next_sid(void);
 extern void dump_buf(FILE *f, void *buf, int len);
 extern char *oid2str(struct ber o);
+extern char *timestring(void);
 
 /* destination.c */
 /* get_destination() cannot return NULL, it would rather die */

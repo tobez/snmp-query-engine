@@ -21,11 +21,14 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 	char *trace;
 	struct destination *dest;
 	struct sid_info *si;
+	char log[256];
+
+	snprintf(log, sizeof(log), "%s %s:%s", timestring(), inet_ntoa(from->sin_addr), ntohs(from->sin_port));
 
 	PS.octets_received += n;
 	dest = find_destination(&from->sin_addr, ntohs(from->sin_port));
 	if (!dest) {
-		fprintf(stderr, "destination %s:%d is not known, ignoring packet\n", inet_ntoa(from->sin_addr), ntohs(from->sin_port));
+		fprintf(stderr, "%s: destination is not known, ignoring packet\n", log);
 		return;
 	}
 	dest->octets_received += n;
@@ -35,7 +38,6 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 	PS.packets_on_the_wire--;
 	if (PS.packets_on_the_wire < 0)
 		PS.packets_on_the_wire = 0;
-// fprintf(stderr, "%s: snmp_receive->(%d)\n", inet_ntoa(dest->ip), dest->packets_on_the_wire);
 
 	enc = ber_init(buf, n); e = &enc;
 
@@ -56,9 +58,11 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 		CHECK("PDU", decode_composite(e, PDU_GET_RESPONSE, NULL));
 		CHECK("request id", decode_integer(e, -1, &sid));
 
+		snprintf(log, sizeof(log), "%s %s:%s[%s]", timestring(), inet_ntoa(from->sin_addr), ntohs(from->sin_port), sid);
+
 		si = find_sid_info(dest, sid);
 		if (!si) {
-			fprintf(stderr, "%s:%d: unable to find sid_info with sid %u, ignoring packet\n", inet_ntoa(from->sin_addr), ntohs(from->sin_port), sid);
+			fprintf(stderr, "%s: unable to find sid_info, ignoring packet\n", log);
 			return;
 		}
 
@@ -76,15 +80,11 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 		struct snmpv3info v3, *siv3;
 		unsigned char context_engine_id[V3O_ENGINE_ID_MAXLEN];
 
-{
-FILE *ff = fopen("/tmp/received-v3.bin", "w");
-fwrite(e->buf, 1, e->max_len, ff);
-fclose(ff);
-}
 		memset(&v3, 0, sizeof(v3));
 
         CHECK("msgGlobalData sequence", decode_sequence(e, NULL));
 		CHECK("msgID", decode_integer(e, -1, &mid));
+		snprintf(log, sizeof(log), "%s %s:%s[%s]", timestring(), inet_ntoa(from->sin_addr), ntohs(from->sin_port), mid);
 		CHECK("msgMaxSize", decode_integer(e, -1, &v3.msg_max_size));
 		CHECK("msgFlags", decode_octets(e, &v3.msg_flags, 1, &msg_flags_len));
 		if (msg_flags_len != 1) {
@@ -127,14 +127,14 @@ fclose(ff);
 
 		si = find_sid_info(dest, mid);
 		if (!mid) {
-			fprintf(stderr, "%s:%d: unable to find sid_info with v3 mid %u, ignoring packet\n", inet_ntoa(from->sin_addr), ntohs(from->sin_port), mid);
+			fprintf(stderr, "%s: unable to find sid_info, ignoring packet\n", log);
 			trace = NULL;
 			goto bad_snmp_packet;
 		}
 
 		// - ignore if no si->v3 setup
 		if (si->cri->version != 3 || !si->cri->v3) {
-			fprintf(stderr, "%s:%d: si(%u)->cri is not a V3, or no V3 info, ignoring packet\n", inet_ntoa(from->sin_addr), ntohs(from->sin_port), mid);
+			fprintf(stderr, "%s: si->cri is not a V3, or no V3 info found, ignoring packet\n", log);
 			trace = NULL;
 			goto bad_snmp_packet;
 		}
@@ -146,7 +146,7 @@ fclose(ff);
                    siv3->engine_id,
                    v3.engine_id_len) != 0)
 		{
-			fprintf(stderr, "%s:%d: si(%u) engine-id ", inet_ntoa(from->sin_addr), ntohs(from->sin_port), mid);
+			fprintf(stderr, "%s: known engine-id ", log);
 			for (int i = 0; i < v3.engine_id_len; i++) {
   				fprintf(stderr, "%02x", siv3->engine_id[i]);
 			}
@@ -161,9 +161,9 @@ fclose(ff);
 
 		// - verify username
 		if (strcmp(siv3->username, v3.username) != 0) {
-			fprintf(stderr, "%s:%d: si(%u) username \"%s\" does not match "
+			fprintf(stderr, "%s: known username \"%s\" does not match "
 					"received username \"%s\", ignoring packet\n",
-					inet_ntoa(from->sin_addr), ntohs(from->sin_port), mid, siv3->username, v3.username);
+					log, siv3->username, v3.username);
 			trace = NULL;
 			goto bad_snmp_packet;
 		}
@@ -172,15 +172,14 @@ fclose(ff);
 		if ((v3.msg_flags & V3F_AUTHENTICATED)) {
     		if (hmac_message(siv3, auth_param_ptr, 12, e->buf, e->max_len, auth_param_ptr) < 0) {
 				memcpy(auth_param_ptr, auth_param, 12);
-				fprintf(stderr, "%s:%d: si(%u) authentication failed: %s, prepare for packet dump:\n",
-						inet_ntoa(from->sin_addr), ntohs(from->sin_port), mid, strerror(errno));
+				fprintf(stderr, "%s: authentication failed: %s, prepare for packet dump:\n",
+						log, strerror(errno));
 				dump_buf(stderr, e->buf, e->max_len);
 				trace = NULL;
 				goto bad_snmp_packet;
 			}
 			if (memcmp(auth_param_ptr, auth_param, 12) != 0) {
-				fprintf(stderr, "%s:%d: si(%u) authentication failed, calculated digest:\n",
-						inet_ntoa(from->sin_addr), ntohs(from->sin_port), mid);
+				fprintf(stderr, "%s: authentication failed, calculated digest:\n", log);
 				dump_buf(stderr, auth_param_ptr, 12);
 				memcpy(auth_param_ptr, auth_param, 12);
 				fprintf(stderr, "prepare for packet dump:\n");
@@ -201,8 +200,7 @@ fclose(ff);
         	if (t != AT_STRING) goto bad_snmp_packet;
 			// - decrypt
 			if (decrypt_in_place(e->b, l, priv_param, siv3) < 0) {
-				fprintf(stderr, "%s:%d: si(%u), cannot decrypt, ignoring packet\n",
-						inet_ntoa(from->sin_addr), ntohs(from->sin_port), mid);
+				fprintf(stderr, "%s: cannot decrypt, ignoring packet\n", log);
 				trace = NULL;
 				goto bad_snmp_packet;
 			}
@@ -213,8 +211,7 @@ fclose(ff);
 		CHECK("context-engine-id", decode_octets(e, context_engine_id, V3O_ENGINE_ID_MAXLEN, &l));
 		// - compare engine-id, must be same
         if (v3.engine_id_len != l || memcmp(v3.engine_id, context_engine_id, l) != 0) {
-			fprintf(stderr, "%s:%d: si(%u), authoritative-engine-id ",
-					inet_ntoa(from->sin_addr), ntohs(from->sin_port), mid);
+			fprintf(stderr, "%s: authoritative-engine-id ", log);
 			for (int i = 0; i < l; i++) {
   				fprintf(stderr, "%02x", v3.engine_id[i]);
 			}
@@ -240,8 +237,7 @@ fclose(ff);
 		}
 		t = e->b[0];
 		if (t != PDU_REPORT && t != PDU_GET_RESPONSE) {
-			fprintf(stderr, "%s:%d: unsupported PDU type %x, ignoring packet\n",
-					inet_ntoa(from->sin_addr), ntohs(from->sin_port), t);
+			fprintf(stderr, "%s: unsupported PDU type %x, ignoring packet\n", log, t);
 			trace = NULL;
 			goto bad_snmp_packet;
 		}
@@ -253,8 +249,8 @@ fclose(ff);
 			// if our request HMAC is wrong, some implementations return 0x7fffffff
 			// to be on the safe side, we generally ignore sid != mid situation
 			if (sid != 0x7fffffff)
-				fprintf(stderr, "%s:%d: si(%u): warning: message-id %u does not match request-id %u\n",
-						inet_ntoa(from->sin_addr), ntohs(from->sin_port), mid, mid, sid);
+				fprintf(stderr, "%s: warning: message-id %u does not match request-id %u\n",
+						log, mid, sid);
 		}
 
 		// - if it's a report, make sure re-sending is done ASAP and no timeout counter increases
@@ -265,13 +261,11 @@ fclose(ff);
 
 			CHECK("error-status", decode_integer(e, -1, &error_status));
 			if (error_status != 0) {
-				fprintf(stderr, "%s:%d: si(%u): warning: non-zero error-status (%d)\n",
-						inet_ntoa(from->sin_addr), ntohs(from->sin_port), mid, error_status);
+				fprintf(stderr, "%s: warning: non-zero error-status (%d)\n", log, error_status);
 			}
 			CHECK("error-index", decode_integer(e, -1, &error_index));
 			if (error_index != 0) {
-				fprintf(stderr, "%s:%d: si(%u): warning: non-zero error-index (%d)\n",
-						inet_ntoa(from->sin_addr), ntohs(from->sin_port), mid, error_index);
+				fprintf(stderr, "%s: warning: non-zero error-index (%d)\n", log, error_index);
 			}
 
 			// - analyze varbinds and report
@@ -282,22 +276,18 @@ fclose(ff);
 				CHECK("value", decode_any(e, &val));
 
 				if (oid_compare(&oid, &usmStatsNotInTimeWindows) == 0) {
-					fprintf(stderr, "%s:%d: si(%u): report: our request not in time window, need to resend request\n",
-							inet_ntoa(from->sin_addr), ntohs(from->sin_port), mid);
-
+					fprintf(stderr, "%s: report: our request not in time window, need to resend request\n", log);
 					sid_stop_timing(si);
 					si->retries_left++;  // a hack since resend() decrements this
 					// XXX resend() increments snmp_retries counter(s), which is misleading in this case
 					resend_query_with_new_sid(si);
 					return;
 				} else if (oid_compare(&oid, &usmStatsWrongDigests) == 0) {
-					fprintf(stderr, "%s:%d: si(%u): report: our request had bad digest, ignoring packet\n",
-							inet_ntoa(from->sin_addr), ntohs(from->sin_port), mid);
+					fprintf(stderr, "%s: report: our request had bad digest, ignoring packet\n", log);
 					trace = NULL;
 					goto bad_snmp_packet;
 				} else {
-					fprintf(stderr, "%s:%d: si(%u): report: %s: ",
-							inet_ntoa(from->sin_addr), ntohs(from->sin_port), mid, oid2str(oid));
+					fprintf(stderr, "%s: report: %s: ", log, oid2str(oid));
 					ber_dump(stderr, &val);
 					trace = NULL;
 					goto bad_snmp_packet;
@@ -306,19 +296,12 @@ fclose(ff);
 		}
 
 		if (t == PDU_GET_RESPONSE) {
-{
-FILE *ff = fopen("/tmp/processed-v3.bin", "w");
-fwrite(e->buf, 1, e->max_len, ff);
-fclose(ff);
-}
 			// normal processing
 			if (process_sid_info_response(si, e))
 				free_sid_info(si);
 			maybe_query_destination(dest);
 			return;
 		}
-
-		//   - XXX not here: make sure re-send package is rebuilt from scratch instead of monkey-patching
 
 		trace = "V3 so far so good";
 		goto bad_snmp_packet;
@@ -328,15 +311,9 @@ fclose(ff);
 	return;
 
 bad_snmp_packet:
-{
-FILE *ff = fopen("/tmp/processed-v3.bin", "w");
-fwrite(e->buf, 1, e->max_len, ff);
-fclose(ff);
-}
 	PS.bad_snmp_responses++;
 	if (trace)
-		fprintf(stderr, "%s:%d: bad SNMP packet, ignoring: %s\n",
-				inet_ntoa(from->sin_addr), ntohs(from->sin_port), trace);
+		fprintf(stderr, "%s: bad SNMP packet, ignoring: %s\n", log, trace);
 	maybe_query_destination(dest);
 }
 
