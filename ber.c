@@ -404,8 +404,6 @@ finalize_snmp_packet(struct packet_builder* pb,
 
 	// authenticate
 	if (pb->pi.v3 && v3) {
-		fprintf(stderr, "Before hmac_message:\n");
-    	ber_dump(stderr, e);
     	if (hmac_message(v3,
                       	 e->buf + pb->pi.authp_offset,
                      	 12,
@@ -414,17 +412,6 @@ finalize_snmp_packet(struct packet_builder* pb,
                          e->buf + pb->pi.authp_offset) < 0) {
 			return -1;
 		}
-		fprintf(stderr, "After hmac_message:\n");
-        ber_dump(stderr, e);
-        fprintf(stderr, "\n");
-{
-FILE *ff = fopen("/tmp/finalized-v3.bin", "w");
-//ber_dump(ff, e);
-fwrite(e->buf, 1, e->len, ff);
-fclose(ff);
-//exit(1);
-}
-
 	}
 
 	*out_encoded_packet = ber_dup(e);

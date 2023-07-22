@@ -23,7 +23,7 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 	struct sid_info *si;
 	char log[256];
 
-	snprintf(log, sizeof(log), "%s %s:%s", timestring(), inet_ntoa(from->sin_addr), ntohs(from->sin_port));
+	snprintf(log, sizeof(log), "%s %s:%d", timestring(), inet_ntoa(from->sin_addr), ntohs(from->sin_port));
 
 	PS.octets_received += n;
 	dest = find_destination(&from->sin_addr, ntohs(from->sin_port));
@@ -58,7 +58,7 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 		CHECK("PDU", decode_composite(e, PDU_GET_RESPONSE, NULL));
 		CHECK("request id", decode_integer(e, -1, &sid));
 
-		snprintf(log, sizeof(log), "%s %s:%s[%s]", timestring(), inet_ntoa(from->sin_addr), ntohs(from->sin_port), sid);
+		snprintf(log, sizeof(log), "%s %s:%d[%u]", timestring(), inet_ntoa(from->sin_addr), ntohs(from->sin_port), sid);
 
 		si = find_sid_info(dest, sid);
 		if (!si) {
@@ -84,7 +84,7 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 
         CHECK("msgGlobalData sequence", decode_sequence(e, NULL));
 		CHECK("msgID", decode_integer(e, -1, &mid));
-		snprintf(log, sizeof(log), "%s %s:%s[%s]", timestring(), inet_ntoa(from->sin_addr), ntohs(from->sin_port), mid);
+		snprintf(log, sizeof(log), "%s %s:%d[%u]", timestring(), inet_ntoa(from->sin_addr), ntohs(from->sin_port), mid);
 		CHECK("msgMaxSize", decode_integer(e, -1, &v3.msg_max_size));
 		CHECK("msgFlags", decode_octets(e, &v3.msg_flags, 1, &msg_flags_len));
 		if (msg_flags_len != 1) {
