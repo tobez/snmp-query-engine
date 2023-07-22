@@ -138,10 +138,10 @@ encrypt_in_place(unsigned char *buf, int buf_len, unsigned char *privp, const st
     }
     ciphertext_len += len;
 
-    fprintf(stderr, "encrypt_in_place: plaintext (%d bytes):\n", buf_len);
-	dump_buf(stderr, buf, buf_len);
-    fprintf(stderr, "encrypt_in_place: ciphertext (%d bytes):\n", ciphertext_len);
-	dump_buf(stderr, ciphertext, ciphertext_len);
+    // fprintf(stderr, "encrypt_in_place: plaintext (%d bytes):\n", buf_len);
+	// dump_buf(stderr, buf, buf_len);
+    // fprintf(stderr, "encrypt_in_place: ciphertext (%d bytes):\n", ciphertext_len);
+	// dump_buf(stderr, ciphertext, ciphertext_len);
 
     if (buf_len != ciphertext_len) {
         fprintf(stderr, "encrypt_in_place: unexpectedly, ciphertext_len != plaintext_len in CFB mode\n");
