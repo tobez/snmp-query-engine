@@ -62,7 +62,7 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 
 		si = find_sid_info(dest, sid);
 		if (!si) {
-			fprintf(stderr, "%s: unable to find sid_info, ignoring packet\n", log);
+			fprintf(stderr, "%s: late reply, ignoring packet\n", log);
 			return;
 		}
 
@@ -127,7 +127,7 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 
 		si = find_sid_info(dest, mid);
 		if (!mid) {
-			fprintf(stderr, "%s: unable to find sid_info, ignoring packet\n", log);
+			fprintf(stderr, "%s: late reply, ignoring packet\n", log);
 			trace = NULL;
 			goto bad_snmp_packet;
 		}
