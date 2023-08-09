@@ -86,6 +86,7 @@ flush_buffers(struct socket_info *si)
 		if (i >= IOV_MAX)
 			break;
 	}
+    if (tot) {}
 	if ( (n = writev(si->fd, io_buf, i)) < 0) {
 		switch (errno) {
 		case EPIPE:
