@@ -129,7 +129,7 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 		t = v->type;
 		switch (*val) {
 		case OPT_version:
-			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || (v->via.u64 < 1 && v->via.u64 > 3))
+			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 < 1 || v->via.u64 > 3)
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid SNMP version");
 			c.version = v->via.u64;
             if (c.version != 3)
