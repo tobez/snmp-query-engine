@@ -10,7 +10,7 @@ CC?=	cc
 OPTIMIZE=	-O3 -g
 INCPATH=	-I/usr/local/include -I/opt/local/include -I/opt/homebrew/include
 LIBPATH=	-L/usr/local/lib -L/opt/local/lib -L/opt/homebrew/lib
-CFLAGS=	-Wall -Wno-unused-function -Werror $(OPTIMIZE) $(INCPATH)
+CFLAGS=	-Wall -Wno-unused-function -Wno-deprecated-declarations -Werror $(OPTIMIZE) $(INCPATH)
 
 all: snmp-query-engine test_ber test_msgpack test_v3
 
