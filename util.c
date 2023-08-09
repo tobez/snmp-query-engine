@@ -211,7 +211,7 @@ timestring(void)
     strftime(tz, sizeof(tz), "%z", &time_info);
 
     snprintf(timestring_buf, sizeof(timestring_buf),
-			 "%s%03ld%s", secs, now.tv_usec / 1000, tz);
+			 "%s%03d%s", secs, (int)(now.tv_usec / 1000), tz);
 
     return timestring_buf;
 }
