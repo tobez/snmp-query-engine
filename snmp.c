@@ -276,7 +276,7 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 				CHECK("value", decode_any(e, &val));
 
 				if (oid_compare(&oid, &usmStatsNotInTimeWindows) == 0) {
-					fprintf(stderr, "%s: report: our request not in time window, need to resend request\n", log);
+					// fprintf(stderr, "%s: report: our request not in time window, need to resend request\n", log);
 					sid_stop_timing(si);
 					si->retries_left++;  // a hack since resend() decrements this
 					// XXX resend() increments snmp_retries counter(s), which is misleading in this case
