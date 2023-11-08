@@ -31,14 +31,14 @@ static void
 client_input(struct socket_info *si)
 {
 	struct client_connection *c = si->udata;
-	char buf[1500];
+	uint8_t buf[16384];
 	int n;
 	int got = 0;
 	int ok;
 
 	if (!c)
 		croak(1, "client_input: no client_connection information");
-	if ( (n = read(si->fd, buf, 1500)) == -1) {
+	if ( (n = read(si->fd, buf, 16384)) == -1) {
 		switch (errno) {
 		case EPIPE:
 			client_gone(si);
@@ -96,28 +96,32 @@ client_input(struct socket_info *si)
 			goto end;
 		}
 		type = o->via.array.ptr[RI_TYPE].via.u64;
-		switch (type) {
-		case RT_SETOPT:
-			ok = handle_setopt_request(si, cid, o);
-			break;
-		case RT_GETOPT:
-			ok = handle_getopt_request(si, cid, o);
-			break;
-		case RT_INFO:
-			ok = handle_info_request(si, cid, o);
-			break;
-		case RT_DEST_INFO:
-			ok = handle_dest_info_request(si, cid, o);
-			break;
-		case RT_GET:
-			ok = handle_get_request(si, cid, o);
-			break;
-		case RT_GETTABLE:
-			ok = handle_gettable_request(si, cid, o);
-			break;
-		default:
-			error_reply(si, type|RT_ERROR, cid, "Unknown request type");
-		}
+        switch (type) {
+        case RT_SETOPT:
+            ok = handle_setopt_request(si, cid, o);
+            if (ok < 0) {
+                fprintf(stderr, "there was a problem handling setopt: \n");
+                msgpack_object_print(stderr, *o);
+            }
+            break;
+        case RT_GETOPT:
+            ok = handle_getopt_request(si, cid, o);
+            break;
+        case RT_INFO:
+            ok = handle_info_request(si, cid, o);
+            break;
+        case RT_DEST_INFO:
+            ok = handle_dest_info_request(si, cid, o);
+            break;
+        case RT_GET:
+            ok = handle_get_request(si, cid, o);
+            break;
+        case RT_GETTABLE:
+            ok = handle_gettable_request(si, cid, o);
+            break;
+        default:
+            error_reply(si, type | RT_ERROR, cid, "Unknown request type");
+        }
 end:
 		if (ok < 0) {
 			PS.invalid_requests++;
