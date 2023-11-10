@@ -328,7 +328,7 @@ start_snmp_packet(struct packet_builder *pb, int version, unsigned request_id, c
 
         if (encode_integer(v3->engine_boots, e, 0) < 0)
             return -1;
-        if (v3->engine_time > 65535) {
+        if (v3->engine_time >= 0x800000) { // kludge, proper fix later
             if (encode_integer(v3->engine_time, e, 4) < 0)
                 return -1;
         } else {
