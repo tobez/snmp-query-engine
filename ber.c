@@ -328,8 +328,13 @@ start_snmp_packet(struct packet_builder *pb, int version, unsigned request_id, c
 
         if (encode_integer(v3->engine_boots, e, 0) < 0)
             return -1;
-        if (encode_integer(v3->engine_time, e, 0) < 0)
-            return -1;
+        if (v3->engine_time > 65535) {
+            if (encode_integer(v3->engine_time, e, 4) < 0)
+                return -1;
+        } else {
+            if (encode_integer(v3->engine_time, e, 0) < 0)
+                return -1;
+        }
 
         if (encode_string(v3->username, e) < 0)
             return -1;
