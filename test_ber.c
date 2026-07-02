@@ -185,6 +185,19 @@ test_encode_integer(int *test, unsigned value, int force_size, const char *res, 
 }
 
 int
+test_next_sid_from(int *test, unsigned cur, unsigned expected)
+{
+	unsigned got;
+
+	(*test)++;
+	if ((got = next_sid_from(cur)) != expected) {
+		fprintf(stderr, "test %d, next_sid_from(%#x): expected %#x, got %#x\n", *test, cur, expected, got);
+		return 0;
+	}
+	return 1;
+}
+
+int
 main(void)
 {
 	int success = 0;
@@ -276,6 +289,13 @@ main(void)
 	success += test_encode_integer(&n_tests, 0xffffffffu, 0, "\x02\x05\x00\xff\xff\xff\xff", 7);
 	success += test_encode_integer(&n_tests, 6789012, 4, "\x02\x04\x00\x67\x97\x94", 6);
 	success += test_encode_integer(&n_tests, 0x01020304, 4, "\x02\x04\x01\x02\x03\x04", 6);
+
+	success += test_next_sid_from(&n_tests, 0x01000000, 0x01000001);
+	success += test_next_sid_from(&n_tests, 0x01ffffff, 0x02000000);
+	success += test_next_sid_from(&n_tests, 0x7ffffffe, 0x7fffffff);
+	success += test_next_sid_from(&n_tests, 0x7fffffff, 0x01000000);
+	success += test_next_sid_from(&n_tests, 0xffffffffu, 0x01000000);
+	success += test_next_sid_from(&n_tests, 0, 0x01000001);
 
 	fprintf(stderr, "%d of %d tests passed succesfully\n", success, n_tests);
 	return success != n_tests;

@@ -529,6 +529,7 @@ extern size_t object_hexstring_to_buffer(msgpack_object *o, uint8_t *buf, size_t
 extern int object_string_eq(msgpack_object *o, char *s);
 extern int object2ip(msgpack_object *o, struct in_addr *ip); /* 1 = success, 0 = failure */
 extern unsigned next_sid(void);
+extern unsigned next_sid_from(unsigned cur);
 extern void dump_buf(FILE *f, void *buf, int len);
 extern char *oid2str(struct ber o);
 extern char *timestring(void);
