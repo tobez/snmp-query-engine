@@ -8,6 +8,8 @@
  */
 #include "sqe.h"
 
+#include <openssl/evp.h>
+
 static struct socket_info *snmp = NULL;
 
 static void
@@ -75,7 +77,8 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 		unsigned msg_flags_len, username_len;
 		unsigned usm;
 		unsigned char *auth_param_ptr;
-		unsigned char auth_param[12];
+		unsigned auth_param_len = 0;
+		unsigned char auth_param[EVP_MAX_MD_SIZE];
 		unsigned char priv_param[8];
 		struct snmpv3info v3, *siv3;
 		unsigned char context_engine_id[V3O_ENGINE_ID_MAXLEN];
@@ -110,15 +113,8 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
         if (t != AT_STRING)
           goto bad_snmp_packet;
 		auth_param_ptr = e->b;
+		auth_param_len = l;  // validated below, once the configured protocol (siv3) is known
         e->b += l; e->len += l;
-		if ((v3.msg_flags & V3F_AUTHENTICATED)) {
-			if (l != 12) {
-				trace = "unexpected auth-param length for authenticated message";
-				goto bad_snmp_packet;
-			}
-			memcpy(auth_param, auth_param_ptr, 12);
-			memset(auth_param_ptr, 0, 12); // clear original HMAC location for auth calculations
-		}
 		CHECK("priv-param", decode_octets(e, priv_param, 8, &l));
 		if ((v3.msg_flags & V3F_ENCRYPTED) && l != 8) {
 			trace = "unexpected priv-param length for encrypted message";
@@ -170,18 +166,29 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 
 		// - do auth check
 		if ((v3.msg_flags & V3F_AUTHENTICATED)) {
-    		if (hmac_message(siv3, auth_param_ptr, 12, e->buf, e->max_len, auth_param_ptr) < 0) {
-				memcpy(auth_param_ptr, auth_param, 12);
+			int maclen = v3_auth_maclen(siv3->auth_proto);
+			if (maclen < 0) {
+				trace = "unsupported auth protocol";
+				goto bad_snmp_packet;
+			}
+			if (auth_param_len != (unsigned)maclen) {
+				trace = "unexpected auth-param length for authenticated message";
+				goto bad_snmp_packet;
+			}
+			memcpy(auth_param, auth_param_ptr, maclen);
+			memset(auth_param_ptr, 0, maclen); // clear original HMAC location for auth calculations
+    		if (hmac_message(siv3, auth_param_ptr, maclen, e->buf, e->max_len, auth_param_ptr) < 0) {
+				memcpy(auth_param_ptr, auth_param, maclen);
 				fprintf(stderr, "%s: authentication failed: %s, prepare for packet dump:\n",
 						log, strerror(errno));
 				dump_buf(stderr, e->buf, e->max_len);
 				trace = NULL;
 				goto bad_snmp_packet;
 			}
-			if (memcmp(auth_param_ptr, auth_param, 12) != 0) {
+			if (memcmp(auth_param_ptr, auth_param, maclen) != 0) {
 				fprintf(stderr, "%s: authentication failed, calculated digest:\n", log);
-				dump_buf(stderr, auth_param_ptr, 12);
-				memcpy(auth_param_ptr, auth_param, 12);
+				dump_buf(stderr, auth_param_ptr, maclen);
+				memcpy(auth_param_ptr, auth_param, maclen);
 				fprintf(stderr, "prepare for packet dump:\n");
 				dump_buf(stderr, e->buf, e->max_len);
 				trace = NULL;

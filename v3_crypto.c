@@ -14,6 +14,36 @@
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
 
+/// @brief Map a V3O_AUTH_PROTO_* value to its OpenSSL digest
+/// @return the EVP_MD for the protocol, or NULL if unsupported
+const EVP_MD *
+v3_auth_md(int auth_proto)
+{
+    switch (auth_proto) {
+    case V3O_AUTH_PROTO_SHA1:   return EVP_sha1();
+    case V3O_AUTH_PROTO_SHA224: return EVP_sha224();
+    case V3O_AUTH_PROTO_SHA256: return EVP_sha256();
+    case V3O_AUTH_PROTO_SHA384: return EVP_sha384();
+    case V3O_AUTH_PROTO_SHA512: return EVP_sha512();
+    default:                    return NULL;
+    }
+}
+
+/// @brief MAC truncation length (msgAuthenticationParameters size) for a protocol
+/// @return the length in bytes, or -1 if the protocol is unsupported
+int
+v3_auth_maclen(int auth_proto)
+{
+    switch (auth_proto) {
+    case V3O_AUTH_PROTO_SHA1:   return 12;
+    case V3O_AUTH_PROTO_SHA224: return 16;
+    case V3O_AUTH_PROTO_SHA256: return 24;
+    case V3O_AUTH_PROTO_SHA384: return 32;
+    case V3O_AUTH_PROTO_SHA512: return 48;
+    default:                    return -1;
+    }
+}
+
 int
 hmac_message(const struct snmpv3info* v3,
              unsigned char* out,
@@ -23,30 +53,28 @@ hmac_message(const struct snmpv3info* v3,
              unsigned char* auth_param)
 {
     HMAC_CTX* ctx = NULL;
-    const EVP_MD* md = NULL;
+    const EVP_MD* md = v3_auth_md(v3->auth_proto);
+    int maclen = v3_auth_maclen(v3->auth_proto);
 
     unsigned char md_value[EVP_MAX_MD_SIZE];
     unsigned md_len = 0;
 
-    if (out_size < 12) {
-        fprintf(stderr, "bad hmac output buffer size\n");
-        errno = EINVAL;
-        return -1;
-    }
-    if (v3->auth_proto != V3O_AUTH_PROTO_SHA1) {
+    if (!md || maclen < 0) {
         fprintf(stderr, "bad auth protocol\n");
         errno = EINVAL;
         return -1;
     }
-    if (auth_param - msg + 12 >= msg_len) {
+    if (out_size < (unsigned)maclen) {
+        fprintf(stderr, "bad hmac output buffer size\n");
+        errno = EINVAL;
+        return -1;
+    }
+    if (auth_param - msg + maclen >= msg_len) {
         fprintf(stderr, "bad auth_param pointer\n");
         errno = EINVAL;
         return -1;
     }
 
-    OpenSSL_add_all_digests();
-
-    md = EVP_get_digestbyname("SHA1");
     ctx = HMAC_CTX_new();
 
     if (!HMAC_Init_ex(ctx, v3->authkul, v3->authkul_len, md, NULL)) {
@@ -54,16 +82,16 @@ hmac_message(const struct snmpv3info* v3,
         return -1;
     }
 
-    bzero(out, 12);
+    bzero(out, maclen);
     if (!HMAC_Update(ctx, msg, auth_param - msg)) {
         ERR_print_errors_fp(stderr);
         return -1;
     }
-    if (!HMAC_Update(ctx, out, 12)) {
+    if (!HMAC_Update(ctx, out, maclen)) {
         ERR_print_errors_fp(stderr);
         return -1;
     }
-    if (!HMAC_Update(ctx, auth_param + 12, msg_len - (auth_param - msg + 12))) {
+    if (!HMAC_Update(ctx, auth_param + maclen, msg_len - (auth_param - msg + maclen))) {
         ERR_print_errors_fp(stderr);
         return -1;
     }
@@ -74,7 +102,7 @@ hmac_message(const struct snmpv3info* v3,
     }
 
     HMAC_CTX_free(ctx);
-    memcpy(out, md_value, 12);
+    memcpy(out, md_value, maclen);
 
     return 0;
 }

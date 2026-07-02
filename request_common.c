@@ -117,6 +117,18 @@ msgpack_pack_options(msgpack_packer *pk, struct client_requests_info *cri)
 		case V3O_AUTH_PROTO_SHA1:
 			s = "sha1";
 			break;
+		case V3O_AUTH_PROTO_SHA224:
+			s = "sha224";
+			break;
+		case V3O_AUTH_PROTO_SHA256:
+			s = "sha256";
+			break;
+		case V3O_AUTH_PROTO_SHA384:
+			s = "sha384";
+			break;
+		case V3O_AUTH_PROTO_SHA512:
+			s = "sha512";
+			break;
 		default:
 			s = "?";
 			break;

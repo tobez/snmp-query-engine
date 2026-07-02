@@ -222,6 +222,14 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 				v3.auth_proto = V3O_AUTH_PROTO_SHA1;
 			} else if (object_string_eq(v, "sha")) {
 				v3.auth_proto = V3O_AUTH_PROTO_SHA1;
+			} else if (object_string_eq(v, "sha224")) {
+				v3.auth_proto = V3O_AUTH_PROTO_SHA224;
+			} else if (object_string_eq(v, "sha256")) {
+				v3.auth_proto = V3O_AUTH_PROTO_SHA256;
+			} else if (object_string_eq(v, "sha384")) {
+				v3.auth_proto = V3O_AUTH_PROTO_SHA384;
+			} else if (object_string_eq(v, "sha512")) {
+				v3.auth_proto = V3O_AUTH_PROTO_SHA512;
 			} else {
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid auth protocol");
 			}

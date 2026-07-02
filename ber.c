@@ -8,6 +8,8 @@
  */
 #include "sqe.h"
 
+#include <openssl/evp.h>
+
 #define SPACECHECK(bytes)                \
     if (e->len + (bytes) > e->max_len) { \
         errno = EMSGSIZE;                \
@@ -287,10 +289,16 @@ start_snmp_packet(struct packet_builder *pb, int version, unsigned request_id, c
         unsigned char *gdata, *sec_params_string, *sec_params_seq;
         unsigned char  msg_flags          = V3F_AUTHENTICATED | V3F_ENCRYPTED | V3F_REPORTABLE;
         unsigned int   msg_security_model = 3;    // HACK authFlag | privFlag
-        unsigned char  zeroes[32];
+        unsigned char  zeroes[EVP_MAX_MD_SIZE];
+        int            maclen             = v3_auth_maclen(v3->auth_proto);
+
+        if (maclen < 0) {
+            errno = EINVAL;
+            return -1;
+        }
 
         pb->pi.v3 = true;
-        memset(zeroes, 0, 32);
+        memset(zeroes, 0, sizeof(zeroes));
 
         SPACECHECK2;
         gdata    = e->b;
@@ -339,7 +347,7 @@ start_snmp_packet(struct packet_builder *pb, int version, unsigned request_id, c
         if (encode_string(v3->username, e) < 0)
             return -1;
         pb->pi.authp_offset = e->b - e->buf + 2;
-        if (encode_bytes(zeroes, 12, e) < 0)
+        if (encode_bytes(zeroes, maclen, e) < 0)
             return -1;
         pb->pi.privp_offset = e->b - e->buf + 2;
         if (encode_bytes(zeroes, 8, e) < 0)
@@ -452,7 +460,10 @@ finalize_snmp_packet(struct packet_builder *pb, struct ber *out_encoded_packet, 
 
     // authenticate
     if (pb->pi.v3 && v3) {
-        if (hmac_message(v3, e->buf + pb->pi.authp_offset, 12, e->buf, e->len, e->buf + pb->pi.authp_offset) < 0) {
+        int maclen = v3_auth_maclen(v3->auth_proto);
+        if (maclen < 0)
+            return -1;
+        if (hmac_message(v3, e->buf + pb->pi.authp_offset, maclen, e->buf, e->len, e->buf + pb->pi.authp_offset) < 0) {
             return -1;
         }
     }

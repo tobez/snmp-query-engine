@@ -11,17 +11,17 @@
 #include <openssl/evp.h>
 
 static bool
-password_to_key_sha1(void *pass, unsigned paslen, void *keybuf, unsigned keybufsize, unsigned *out_keylen, char **out_error)
+password_to_key_md(const EVP_MD *md, void *pass, unsigned paslen, void *keybuf, unsigned keybufsize, unsigned *out_keylen, char **out_error)
 {
     EVP_MD_CTX *ctx;
     int cnt = 1048576;
 
     *out_error = "ok";
-    if (keybufsize < EVP_MD_size(EVP_sha1())) {
+    if (keybufsize < EVP_MD_size(md)) {
         *out_error = "insufficient buffer space";
         return false;
     }
-    *out_keylen = EVP_MD_size(EVP_sha1());
+    *out_keylen = EVP_MD_size(md);
 
     if (paslen <= 0) {
         *out_error = "empty password";
@@ -33,7 +33,7 @@ password_to_key_sha1(void *pass, unsigned paslen, void *keybuf, unsigned keybufs
         return false;
     }
 
-    if (1 != EVP_DigestInit_ex(ctx, EVP_sha1(), NULL)) {
+    if (1 != EVP_DigestInit_ex(ctx, md, NULL)) {
         *out_error = "EVP_DigestInit_ex";
         EVP_MD_CTX_free(ctx);
         return false;
@@ -61,19 +61,17 @@ password_to_key_sha1(void *pass, unsigned paslen, void *keybuf, unsigned keybufs
 bool
 password_to_key(int algorithm, void *pass, unsigned pass_size, void *keybuf, unsigned keybufsize, unsigned *out_keylen, char **out_error)
 {
-    switch (algorithm) {
-    case V3O_AUTH_PROTO_SHA1:
-        return password_to_key_sha1(pass, pass_size, keybuf, keybufsize, out_keylen, out_error);
-        break;
-    default:
+    const EVP_MD *md = v3_auth_md(algorithm);
+    if (!md) {
         *out_error = "unsupported alrgorithm";
         return false;
     }
-    return false;
+    return password_to_key_md(md, pass, pass_size, keybuf, keybufsize, out_keylen, out_error);
 }
 
 static bool
-key_to_kul_sha1(void* key,
+key_to_kul_md(const EVP_MD *md,
+                void* key,
                 unsigned key_size,
                 void* engine_id,
                 unsigned engine_id_size,
@@ -85,11 +83,11 @@ key_to_kul_sha1(void* key,
     EVP_MD_CTX *ctx;
 
     *out_error = "ok";
-    if (out_kul_size < EVP_MD_size(EVP_sha1())) {
+    if (out_kul_size < EVP_MD_size(md)) {
         *out_error = "insufficient buffer space";
         return false;
     }
-    *out_kul_len = EVP_MD_size(EVP_sha1());
+    *out_kul_len = EVP_MD_size(md);
 
     if (key_size <= 0) {
         *out_error = "empty key";
@@ -106,7 +104,7 @@ key_to_kul_sha1(void* key,
         return false;
     }
 
-    if (1 != EVP_DigestInit_ex(ctx, EVP_sha1(), NULL)) {
+    if (1 != EVP_DigestInit_ex(ctx, md, NULL)) {
         *out_error = "EVP_DigestInit_ex";
         EVP_MD_CTX_free(ctx);
         return false;
@@ -163,22 +161,20 @@ key_to_kul(int algorithm,
            unsigned* out_kul_len,
            char** out_error)
 {
-    switch (algorithm) {
-    case V3O_AUTH_PROTO_SHA1:
-        return key_to_kul_sha1(key,
-                               key_size,
-                               engine_id,
-                               engine_id_size,
-                               out_kul,
-                               out_kul_size,
-                               out_kul_len,
-                               out_error);
-        break;
-    default:
+    const EVP_MD *md = v3_auth_md(algorithm);
+    if (!md) {
         *out_error = "unsupported alrgorithm";
         return false;
     }
-    return false;
+    return key_to_kul_md(md,
+                         key,
+                         key_size,
+                         engine_id,
+                         engine_id_size,
+                         out_kul,
+                         out_kul_size,
+                         out_kul_len,
+                         out_error);
 }
 
 extern bool

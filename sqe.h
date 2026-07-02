@@ -200,7 +200,8 @@ struct packet_info
 	/// @brief offset in packet to 4 bytes of sid (request-id/message-id);
 	/// impl: v3: adjust for gdata and packet_sequence, v1/v2: adjust for pdu and packet_sequence
 	unsigned sid_offset;
-	/// @brief offset in packet to 12 bytes of msgAuthenticationParameters in SNMPv3 (HMAC-SHA-96);
+	/// @brief offset in packet to the msgAuthenticationParameters in SNMPv3;
+	/// the length is protocol-dependent (12/16/24/32/48 bytes, see v3_auth_maclen());
 	/// impl: adjust for sec_params_seq, sec_params_string, and packet_sequence
 	unsigned authp_offset;
 	/// @brief offset in packet to 8 bytes of msgPrivacyParameters in SNMPv3 (salt/iv);
@@ -300,11 +301,15 @@ struct destination
 #define V3O_USERNAME_MAXSIZE 64
 #define V3O_AUTHPASS_MAXSIZE 64
 #define V3O_PRIVPASS_MAXSIZE 64
-#define V3O_AUTHKUL_MAXSIZE  32
-#define V3O_PRIVKUL_MAXSIZE  32
+#define V3O_AUTHKUL_MAXSIZE  64  /* holds the largest localized key (SHA-512, 64 bytes) */
+#define V3O_PRIVKUL_MAXSIZE  64  /* localized privacy key is a full digest before AES truncation (SHA-512, 64 bytes) */
 
 #define V3O_AUTH_PROTO_MD5 1
 #define V3O_AUTH_PROTO_SHA1 2
+#define V3O_AUTH_PROTO_SHA224 3
+#define V3O_AUTH_PROTO_SHA256 4
+#define V3O_AUTH_PROTO_SHA384 5
+#define V3O_AUTH_PROTO_SHA512 6
 
 #define V3O_PRIV_PROTO_DES 1
 #define V3O_PRIV_PROTO_AES128 2
@@ -643,6 +648,12 @@ expand_kul(int authalg,
            char** out_error);
 
 /* v3_crypto.c */
+struct evp_md_st;  /* == OpenSSL EVP_MD; forward-declared to keep openssl out of this header */
+/* maps V3O_AUTH_PROTO_* to an OpenSSL digest, or NULL for unsupported protocols */
+extern const struct evp_md_st *v3_auth_md(int auth_proto);
+/* MAC truncation length in bytes (12/16/24/32/48), or a negative sentinel for unsupported protocols */
+extern int v3_auth_maclen(int auth_proto);
+
 extern int encrypt_in_place(unsigned char *buf, int buf_len, unsigned char *privp, const struct snmpv3info *v3);
 extern int decrypt_in_place(unsigned char *buf, int buf_len, unsigned char *privp, const struct snmpv3info *v3);
 
