@@ -105,6 +105,7 @@ my %CLIENT_STATS = map { $_ => $NUMBER } @CLIENT_STATS;
 my %GLOBAL_STATS = map { $_ => $NUMBER } @GLOBAL_STATS;
 $CLIENT_STATS{oids_non_increasing} = 0;
 $GLOBAL_STATS{oids_non_increasing} = 0;
+$GLOBAL_STATS{version} = qr/^\d+\.\d+\.\d+$/;
 
 my $version_output = `$FindBin::Bin/../snmp-query-engine -v`;
 like($version_output, qr/^snmp-query-engine \d+\.\d+\.\d+$/, "-v prints semantic version");
@@ -322,6 +323,7 @@ $r = request_match("stats", [RT_INFO,5000], [RT_INFO|RT_REPLY,5000,
 	{ connection => \%CLIENT_STATS,
 	  global => \%GLOBAL_STATS}]);
 #print STDERR "OIDS requested: $r->[2]{connection}{oids_requested}\n";
+ok(!exists $r->[2]{connection}{version}, "version is a global-only stat");
 
 request_match("destinfo non-zero", [RT_DEST_INFO,6630,"127.0.0.1",161], [RT_DEST_INFO|RT_REPLY, 6630,
 			  { octets_received => $NON_ZERO, octets_sent => $NON_ZERO}]);

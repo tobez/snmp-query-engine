@@ -123,8 +123,9 @@ handle_info_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	l = strlen(key);
 	msgpack_pack_bin(pk, l);
 	msgpack_pack_bin_body(pk, key, l);
-	msgpack_pack_map(pk, pack_stats(&PS, NULL));
+	msgpack_pack_map(pk, pack_stats(&PS, NULL) + 1);
 	pack_stats(&PS, pk);
+	msgpack_pack_named_string(pk, "version", SQE_VERSION);
 
 	key = "connection";
 	l = strlen(key);

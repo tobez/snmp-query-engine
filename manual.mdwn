@@ -557,7 +557,12 @@ The following *global* statistics are available:
 :   daemon uptime in milliseconds
 
 **`program_version`**
-:   version of the engine program
+:   numeric version of the engine program
+    (frozen; see **`version`**)
+
+**`version`**
+:   version of the engine program, as a semantic versioning string
+    (present in global stats only)
 
 
 ## GET
