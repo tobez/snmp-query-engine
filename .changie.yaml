@@ -1,0 +1,35 @@
+changesDir: .changes
+unreleasedDir: unreleased
+headerPath: header.tpl.md
+changelogPath: CHANGELOG.md
+versionExt: md
+versionFormat: '## [{{.Version}}] - {{.Time.Format "2006-01-02"}}'
+kindFormat: '### {{.Kind}}'
+changeFormat: '- {{.Body}}'
+kinds:
+  - label: Added
+    auto: minor
+  - label: Changed
+    auto: minor
+  - label: Deprecated
+    auto: minor
+  - label: Removed
+    auto: minor
+  - label: Fixed
+    auto: patch
+  - label: Security
+    auto: patch
+newlines:
+  afterChangelogHeader: 1
+  afterChangelogVersion: 1
+  endOfVersion: 1
+  beforeKind: 1
+  afterKind: 1
+envPrefix: CHANGIE_
+replacements:
+  - path: sqe.h
+    find: '^#define SQE_VERSION "[^"]*"'
+    replace: '#define SQE_VERSION "{{.VersionNoPrefix}}"'
+  - path: manual.mdwn
+    find: '^This document describes snmp-query-engine version .*\.$'
+    replace: 'This document describes snmp-query-engine version {{.VersionNoPrefix}}.'
