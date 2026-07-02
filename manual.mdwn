@@ -248,6 +248,7 @@ Supported options:
     in a single reply when requesting a table
     using SNMP 2c.  This can be overridden
     by individual GETTABLE requests.  The default is **10**.
+    The value must be between **1** and **127**.
     This is a per destination option which affects other clients.
 
 **`ignore_threshold`**

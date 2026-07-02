@@ -152,6 +152,8 @@ request_match("setopt bad min interval 2", [RT_SETOPT,2122,"127.0.0.1",161,{min_
 request_match("setopt bad max repetitions 1", [RT_SETOPT,2220,"127.0.0.1",161,{max_repetitions=>"foo"}], [RT_SETOPT|RT_ERROR,2220,qr/invalid max repetitions/]);
 request_match("setopt bad max repetitions 2", [RT_SETOPT,2221,"127.0.0.1",161,{max_repetitions=>0}], [RT_SETOPT|RT_ERROR,2221,qr/invalid max repetitions/]);
 request_match("setopt bad max repetitions 3", [RT_SETOPT,2222,"127.0.0.1",161,{max_repetitions=>256}], [RT_SETOPT|RT_ERROR,2222,qr/invalid max repetitions/]);
+request_match("setopt bad max repetitions 4", [RT_SETOPT,2223,"127.0.0.1",161,{max_repetitions=>128}], [RT_SETOPT|RT_ERROR,2223,qr/invalid max repetitions/]);
+request_match("gettable bad max repetitions", [RT_GETTABLE,2224,"127.0.0.1",161,"1.3.6.1.2.1.1.9.1.2",128], [RT_GETTABLE|RT_ERROR,2224,qr/bad max repetitions/]);
 request_match("defaults unchanged", [RT_SETOPT,2023,"127.0.0.1",161, {}], [RT_SETOPT|RT_REPLY,2023,
 	{ip=>"127.0.0.1", port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 2000, retries => 3, min_interval => 10, max_repetitions => 10, }]);
 request_match("change timeout", [RT_SETOPT,2024,"127.0.0.1",161, {timeout=>1500}], [RT_SETOPT|RT_REPLY,2024,

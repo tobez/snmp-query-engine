@@ -396,6 +396,7 @@ main(void)
 
 	success += test_v3_header_encoding(&n_tests);
 	success += test_v2c_getbulk_packet(&n_tests, 100, "\x02\x01\x64");
+	success += test_v2c_getbulk_packet(&n_tests, 200, "\x02\x01\x7f");
 
 	fprintf(stderr, "%d of %d tests passed succesfully\n", success, n_tests);
 	return success != n_tests;

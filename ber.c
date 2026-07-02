@@ -414,8 +414,10 @@ finalize_snmp_packet(struct packet_builder *pb, struct ber *out_encoded_packet, 
     if (type == PDU_GET_BULK_REQUEST) {
         if (max_repetitions <= 0)
             max_repetitions = 10;
-        if (max_repetitions > 255)
-            max_repetitions = 255;
+        /* single positive BER byte: the value is patched into a fixed
+         * 1-byte integer slot, and 128..255 would read as negative */
+        if (max_repetitions > 127)
+            max_repetitions = 127;
         pb->max_repetitions[0] = (unsigned char)max_repetitions;
     }
 
