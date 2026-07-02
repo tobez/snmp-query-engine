@@ -11,8 +11,9 @@ OPTIMIZE=	-O3 -g
 INCPATH=	-I. -I/usr/local/include -I/opt/local/include -I/opt/homebrew/include
 LIBPATH=	-L/usr/local/lib -L/opt/local/lib -L/opt/homebrew/lib
 CFLAGS=	-Wall -Wno-unused-function -Wno-deprecated-declarations -Werror $(OPTIMIZE) $(INCPATH)
+TESTBIN=	t/test_ber t/test_msgpack t/test_v3 t/test_sid_info
 
-all: snmp-query-engine t/test_ber t/test_msgpack t/test_v3 t/test_sid_info
+all: snmp-query-engine $(TESTBIN)
 
 STDOBJ=event_loop.o carp.o client_input.o client_listen.o opts.o util.o destination.o \
 	client_requests_info.o cid_info.o ber.o oid_info.o sid_info.o \
@@ -110,8 +111,8 @@ t/test_v3: t/test_v3.c t/tap.h $(STDOBJ)
 t/test_sid_info: t/test_sid_info.c t/tap.h $(STDOBJ)
 	$(CC) $(CFLAGS) -o t/test_sid_info t/test_sid_info.c $(STDLINK)
 
-test: snmp-query-engine
-	prove t/queries.t
+test: snmp-query-engine $(TESTBIN)
+	prove t/
 
-test-details: snmp-query-engine
-	perl t/queries.t
+test-details: snmp-query-engine $(TESTBIN)
+	prove -v t/
