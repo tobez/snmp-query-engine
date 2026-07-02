@@ -556,24 +556,24 @@ int
 encode_integer(unsigned i, struct ber *e, int force_size)
 {
     int l;
-    if (i <= 255)
+    if (i <= 0x7f)
         l = 1;
-    else if (i <= 65535)
+    else if (i <= 0x7fff)
         l = 2;
-    else if (i <= 16777215)
+    else if (i <= 0x7fffff)
         l = 3;
-    else if (i <= 4294967295u)
+    else if (i <= 0x7fffffff)
         l = 4;
-    else {
-        errno = ERANGE;
-        return -1;
-    }
+    else
+        l = 5;
     if (force_size)
         l = force_size;
     if (encode_type_len(AT_INTEGER, l, e) < 0)
         return -1;
     SPACECHECK(l);
     switch (l) {
+    case 5:
+        e->b[l - 5] = 0;
     case 4:
         e->b[l - 4] = (i >> 24) & 0xff;
     case 3:

@@ -153,6 +153,38 @@ test_oid_compare(int *test, const char *o1, const char *o2, int expected)
 }
 
 int
+test_encode_integer(int *test, unsigned value, int force_size, const char *res, int len)
+{
+	unsigned char buf[16];
+	struct ber e = ber_init(buf, 16);
+	unsigned decoded;
+
+	(*test)++;
+	if (encode_integer(value, &e, force_size) < 0) {
+		fprintf(stderr, "test %d, encode_integer(%u,%d): unexpected failure\n", *test, value, force_size);
+		return 0;
+	}
+	if (e.len != len) {
+		fprintf(stderr, "test %d, encode_integer(%u,%d): unexpected length (%d != %d)\n", *test, value, force_size, e.len, len);
+		return 0;
+	}
+	if (memcmp(buf, res, len) != 0) {
+		fprintf(stderr, "test %d, encode_integer(%u,%d): unexpected buffer content\n", *test, value, force_size);
+		return 0;
+	}
+	e = ber_init(buf, len);
+	if (decode_integer(&e, -1, &decoded) < 0) {
+		fprintf(stderr, "test %d, encode_integer(%u,%d): cannot decode encoded integer\n", *test, value, force_size);
+		return 0;
+	}
+	if (decoded != value) {
+		fprintf(stderr, "test %d, encode_integer(%u,%d): decode round-trip gave %u\n", *test, value, force_size, decoded);
+		return 0;
+	}
+	return 1;
+}
+
+int
 main(void)
 {
 	int success = 0;
@@ -226,22 +258,26 @@ main(void)
 		"1.3.6.1.4.1.6527.3.1.2.4.3.7.1.12.10000745.35946496.1519.1",
 		0);
 
-	fprintf(stderr, "%d of %d tests passed succesfully\n", success, n_tests);
+	success += test_encode_integer(&n_tests, 0, 0, "\x02\x01\x00", 3);
+	success += test_encode_integer(&n_tests, 127, 0, "\x02\x01\x7f", 3);
+	success += test_encode_integer(&n_tests, 128, 0, "\x02\x02\x00\x80", 4);
+	success += test_encode_integer(&n_tests, 255, 0, "\x02\x02\x00\xff", 4);
+	success += test_encode_integer(&n_tests, 256, 0, "\x02\x02\x01\x00", 4);
+	success += test_encode_integer(&n_tests, 32767, 0, "\x02\x02\x7f\xff", 4);
+	success += test_encode_integer(&n_tests, 32768, 0, "\x02\x03\x00\x80\x00", 5);
+	success += test_encode_integer(&n_tests, 65507, 0, "\x02\x03\x00\xff\xe3", 5);
+	success += test_encode_integer(&n_tests, 65535, 0, "\x02\x03\x00\xff\xff", 5);
+	success += test_encode_integer(&n_tests, 65536, 0, "\x02\x03\x01\x00\x00", 5);
+	success += test_encode_integer(&n_tests, 0x7fffff, 0, "\x02\x03\x7f\xff\xff", 5);
+	success += test_encode_integer(&n_tests, 0x800000, 0, "\x02\x04\x00\x80\x00\x00", 6);
+	success += test_encode_integer(&n_tests, 0x1000000, 0, "\x02\x04\x01\x00\x00\x00", 6);
+	success += test_encode_integer(&n_tests, 0x7fffffff, 0, "\x02\x04\x7f\xff\xff\xff", 6);
+	success += test_encode_integer(&n_tests, 0x80000000u, 0, "\x02\x05\x00\x80\x00\x00\x00", 7);
+	success += test_encode_integer(&n_tests, 0xffffffffu, 0, "\x02\x05\x00\xff\xff\xff\xff", 7);
+	success += test_encode_integer(&n_tests, 6789012, 4, "\x02\x04\x00\x67\x97\x94", 6);
+	success += test_encode_integer(&n_tests, 0x01020304, 4, "\x02\x04\x01\x02\x03\x04", 6);
 
-	{
-		struct ber e;
-		char buf[1500];
-		e = ber_init(buf, 1500);
-		if (build_get_request_packet(1, "public",
-			"1.3.6.1.2.1.2.2.1.2.1001\0"
-			"1.3.6.1.2.1.2.2.1.2.25\0",
-			6789012, &e) < 0)
-		{
-			perror("build_get_request_packet");
-		} else {
-			ber_dump(stderr, &e);
-		}
-	}
-	return 0;
+	fprintf(stderr, "%d of %d tests passed succesfully\n", success, n_tests);
+	return success != n_tests;
 }
 
