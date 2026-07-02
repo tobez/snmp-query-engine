@@ -549,6 +549,8 @@ encode_bytes(const unsigned char *p, int n, struct ber *e)
     return 0;
 }
 
+/* With a non-zero force_size, the caller must ensure the value
+ * fits positively into force_size bytes. */
 int
 encode_integer(unsigned i, struct ber *e, int force_size)
 {

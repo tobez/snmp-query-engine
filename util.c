@@ -150,8 +150,8 @@ next_sid_from(unsigned cur)
 	if ((cur & 0x80000000) != 0) {
 		/* Wrapped past 0x7fffffff, reset to start of range */
 		cur = 0x01000000;
-	} else if ((cur & 0x7f000000) == 0) {
-		/* Below 0x01000000, set bit 24 to enter range */
+	} else if (cur < 0x01000000) {
+		/* Below the range, set bit 24 to enter it */
 		cur |= 0x01000000;
 	}
 	/* Request ids stay in [0x01000000, 0x7fffffff]: the minimal BER
