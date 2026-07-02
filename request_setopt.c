@@ -185,7 +185,7 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 			d.min_interval = v->via.u64;
 			break;
 		case OPT_max_repetitions:
-			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 < 1 || v->via.u64 > 255)
+			if (t != MSGPACK_OBJECT_POSITIVE_INTEGER || v->via.u64 < 1 || v->via.u64 > 127)
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid max repetitions");
 			d.max_repetitions = v->via.u64;
 			break;

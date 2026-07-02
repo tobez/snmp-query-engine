@@ -306,10 +306,10 @@ start_snmp_packet(struct packet_builder *pb, int version, unsigned request_id, c
         EXTEND2;
 
         /* We just set msgID to be the same as request-id in the PDU */
-        if (encode_integer(request_id, e, 0) < 0)
-            return -1;    // XXX always 4 bytes?
+        if (encode_integer(request_id, e, 4) < 0)
+            return -1;
         pb->pi.sid_offset = e->b - e->buf - 4;
-        if (encode_integer(v3->msg_max_size, e, 2) < 0)
+        if (encode_integer(v3->msg_max_size, e, 0) < 0)
             return -1;
         if (encode_bytes(&msg_flags, 1, e) < 0)
             return -1;
@@ -336,13 +336,8 @@ start_snmp_packet(struct packet_builder *pb, int version, unsigned request_id, c
 
         if (encode_integer(v3->engine_boots, e, 0) < 0)
             return -1;
-        if (v3->engine_time >= 0x800000) { // kludge, proper fix later
-            if (encode_integer(v3->engine_time, e, 4) < 0)
-                return -1;
-        } else {
-            if (encode_integer(v3->engine_time, e, 0) < 0)
-                return -1;
-        }
+        if (encode_integer(v3->engine_time, e, 0) < 0)
+            return -1;
 
         if (encode_string(v3->username, e) < 0)
             return -1;
@@ -419,8 +414,10 @@ finalize_snmp_packet(struct packet_builder *pb, struct ber *out_encoded_packet, 
     if (type == PDU_GET_BULK_REQUEST) {
         if (max_repetitions <= 0)
             max_repetitions = 10;
-        if (max_repetitions > 255)
-            max_repetitions = 255;
+        /* single positive BER byte: the value is patched into a fixed
+         * 1-byte integer slot, and 128..255 would read as negative */
+        if (max_repetitions > 127)
+            max_repetitions = 127;
         pb->max_repetitions[0] = (unsigned char)max_repetitions;
     }
 
@@ -552,28 +549,30 @@ encode_bytes(const unsigned char *p, int n, struct ber *e)
     return 0;
 }
 
+/* With a non-zero force_size, the caller must ensure the value
+ * fits positively into force_size bytes. */
 int
 encode_integer(unsigned i, struct ber *e, int force_size)
 {
     int l;
-    if (i <= 255)
+    if (i <= 0x7f)
         l = 1;
-    else if (i <= 65535)
+    else if (i <= 0x7fff)
         l = 2;
-    else if (i <= 16777215)
+    else if (i <= 0x7fffff)
         l = 3;
-    else if (i <= 4294967295u)
+    else if (i <= 0x7fffffff)
         l = 4;
-    else {
-        errno = ERANGE;
-        return -1;
-    }
+    else
+        l = 5;
     if (force_size)
         l = force_size;
     if (encode_type_len(AT_INTEGER, l, e) < 0)
         return -1;
     SPACECHECK(l);
     switch (l) {
+    case 5:
+        e->b[l - 5] = 0;
     case 4:
         e->b[l - 4] = (i >> 24) & 0xff;
     case 3:

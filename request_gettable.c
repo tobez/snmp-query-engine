@@ -42,7 +42,7 @@ handle_gettable_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 		max_repetitions = -1;
 		if (o->via.array.ptr[RI_GETTABLE_MREP].type == MSGPACK_OBJECT_POSITIVE_INTEGER)
 			max_repetitions = o->via.array.ptr[RI_GETTABLE_MREP].via.u64;
-		if (max_repetitions < 1 || max_repetitions > 255)
+		if (max_repetitions < 1 || max_repetitions > 127)
 			return error_reply(si, RT_GETTABLE|RT_ERROR, cid, "bad max repetitions");
 	}
 

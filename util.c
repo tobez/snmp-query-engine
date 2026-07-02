@@ -144,6 +144,23 @@ static int sid_initialized = 0;
 static unsigned sid;
 
 unsigned
+next_sid_from(unsigned cur)
+{
+	cur++;
+	if ((cur & 0x80000000) != 0) {
+		/* Wrapped past 0x7fffffff, reset to start of range */
+		cur = 0x01000000;
+	} else if (cur < 0x01000000) {
+		/* Below the range, set bit 24 to enter it */
+		cur |= 0x01000000;
+	}
+	/* Request ids stay in [0x01000000, 0x7fffffff]: the minimal BER
+	 * encoding is then always exactly 4 positive bytes, which the
+	 * in-place sid patching of built packets relies upon. */
+	return cur;
+}
+
+unsigned
 next_sid(void)
 {
 	struct timeval tv;
@@ -153,12 +170,7 @@ next_sid(void)
 		gettimeofday(&tv, NULL);
 		sid = (tv.tv_sec % 500009) + tv.tv_usec;
 	}
-	sid++;
-	sid &= 0xffffffff;
-	if (sid == 0)
-		sid++;
-	// hack to make sure it will be coded as 4 bytes while being DER
-	sid |= 0x01000000;
+	sid = next_sid_from(sid);
 	return sid;
 }
 
