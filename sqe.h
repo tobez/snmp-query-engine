@@ -45,7 +45,7 @@
 
 #include "bsdqueue.h"
 
-#define SQE_VERSION "1.1.0"
+#define SQE_VERSION "2.0.0"
 
 #define RT_UNKNOWN   0
 #define RT_SETOPT    1
