@@ -106,6 +106,9 @@ my %GLOBAL_STATS = map { $_ => $NUMBER } @GLOBAL_STATS;
 $CLIENT_STATS{oids_non_increasing} = 0;
 $GLOBAL_STATS{oids_non_increasing} = 0;
 
+my $version_output = `$FindBin::Bin/../snmp-query-engine -v`;
+like($version_output, qr/^snmp-query-engine \d+\.\d+\.\d+$/, "-v prints semantic version");
+
 my $daemon_pid;
 if (!($daemon_pid = fork)) {
 	exec("$FindBin::Bin/../snmp-query-engine", "-p7668", "-q");

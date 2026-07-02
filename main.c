@@ -26,6 +26,7 @@ usage(char *err)
 		fprintf(f, "\t\t\tSend HUP signal to reopen the logfile\n");
 	}
 	fprintf(f, "\t-q\t\tquiet operation\n");
+	fprintf(f, "\t-v\t\tprint program version and quit\n");
 	exit(err ? 1 : 0);
 }
 
@@ -38,9 +39,9 @@ main(int argc, char **argv)
 	gettimeofday(&prog_start, NULL);
 	bzero(&PS, sizeof(PS));
 	PS.max_packets_on_the_wire = 1000000;
-	PS.program_version = 2023082200;
+	PS.program_version = 2023082200; /* frozen for protocol compatibility; see SQE_VERSION */
 
-	while ( (o = getopt(argc, argv, "hp:q")) != -1) {
+	while ( (o = getopt(argc, argv, "hp:qv")) != -1) {
 		switch (o) {
 		case 'h':
 			usage(NULL);
@@ -51,6 +52,9 @@ main(int argc, char **argv)
 		case 'q':
 			opt_quiet = 1;
 			break;
+		case 'v':
+			printf("%s %s\n", thisprogname(), SQE_VERSION);
+			exit(0);
 		default:
 			usage("");
 		}
