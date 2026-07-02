@@ -412,7 +412,7 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 		if (si->table_oid) {
 			if (oid_belongs_to_table(&oid, &si->table_oid->oid)) {
 				if (si->table_oid->last_known_table_entry &&
-					oid_compare(&oid, &si->table_oid->last_known_table_entry->oid) < 0)
+					oid_compare(&oid, &si->table_oid->last_known_table_entry->oid) <= 0)
 				{
 					got_table_oid(si, si->table_oid, &oid, &BER_NON_INCREASING, error_status);
 					PS.oids_non_increasing++;
