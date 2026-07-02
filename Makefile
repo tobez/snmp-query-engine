@@ -12,7 +12,7 @@ INCPATH=	-I/usr/local/include -I/opt/local/include -I/opt/homebrew/include
 LIBPATH=	-L/usr/local/lib -L/opt/local/lib -L/opt/homebrew/lib
 CFLAGS=	-Wall -Wno-unused-function -Wno-deprecated-declarations -Werror $(OPTIMIZE) $(INCPATH)
 
-all: snmp-query-engine test_ber test_msgpack test_v3
+all: snmp-query-engine test_ber test_msgpack test_v3 test_sid_info
 
 STDOBJ=event_loop.o carp.o client_input.o client_listen.o opts.o util.o destination.o \
 	client_requests_info.o cid_info.o ber.o oid_info.o sid_info.o \
@@ -23,7 +23,7 @@ STDOBJ=event_loop.o carp.o client_input.o client_listen.o opts.o util.o destinat
 STDLINK=$(STDOBJ) $(LIBPATH) -lJudy -lmsgpackc -lcrypto
 
 clean:
-	rm -f *.o snmp-query-engine test_ber test_msgpack test_v3 *.core core
+	rm -f *.o snmp-query-engine test_ber test_msgpack test_v3 test_sid_info *.core core
 
 snmp-query-engine: main.o $(STDOBJ)
 	$(CC) $(CFLAGS) -o snmp-query-engine main.o $(STDLINK)
@@ -105,6 +105,9 @@ test_msgpack: test_msgpack.c $(STDOBJ)
 
 test_v3: test_v3.c $(STDOBJ)
 	$(CC) $(CFLAGS) -o test_v3 test_v3.c $(STDLINK)
+
+test_sid_info: test_sid_info.c $(STDOBJ)
+	$(CC) $(CFLAGS) -o test_sid_info test_sid_info.c $(STDLINK)
 
 test: snmp-query-engine
 	prove t/queries.t

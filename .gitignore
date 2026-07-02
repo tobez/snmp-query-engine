@@ -4,6 +4,8 @@ test_msgpack
 test_msgpack.dSYM/
 test_v3
 test_v3.dSYM/
+test_sid_info
+test_sid_info.dSYM/
 *.o
 .*.swp
 snmp-query-engine
