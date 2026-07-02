@@ -197,6 +197,103 @@ test_next_sid_from(int *test, unsigned cur, unsigned expected)
 	return 1;
 }
 
+static int
+buf_find(const unsigned char *hay, int hay_len, const char *needle, int needle_len)
+{
+	int i;
+	for (i = 0; i + needle_len <= hay_len; i++)
+		if (memcmp(hay + i, (const unsigned char *)needle, needle_len) == 0)
+			return 1;
+	return 0;
+}
+
+int
+test_v3_header_encoding(int *test)
+{
+	struct packet_builder pb;
+	struct snmpv3info v3;
+	struct ber *e;
+
+	(*test)++;
+	memset(&v3, 0, sizeof(v3));
+	memcpy(v3.engine_id, "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02", 12);
+	v3.engine_id_len = 12;
+	strcpy(v3.username, "testuser");
+	v3.auth_proto = V3O_AUTH_PROTO_SHA1;
+	v3.priv_proto = V3O_PRIV_PROTO_AES128;
+	v3.msg_max_size = 50000;
+	v3.engine_boots = 200;
+	v3.engine_time = 40000;
+
+	if (start_snmp_packet(&pb, 3, 0x01020304, &v3, NULL) < 0) {
+		fprintf(stderr, "test %d, v3 header: start_snmp_packet unexpected failure\n", *test);
+		return 0;
+	}
+	e = &pb.e;
+	if (!buf_find(e->buf, e->len, "\x02\x03\x00\xc3\x50", 5)) {
+		fprintf(stderr, "test %d, v3 header: msgMaxSize 50000 not encoded as 02 03 00 c3 50\n", *test);
+		free(e->buf);
+		return 0;
+	}
+	if (!buf_find(e->buf, e->len, "\x02\x02\x00\xc8", 4)) {
+		fprintf(stderr, "test %d, v3 header: engine boots 200 not encoded as 02 02 00 c8\n", *test);
+		free(e->buf);
+		return 0;
+	}
+	if (!buf_find(e->buf, e->len, "\x02\x03\x00\x9c\x40", 5)) {
+		fprintf(stderr, "test %d, v3 header: engine time 40000 not encoded as 02 03 00 9c 40\n", *test);
+		free(e->buf);
+		return 0;
+	}
+	if (memcmp(e->buf + pb.pi.sid_offset, "\x01\x02\x03\x04", 4) != 0) {
+		fprintf(stderr, "test %d, v3 header: sid_offset does not point at msgID bytes\n", *test);
+		free(e->buf);
+		return 0;
+	}
+	free(e->buf);
+	return 1;
+}
+
+int
+test_v2c_getbulk_packet(int *test, int max_repetitions, const char *mrep_tlv)
+{
+	struct packet_builder pb;
+	struct packet_info pi;
+	struct ber packet;
+	char oidbuf[64];
+	struct ber oid = ber_init(oidbuf, 64);
+
+	(*test)++;
+	if (encode_string_oid("1.3.6.1.2.1.1.9.1.2", -1, &oid) < 0) {
+		fprintf(stderr, "test %d, getbulk: cannot encode test oid\n", *test);
+		return 0;
+	}
+	if (start_snmp_packet(&pb, 1, 0x01020304, NULL, "public") < 0) {
+		fprintf(stderr, "test %d, getbulk: start_snmp_packet unexpected failure\n", *test);
+		return 0;
+	}
+	if (add_encoded_oid_to_snmp_packet(&pb, &oid) < 0) {
+		fprintf(stderr, "test %d, getbulk: add_encoded_oid_to_snmp_packet unexpected failure\n", *test);
+		return 0;
+	}
+	if (finalize_snmp_packet(&pb, &packet, NULL, &pi, PDU_GET_BULK_REQUEST, max_repetitions) < 0) {
+		fprintf(stderr, "test %d, getbulk: finalize_snmp_packet unexpected failure\n", *test);
+		return 0;
+	}
+	if (!buf_find(packet.buf, packet.len, mrep_tlv, 3)) {
+		fprintf(stderr, "test %d, getbulk(%d): expected max-repetitions TLV not found\n", *test, max_repetitions);
+		free(packet.buf);
+		return 0;
+	}
+	if (memcmp(packet.buf + pi.sid_offset, "\x01\x02\x03\x04", 4) != 0) {
+		fprintf(stderr, "test %d, getbulk: sid_offset does not point at request-id bytes\n", *test);
+		free(packet.buf);
+		return 0;
+	}
+	free(packet.buf);
+	return 1;
+}
+
 int
 main(void)
 {
@@ -296,6 +393,9 @@ main(void)
 	success += test_next_sid_from(&n_tests, 0x7fffffff, 0x01000000);
 	success += test_next_sid_from(&n_tests, 0xffffffffu, 0x01000000);
 	success += test_next_sid_from(&n_tests, 0, 0x01000001);
+
+	success += test_v3_header_encoding(&n_tests);
+	success += test_v2c_getbulk_packet(&n_tests, 100, "\x02\x01\x64");
 
 	fprintf(stderr, "%d of %d tests passed succesfully\n", success, n_tests);
 	return success != n_tests;

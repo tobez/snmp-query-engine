@@ -306,10 +306,10 @@ start_snmp_packet(struct packet_builder *pb, int version, unsigned request_id, c
         EXTEND2;
 
         /* We just set msgID to be the same as request-id in the PDU */
-        if (encode_integer(request_id, e, 0) < 0)
-            return -1;    // XXX always 4 bytes?
+        if (encode_integer(request_id, e, 4) < 0)
+            return -1;
         pb->pi.sid_offset = e->b - e->buf - 4;
-        if (encode_integer(v3->msg_max_size, e, 2) < 0)
+        if (encode_integer(v3->msg_max_size, e, 0) < 0)
             return -1;
         if (encode_bytes(&msg_flags, 1, e) < 0)
             return -1;
@@ -336,13 +336,8 @@ start_snmp_packet(struct packet_builder *pb, int version, unsigned request_id, c
 
         if (encode_integer(v3->engine_boots, e, 0) < 0)
             return -1;
-        if (v3->engine_time >= 0x800000) { // kludge, proper fix later
-            if (encode_integer(v3->engine_time, e, 4) < 0)
-                return -1;
-        } else {
-            if (encode_integer(v3->engine_time, e, 0) < 0)
-                return -1;
-        }
+        if (encode_integer(v3->engine_time, e, 0) < 0)
+            return -1;
 
         if (encode_string(v3->username, e) < 0)
             return -1;
