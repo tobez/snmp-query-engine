@@ -53,7 +53,7 @@ main(int argc, char **argv)
 			opt_quiet = 1;
 			break;
 		case 'v':
-			printf("%s %s\n", thisprogname(), SQE_VERSION);
+			printf("snmp-query-engine %s\n", SQE_VERSION);
 			exit(0);
 		default:
 			usage("");
