@@ -154,6 +154,73 @@ is($multi[3], to_check([RT_GET|RT_REPLY,3505,[["1.3.6.1.2.1.2.2.1.1.$first_ifind
 request_match($d, "destinfo non-zero", [RT_DEST_INFO,6630,$target,$port], [RT_DEST_INFO|RT_REPLY, 6630,
 	{ octets_received => qr/^[1-9]\d*$/, octets_sent => qr/^[1-9]\d*$/}]);
 
+# --- end-to-end non-increasing-OID walk termination (dk's PR #8 fix) ---
+{
+	my $stuck = SQE::FakeAgent->spawn(tree => \@tree,
+		repeat_oid => '1.3.6.1.2.1.2.2.1.2.2');
+	my $sport = $stuck->port;
+	my $before = $d->request([RT_INFO, 7000]);
+	# Observed against the real engine: rows collected before the repeat ARE
+	# included in the reply, followed by one synthetic entry for the repeated
+	# oid carrying the ["non-increasing"] error marker (sid_info.c
+	# process_sid_info_response calls got_table_oid() for every row up to and
+	# including the non-increasing one before it stops the walk).
+	my $r = request_match($d, "walk of a non-increasing device terminates",
+		[RT_GETTABLE, 7001, $target, $sport, "1.3.6.1.2.1.2.2.1.2"],
+		[RT_GETTABLE|RT_REPLY, 7001, [
+			["1.3.6.1.2.1.2.2.1.2.1", "lo0"],
+			["1.3.6.1.2.1.2.2.1.2.2", "em0"],
+			["1.3.6.1.2.1.2.2.1.2.2", ["non-increasing"]],
+		]]);
+	my $after = $d->request([RT_INFO, 7002]);
+	ok($after->[2]{global}{oids_non_increasing} > ($before->[2]{global}{oids_non_increasing} // 0),
+		"oids_non_increasing counter incremented");
+	is(ref $r->[2], 'ARRAY', "walk returned a table, not a hang");
+	$stuck->stop;
+}
+
+# --- malformed replies bump bad_snmp_responses; request eventually times out ---
+{
+	my $garbler = SQE::FakeAgent->spawn(tree => \@tree, malformed => 'garbage');
+	my $gport = $garbler->port;
+	request_match($d, "fast timeout for the garbler",
+		[RT_SETOPT, 7100, $target, $gport, {timeout => 100, retries => 1}],
+		[RT_SETOPT|RT_REPLY, 7100, T()]);
+	my $before = $d->request([RT_INFO, 7101]);
+	request_match($d, "garbage reply leads to timeout",
+		[RT_GET, 7102, $target, $gport, ["1.3.6.1.2.1.1.5.0"]],
+		[RT_GET|RT_REPLY, 7102, [["1.3.6.1.2.1.1.5.0", ["timeout"]]]]);
+	my $after = $d->request([RT_INFO, 7103]);
+	# Observed against the real engine: bad_snmp_responses increments once per
+	# received malformed reply, not once per request. With retries => 1 there is
+	# exactly one SNMP round-trip, so the delta is deterministically exactly 1
+	# (confirmed separately: retries => 3 against the same garbler yields a
+	# delta of 3, one per attempt).
+	is($after->[2]{global}{bad_snmp_responses}, ($before->[2]{global}{bad_snmp_responses} // 0) + 1,
+		"bad_snmp_responses incremented by exactly one");
+	$garbler->stop;
+}
+
+# --- drop_first makes retry behavior deterministic ---
+{
+	my $droppy = SQE::FakeAgent->spawn(tree => \@tree, drop_first => 2);
+	my $dport = $droppy->port;
+	request_match($d, "fast timeout for the dropper",
+		[RT_SETOPT, 7200, $target, $dport, {timeout => 100, retries => 3}],
+		[RT_SETOPT|RT_REPLY, 7200, T()]);
+	my $before = $d->request([RT_INFO, 7201]);
+	request_match($d, "get succeeds on the third attempt",
+		[RT_GET, 7202, $target, $dport, ["1.3.6.1.2.1.1.5.0"]],
+		[RT_GET|RT_REPLY, 7202, [["1.3.6.1.2.1.1.5.0", $hostname]]]);
+	my $after = $d->request([RT_INFO, 7203]);
+	# Observed against the real engine: with drop_first => 2 and retries => 3,
+	# the first two sends are dropped and the third succeeds, so exactly two
+	# resends (retries) happen; the delta is deterministically exactly 2.
+	is($after->[2]{global}{snmp_retries} - $before->[2]{global}{snmp_retries}, 2,
+		"exactly two retries recorded");
+	$droppy->stop;
+}
+
 $agent->stop;
 $d->stop;
 done_testing;
