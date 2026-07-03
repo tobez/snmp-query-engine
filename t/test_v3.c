@@ -7,9 +7,7 @@
  *
  */
 #include "sqe.h"
-
-static int n_tests = 0;
-static int success = 0;
+#include "tap.h"
 
 /* engine id 00 00 00 00 00 00 00 00 00 00 00 02, 12 bytes */
 static const unsigned char engine_id[] =
@@ -39,43 +37,31 @@ check_kat(const char *name, int proto,
     unsigned len;
     char *err;
 
-    n_tests++;
     if (!password_to_key(proto, "maplesyrup", strlen("maplesyrup"),
                          key, sizeof(key), &len, &err)) {
-        fprintf(stderr, "test %d, %s password_to_key: %s\n", n_tests, name, err);
+        ok(0, "%s password_to_key", name);
+        tap_diag("%s", err);
         return;
     }
-    success++;
-    n_tests++;
-    if (len == strlen(expect_ku_hex) / 2)
-        success++;
-    else
-        fprintf(stderr, "test %d, %s password_to_key: len %u unexpected\n", n_tests, name, len);
-    n_tests++;
+    ok(1, "%s password_to_key", name);
+    if (!ok(len == strlen(expect_ku_hex) / 2, "%s password_to_key length", name))
+        tap_diag("got %u, expected %zu", len, strlen(expect_ku_hex) / 2);
     to_hex(hex, key, len);
-    if (strcmp(hex, expect_ku_hex) == 0)
-        success++;
-    else
-        fprintf(stderr, "test %d, %s password_to_key: Ku %s != %s\n", n_tests, name, hex, expect_ku_hex);
+    if (!ok(strcmp(hex, expect_ku_hex) == 0, "%s password_to_key Ku", name))
+        tap_diag("got %s, expected %s", hex, expect_ku_hex);
 
-    n_tests++;
     if (!key_to_kul(proto, key, len, (void *)engine_id, ENGINE_ID_LEN,
                     kul, sizeof(kul), &len, &err)) {
-        fprintf(stderr, "test %d, %s key_to_kul: %s\n", n_tests, name, err);
+        ok(0, "%s key_to_kul", name);
+        tap_diag("%s", err);
         return;
     }
-    success++;
-    n_tests++;
-    if (len == strlen(expect_kul_hex) / 2)
-        success++;
-    else
-        fprintf(stderr, "test %d, %s key_to_kul: len %u unexpected\n", n_tests, name, len);
-    n_tests++;
+    ok(1, "%s key_to_kul", name);
+    if (!ok(len == strlen(expect_kul_hex) / 2, "%s key_to_kul length", name))
+        tap_diag("got %u, expected %zu", len, strlen(expect_kul_hex) / 2);
     to_hex(hex, kul, len);
-    if (strcmp(hex, expect_kul_hex) == 0)
-        success++;
-    else
-        fprintf(stderr, "test %d, %s key_to_kul: Kul %s != %s\n", n_tests, name, hex, expect_kul_hex);
+    if (!ok(strcmp(hex, expect_kul_hex) == 0, "%s key_to_kul Kul", name))
+        tap_diag("got %s, expected %s", hex, expect_kul_hex);
 }
 
 /* Regression test mirroring request_setopt.c: the localized privacy key is
@@ -85,25 +71,22 @@ check_kat(const char *name, int proto,
 static void
 check_privkul(const char *name, int proto, const char *expect_kul_hex)
 {
-    unsigned char kul[V3O_AUTHKUL_MAXSIZE];
-    char hex[2 * V3O_AUTHKUL_MAXSIZE + 1];
+    unsigned char kul[V3O_PRIVKUL_MAXSIZE];
+    char hex[2 * V3O_PRIVKUL_MAXSIZE + 1];
     unsigned len;
     char *err;
 
-    n_tests++;
     if (!password_to_kul(proto, "maplesyrup", strlen("maplesyrup"),
                          (void *)engine_id, ENGINE_ID_LEN,
                          kul, V3O_PRIVKUL_MAXSIZE, &len, &err)) {
-        fprintf(stderr, "test %d, %s password_to_kul: %s\n", n_tests, name, err);
+        ok(0, "%s password_to_kul", name);
+        tap_diag("%s", err);
         return;
     }
-    success++;
-    n_tests++;
+    ok(1, "%s password_to_kul", name);
     to_hex(hex, kul, len);
-    if (strcmp(hex, expect_kul_hex) == 0)
-        success++;
-    else
-        fprintf(stderr, "test %d, %s privkul %s != %s\n", n_tests, name, hex, expect_kul_hex);
+    if (!ok(strcmp(hex, expect_kul_hex) == 0, "%s privkul", name))
+        tap_diag("got %s, expected %s", hex, expect_kul_hex);
 }
 
 /* Exercises the v3_crypto.c hmac_message rewrite for one protocol the same way
@@ -127,8 +110,8 @@ check_hmac(const char *name, int proto)
     if (!password_to_kul(proto, "maplesyrup", strlen("maplesyrup"),
                          (void *)engine_id, ENGINE_ID_LEN,
                          v3.authkul, sizeof(v3.authkul), &v3.authkul_len, &err)) {
-        n_tests++;
-        fprintf(stderr, "test %d, %s hmac setup: %s\n", n_tests, name, err);
+        ok(0, "%s hmac setup", name);
+        tap_diag("%s", err);
         return;
     }
     for (i = 0; i < sizeof(msg); i++)
@@ -136,24 +119,17 @@ check_hmac(const char *name, int proto)
     ap = msg + 40;  /* auth-param slot somewhere inside the message */
 
     /* sign (ber.c finalize path): hmac_message zeroes the slot, then fills it */
-    n_tests++;
-    if (hmac_message(&v3, ap, maclen, msg, sizeof(msg), ap) < 0) {
-        fprintf(stderr, "test %d, %s hmac sign failed\n", n_tests, name);
+    if (!ok(hmac_message(&v3, ap, maclen, msg, sizeof(msg), ap) >= 0, "%s hmac sign", name))
         return;
-    }
-    success++;
     memcpy(saved, ap, maclen);
 
     /* verify (snmp.c response path): recompute and compare against the received MAC */
-    n_tests++;
     if (hmac_message(&v3, ap, maclen, msg, sizeof(msg), ap) < 0) {
-        fprintf(stderr, "test %d, %s hmac verify failed\n", n_tests, name);
+        ok(0, "%s hmac verify", name);
         return;
     }
-    if (memcmp(saved, ap, maclen) == 0)
-        success++;
-    else
-        fprintf(stderr, "test %d, %s hmac not reproducible\n", n_tests, name);
+    if (!ok(memcmp(saved, ap, maclen) == 0, "%s hmac verify", name))
+        tap_diag("hmac not reproducible");
 }
 
 int
@@ -189,6 +165,5 @@ main(void)
     check_hmac("sha384", V3O_AUTH_PROTO_SHA384);
     check_hmac("sha512", V3O_AUTH_PROTO_SHA512);
 
-    fprintf(stderr, "%d of %d tests passed succesfully\n", success, n_tests);
-    return success != n_tests;
+    return tap_done();
 }

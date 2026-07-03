@@ -1,11 +1,8 @@
-test_ber
-test_ber.dSYM/
-test_msgpack
-test_msgpack.dSYM/
-test_v3
-test_v3.dSYM/
-test_sid_info
-test_sid_info.dSYM/
+t/test_ber
+t/test_msgpack
+t/test_v3
+t/test_sid_info
+t/*.dSYM/
 *.o
 .*.swp
 snmp-query-engine

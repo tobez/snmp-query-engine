@@ -8,11 +8,12 @@
 #
 CC?=	cc
 OPTIMIZE=	-O3 -g
-INCPATH=	-I/usr/local/include -I/opt/local/include -I/opt/homebrew/include
+INCPATH=	-I. -I/usr/local/include -I/opt/local/include -I/opt/homebrew/include
 LIBPATH=	-L/usr/local/lib -L/opt/local/lib -L/opt/homebrew/lib
 CFLAGS=	-Wall -Wno-unused-function -Wno-deprecated-declarations -Werror $(OPTIMIZE) $(INCPATH)
+TESTBIN=	t/test_ber t/test_msgpack t/test_v3 t/test_sid_info
 
-all: snmp-query-engine test_ber test_msgpack test_v3 test_sid_info
+all: snmp-query-engine $(TESTBIN)
 
 STDOBJ=event_loop.o carp.o client_input.o client_listen.o opts.o util.o destination.o \
 	client_requests_info.o cid_info.o ber.o oid_info.o sid_info.o \
@@ -23,7 +24,8 @@ STDOBJ=event_loop.o carp.o client_input.o client_listen.o opts.o util.o destinat
 STDLINK=$(STDOBJ) $(LIBPATH) -lJudy -lmsgpackc -lcrypto
 
 clean:
-	rm -f *.o snmp-query-engine test_ber test_msgpack test_v3 test_sid_info *.core core
+	rm -f *.o snmp-query-engine t/test_ber t/test_msgpack t/test_v3 t/test_sid_info *.core core
+	rm -rf t/*.dSYM *.dSYM
 
 snmp-query-engine: main.o $(STDOBJ)
 	$(CC) $(CFLAGS) -o snmp-query-engine main.o $(STDLINK)
@@ -97,20 +99,20 @@ v3_keys.o: v3_keys.c sqe.h
 v3_crypto.o: v3_crypto.c sqe.h
 	$(CC) -c $(CFLAGS) -o v3_crypto.o v3_crypto.c
 
-test_ber: test_ber.c $(STDOBJ)
-	$(CC) $(CFLAGS) -o test_ber test_ber.c $(STDLINK)
+t/test_ber: t/test_ber.c t/tap.h $(STDOBJ)
+	$(CC) $(CFLAGS) -o t/test_ber t/test_ber.c $(STDLINK)
 
-test_msgpack: test_msgpack.c $(STDOBJ)
-	$(CC) $(CFLAGS) -o test_msgpack test_msgpack.c $(STDLINK)
+t/test_msgpack: t/test_msgpack.c t/tap.h $(STDOBJ)
+	$(CC) $(CFLAGS) -o t/test_msgpack t/test_msgpack.c $(STDLINK)
 
-test_v3: test_v3.c $(STDOBJ)
-	$(CC) $(CFLAGS) -o test_v3 test_v3.c $(STDLINK)
+t/test_v3: t/test_v3.c t/tap.h $(STDOBJ)
+	$(CC) $(CFLAGS) -o t/test_v3 t/test_v3.c $(STDLINK)
 
-test_sid_info: test_sid_info.c $(STDOBJ)
-	$(CC) $(CFLAGS) -o test_sid_info test_sid_info.c $(STDLINK)
+t/test_sid_info: t/test_sid_info.c t/tap.h $(STDOBJ)
+	$(CC) $(CFLAGS) -o t/test_sid_info t/test_sid_info.c $(STDLINK)
 
-test: snmp-query-engine
-	prove t/queries.t
+test: snmp-query-engine $(TESTBIN)
+	prove t/
 
-test-details: snmp-query-engine
-	perl t/queries.t
+test-details: snmp-query-engine $(TESTBIN)
+	prove -v t/

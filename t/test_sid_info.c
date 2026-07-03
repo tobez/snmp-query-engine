@@ -9,20 +9,7 @@
 /* ABOUTME: Tests that a table walk terminates when a device returns a
  * ABOUTME: non-increasing (repeated or smaller) OID, per PR #8. */
 #include "sqe.h"
-
-static int n_tests = 0;
-static int success = 0;
-
-static void
-check(const char *name, int ok)
-{
-	n_tests++;
-	if (ok) {
-		success++;
-	} else {
-		fprintf(stderr, "test %d, %s: FAILED\n", n_tests, name);
-	}
-}
+#include "tap.h"
 
 /* Encode an OID string into a freshly allocated BER, shaped like the OID
  * bers produced by decode_oid() (buf points at the type byte, max_len
@@ -136,7 +123,7 @@ run_case(const char *name, const char *table_base, const char *last_known,
 	rc = process_sid_info_response(&si, &resp);
 	delta = PS.oids_non_increasing - before;
 
-	check(name, rc == 1 && delta == expected_delta);
+	ok(rc == 1 && delta == expected_delta, "%s", name);
 }
 
 int
@@ -157,6 +144,5 @@ main(void)
 	run_case("smaller oid terminates walk",
 	         base, "1.3.6.1.2.1.2.2.1.2.2", "1.3.6.1.2.1.2.2.1.2.1", 1);
 
-	fprintf(stderr, "%d of %d tests passed succesfully\n", success, n_tests);
-	return success != n_tests;
+	return tap_done();
 }
