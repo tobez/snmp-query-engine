@@ -22,9 +22,19 @@ use constant {
 	RT_ERROR     => 0x20,
 };
 
-our @EXPORT_OK = qw(spawn_daemon request_match to_check
+our @EXPORT_OK = qw(spawn_daemon request_match to_check oid_cmp
 	RT_SETOPT RT_GETOPT RT_INFO RT_GET RT_GETTABLE RT_DEST_INFO RT_REPLY RT_ERROR);
 our %EXPORT_TAGS = (all => \@EXPORT_OK);
+
+sub oid_cmp {
+	my @a = split /\./, $_[0];
+	my @b = split /\./, $_[1];
+	while (@a && @b) {
+		my $c = shift(@a) <=> shift(@b);
+		return $c if $c;
+	}
+	return @a <=> @b;
+}
 
 sub _free_port {
 	my $s = IO::Socket::INET->new(LocalAddr => '127.0.0.1', LocalPort => 0,
