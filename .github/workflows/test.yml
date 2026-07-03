@@ -1,0 +1,75 @@
+# ABOUTME: GitHub Actions CI: build + full test suite on ubuntu/macos, plus a
+# ABOUTME: real-snmpd tier (v2c+v3) and an ASan+UBSan sanitizer job.
+name: test
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libjudy-dev libssl-dev snmpd snmp cpanminus \
+            $(apt-cache -q0 show libmsgpack-c-dev >/dev/null 2>&1 && echo libmsgpack-c-dev || echo libmsgpack-dev)
+          sudo cpanm --notest Data::MessagePack Test2::Suite
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install msgpack judy openssl@3 perl cpanminus
+          cpanm --notest Data::MessagePack Test2::Suite
+      - name: Build
+        run: make
+      - name: Start snmpd (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p /tmp/sqe-snmp-persist
+          snmpd -C -c ci/snmpd.conf -Lf /tmp/snmpd.log
+          for i in $(seq 1 10); do
+            snmpget -v2c -c public 127.0.0.1:16161 1.3.6.1.2.1.1.5.0 && exit 0
+            sleep 1
+          done
+          echo "snmpd did not answer in time; log follows:" >&2
+          cat /tmp/snmpd.log >&2
+          exit 1
+      - name: Test (Linux, with real snmpd tier)
+        if: runner.os == 'Linux'
+        env:
+          SQE_REAL_SNMPD: 1
+          SQE_SNMPD_PORT: 16161
+          SQE_SNMPD_V3_USER: sqetest
+          SQE_SNMPD_V3_ENGINEID: "80001f88047371656369"
+          SQE_SNMPD_V3_AUTH_PROTO: sha512
+          SQE_SNMPD_V3_AUTH_PASS: sqeauthpass12
+          SQE_SNMPD_V3_PRIV_PROTO: aes128
+          SQE_SNMPD_V3_PRIV_PASS: sqeprivpass12
+        run: make test
+      - name: Test (macOS)
+        if: runner.os == 'macOS'
+        run: make test
+
+  sanitize:
+    runs-on: ubuntu-latest
+    env:
+      ASAN_OPTIONS: detect_leaks=0
+      UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1:abort_on_error=1
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libjudy-dev libssl-dev cpanminus \
+            $(apt-cache -q0 show libmsgpack-c-dev >/dev/null 2>&1 && echo libmsgpack-c-dev || echo libmsgpack-dev)
+          sudo cpanm --notest Data::MessagePack Test2::Suite
+      - name: Build and test with ASan+UBSan
+        run: make OPTIMIZE="-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer" test
