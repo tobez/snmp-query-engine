@@ -102,8 +102,10 @@ is($vb[0][1], 0x82, "getbulk past end: endOfMibView");
 is($errst, 2, "v1 get of missing oid: noSuchName error-status");
 
 # wrong community: silence
+# edits the community bytes in place (same length: "public" and "secret"
+# are both 6 bytes, so the BER length prefix stays valid)
 is(udp_exchange($agent->port, build_req(0xa0, 1, 0, 0, '1.3.6.1.2.1.1.5.0')
-	=~ s/public/private/r, 0.5), undef, "wrong community is dropped");
+	=~ s/public/secret/r, 0.5), undef, "wrong community is dropped");
 $agent->stop;
 
 # repeat_oid: walk stops advancing

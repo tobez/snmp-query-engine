@@ -7,6 +7,7 @@ use IO::Socket::INET;
 use Data::MessagePack;
 use Time::HiRes ();
 use FindBin;
+use File::Spec;
 use Scalar::Util qw(blessed);
 use Test2::Tools::Compare qw(is hash array field item etc end match);
 use Exporter 'import';
@@ -37,6 +38,10 @@ sub oid_cmp {
 }
 
 sub _free_port {
+	# There is a TOCTOU race here: the socket is closed before the daemon
+	# gets a chance to bind the same port, so something else could grab it
+	# first. The connect-retry loop in spawn_daemon compensates by retrying
+	# instead of assuming the daemon is up on the first attempt.
 	my $s = IO::Socket::INET->new(LocalAddr => '127.0.0.1', LocalPort => 0,
 		Proto => 'tcp', Listen => 1) or die "cannot find a free port: $!";
 	my $port = $s->sockport;
@@ -50,6 +55,10 @@ sub spawn_daemon {
 	my $port = _free_port();
 	my $pid = fork() // die "fork: $!";
 	if (!$pid) {
+		# The daemon's own diagnostics are not the test's assertion channel
+		# (tests assert on the msgpack replies over TCP), so discard the
+		# child's stderr to keep `make test` output pristine.
+		open STDERR, '>', File::Spec->devnull or exit 1;
 		exec $engine, "-p$port", "-q";
 		exit 1;  # unreach
 	}
@@ -61,6 +70,7 @@ sub spawn_daemon {
 	}
 	unless ($conn) {
 		kill 15, $pid;
+		waitpid $pid, 0;
 		die "cannot connect to snmp-query-engine daemon on port $port\n";
 	}
 	my $mp = Data::MessagePack->new->prefer_integer;
