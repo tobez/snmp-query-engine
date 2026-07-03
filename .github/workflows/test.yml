@@ -43,6 +43,7 @@ jobs:
           SQE_REAL_SNMPD: 1
           SQE_SNMPD_PORT: 16161
           SQE_SNMPD_V3_USER: sqetest
+          SQE_SNMPD_V3_ENGINEID: "80001f88047371656369"
           SQE_SNMPD_V3_AUTH_PROTO: sha512
           SQE_SNMPD_V3_AUTH_PASS: sqeauthpass12
           SQE_SNMPD_V3_PRIV_PROTO: aes128

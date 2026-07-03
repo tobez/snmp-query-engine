@@ -34,9 +34,12 @@ ok(@{$r->[2]} > 0, "walk returned at least one row");
 my @oids = map { $_->[0] } @{$r->[2]};
 is([sort { SQE::Test::oid_cmp($a, $b) } @oids], \@oids, "row OIDs strictly increasing");
 
-if (my $user = $ENV{SQE_SNMPD_V3_USER}) {
+my $user     = $ENV{SQE_SNMPD_V3_USER};
+my $engineid = $ENV{SQE_SNMPD_V3_ENGINEID};
+if ($user && $engineid) {
 	my %v3 = (
 		version      => 3,
+		engineid     => $engineid,
 		username     => $user,
 		authprotocol => $ENV{SQE_SNMPD_V3_AUTH_PROTO} // 'sha1',
 		authpassword => $ENV{SQE_SNMPD_V3_AUTH_PASS},
@@ -50,6 +53,8 @@ if (my $user = $ENV{SQE_SNMPD_V3_USER}) {
 	request_match($d, "v3 get sysName",
 		[RT_GET, 201, $host, $port, ["1.3.6.1.2.1.1.5.0"]],
 		[RT_GET|RT_REPLY, 201, [["1.3.6.1.2.1.1.5.0", match qr/./]]]);
+} elsif ($user) {
+	note "SQE_SNMPD_V3_USER set but SQE_SNMPD_V3_ENGINEID missing; v3 needs the agent's engine id, skipping v3 checks";
 } else {
 	note "SQE_SNMPD_V3_USER not set, skipping v3 checks";
 }
