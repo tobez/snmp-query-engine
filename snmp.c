@@ -384,22 +384,25 @@ create_snmp_socket(void)
 
 void snmp_send(struct destination *dest, struct ber *packet)
 {
+	ssize_t n;
+
 	destination_start_timing(dest);
 
 	dest->packets_on_the_wire++;
 	PS.packets_on_the_wire++;
 //fprintf(stderr, "%s: snmp_send->(%d)\n", inet_ntoa(dest->ip), dest->packets_on_the_wire);
-	if (sendto(snmp->fd, packet->buf, packet->len, 0,
+	n = sendto(snmp->fd, packet->buf, packet->len, 0,
 			   (struct sockaddr *)&dest->dest_addr,
-			   sizeof(dest->dest_addr))
-		!= packet->len)
-	{
+			   sizeof(dest->dest_addr));
+	if (n < 0) {
 		if (errno == EAGAIN) {
 			PS.udp_send_buffer_overflow++;
 			return;
 		}
 		croak(1, "snmp_send: sendto");
 	}
+	if (n != packet->len)
+		croakx(1, "snmp_send: short send");
 //fprintf(stderr, "UDP datagram of %d bytes sent to %s:%d\n", packet->len, inet_ntoa(dest->dest_addr.sin_addr), ntohs(dest->dest_addr.sin_port));
 //dump_buf(stderr, packet->buf, packet->len);
 
