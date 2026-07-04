@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.1.0] - 2026-07-04
+
+### Added
+
+- -d and -q flags select log verbosity
+- -b flag sets client listener bind address
+- graceful shutdown on SIGTERM and SIGINT
+- systemd readiness and watchdog support
+- make install target
+- example systemd unit and FreeBSD rc.d script
+- tagged releases ship prebuilt Linux binaries and a source tarball
+
+### Changed
+
+- log output gains timestamps and severity levels
+
+### Fixed
+
+- survive abrupt client disconnects (SIGPIPE)
+
 ## [v2.0.0] - 2026-07-02
 
 ### Added
