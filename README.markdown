@@ -16,13 +16,6 @@ See `manual.mdwn` for more.
 See `INSTALL.md` for building from source, prebuilt binaries, `make
 install`, and running under systemd (Linux) or rc.d (FreeBSD).
 
-With regard to msgpack dependency:  snmp-query-engine
-requires at least msgpack 0.5.7, previous versions
-have bugs.  Unfortunately, msgpack website has changed
-its layout substantially, so it is not easy to find
-the release source anymore.  One possibility is to
-fetch 0.5.7 from http://msgpack.org/releases/cpp/msgpack-0.5.7.tar.gz
-
 ## Testing
 
     make test
