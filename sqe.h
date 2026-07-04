@@ -23,6 +23,7 @@
 #include <fcntl.h>
 #include <sys/param.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -44,6 +45,7 @@
 #endif
 
 #include "bsdqueue.h"
+#include "log.h"
 
 #define SQE_VERSION "2.0.0"
 
@@ -419,8 +421,6 @@ struct oid_info
 	struct ber value;
 };
 
-extern int opt_quiet;
-
 /* ber.c */
 extern struct ber ber_init(void *buf, int size);
 extern struct ber ber_dup(struct ber *e);
@@ -515,7 +515,8 @@ extern void set_timeout(struct timeval *tv, int timeout);  /* timeout in ms */
 extern int64_t ms_passed_since(struct timeval *tv);
 
 /* client_listen.c */
-extern void create_listening_socket(int port);
+extern struct socket_info *listener_si;
+extern void create_listening_socket(struct in_addr addr, int port);
 
 /* snmp.c */
 extern void create_snmp_socket(void);

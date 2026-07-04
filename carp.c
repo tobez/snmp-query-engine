@@ -31,16 +31,17 @@ croakx(int exit_code, const char *fmt, ...)
 void
 v(int is_croak, int use_errno, int exit_code, const char *fmt, va_list ap)
 {
-	fprintf(stderr, "%s: ", thisprogname());
-	if (fmt != NULL) {
-		vfprintf(stderr, fmt, ap);
-		if (use_errno >= 0)
-			fprintf(stderr, ": ");
-	}
-	if (use_errno >= 0)
-		fprintf(stderr, "%s\n", strerror(use_errno));
-	else
-		fprintf(stderr, "\n");
+	char msg[1024];
+	int len = 0;
+
+	if (fmt != NULL)
+		len = vsnprintf(msg, sizeof(msg), fmt, ap);
+	if (len < 0)
+		len = 0;
+	if (use_errno >= 0 && (size_t)len < sizeof(msg))
+		snprintf(msg + len, sizeof(msg) - len, "%s%s",
+		    fmt ? ": " : "", strerror(use_errno));
+	log_error("%s", msg);
 	if (is_croak)
 		exit(exit_code);
 }

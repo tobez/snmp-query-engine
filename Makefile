@@ -11,7 +11,7 @@ OPTIMIZE=	-O3 -g
 INCPATH=	-I. -I/usr/local/include -I/opt/local/include -I/opt/homebrew/include
 LIBPATH=	-L/usr/local/lib -L/opt/local/lib -L/opt/homebrew/lib
 CFLAGS=	-Wall -Wno-unused-function -Wno-deprecated-declarations -Werror $(OPTIMIZE) $(INCPATH)
-TESTBIN=	t/test_ber t/test_msgpack t/test_v3 t/test_sid_info
+TESTBIN=	t/test_ber t/test_msgpack t/test_v3 t/test_sid_info t/test_log
 
 all: snmp-query-engine $(TESTBIN)
 
@@ -19,12 +19,12 @@ STDOBJ=event_loop.o carp.o client_input.o client_listen.o opts.o util.o destinat
 	client_requests_info.o cid_info.o ber.o oid_info.o sid_info.o \
 	snmp.o request_common.o request_setopt.o request_getopt.o \
 	request_info.o request_get.o request_gettable.o timers.o \
-	v3_keys.o v3_crypto.o
+	v3_keys.o v3_crypto.o log.o
 
 STDLINK=$(STDOBJ) $(LIBPATH) -lJudy -lmsgpackc -lcrypto
 
 clean:
-	rm -f *.o snmp-query-engine t/test_ber t/test_msgpack t/test_v3 t/test_sid_info *.core core
+	rm -f *.o snmp-query-engine t/test_ber t/test_msgpack t/test_v3 t/test_sid_info t/test_log *.core core
 	rm -rf t/*.dSYM *.dSYM
 
 snmp-query-engine: main.o $(STDOBJ)
@@ -98,6 +98,12 @@ v3_keys.o: v3_keys.c sqe.h
 
 v3_crypto.o: v3_crypto.c sqe.h
 	$(CC) -c $(CFLAGS) -o v3_crypto.o v3_crypto.c
+
+log.o: log.c log.h sqe.h
+	$(CC) -c $(CFLAGS) -o log.o log.c
+
+t/test_log: t/test_log.c t/tap.h $(STDOBJ)
+	$(CC) $(CFLAGS) -o t/test_log t/test_log.c $(STDLINK)
 
 t/test_ber: t/test_ber.c t/tap.h $(STDOBJ)
 	$(CC) $(CFLAGS) -o t/test_ber t/test_ber.c $(STDLINK)

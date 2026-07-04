@@ -8,4 +8,4 @@
  */
 #include "sqe.h"
 
-int opt_quiet = 0;
+enum log_level opt_log_level = LL_INFO;

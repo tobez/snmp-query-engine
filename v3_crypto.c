@@ -60,17 +60,17 @@ hmac_message(const struct snmpv3info* v3,
     unsigned md_len = 0;
 
     if (!md || maclen < 0) {
-        fprintf(stderr, "bad auth protocol\n");
+        log_error("bad auth protocol");
         errno = EINVAL;
         return -1;
     }
     if (out_size < (unsigned)maclen) {
-        fprintf(stderr, "bad hmac output buffer size\n");
+        log_error("bad hmac output buffer size");
         errno = EINVAL;
         return -1;
     }
     if (auth_param - msg + maclen >= msg_len) {
-        fprintf(stderr, "bad auth_param pointer\n");
+        log_error("bad auth_param pointer");
         errno = EINVAL;
         return -1;
     }
@@ -137,7 +137,7 @@ encrypt_in_place(unsigned char *buf, int buf_len, unsigned char *privp, const st
         cipher = EVP_aes_256_cfb128();
         break;
     default:
-        fprintf(stderr, "encrypt_in_place: unrecognized or unsupported privacy algorithm\n");
+        log_error("encrypt_in_place: unrecognized or unsupported privacy algorithm");
         return -1;
         break;
     }
@@ -172,7 +172,7 @@ encrypt_in_place(unsigned char *buf, int buf_len, unsigned char *privp, const st
 	// dump_buf(stderr, ciphertext, ciphertext_len);
 
     if (buf_len != ciphertext_len) {
-        fprintf(stderr, "encrypt_in_place: unexpectedly, ciphertext_len != plaintext_len in CFB mode\n");
+        log_error("encrypt_in_place: unexpectedly, ciphertext_len != plaintext_len in CFB mode");
         return -1;
     }
 
@@ -211,7 +211,7 @@ decrypt_in_place(unsigned char *buf, int buf_len, unsigned char *privp, const st
         cipher = EVP_aes_256_cfb128();
         break;
     default:
-        fprintf(stderr, "decrypt_in_place: unrecognized or unsupported privacy algorithm\n");
+        log_error("decrypt_in_place: unrecognized or unsupported privacy algorithm");
         return -1;
         break;
     }
@@ -246,7 +246,7 @@ decrypt_in_place(unsigned char *buf, int buf_len, unsigned char *privp, const st
 	// dump_buf(stderr, plaintext, plaintext_len);
 
     if (buf_len != plaintext_len) {
-        fprintf(stderr, "decrypt_in_place: unexpectedly, ciphertext_len != plaintext_len in CFB mode\n");
+        log_error("decrypt_in_place: unexpectedly, ciphertext_len != plaintext_len in CFB mode");
         return -1;
     }
 

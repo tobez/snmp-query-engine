@@ -50,16 +50,23 @@ sub _free_port {
 }
 
 sub spawn_daemon {
+	my (%opt) = @_;
 	my $engine = "$FindBin::Bin/../snmp-query-engine";
 	-x $engine or die "$engine not built, run make first\n";
+	my @args = @{ $opt{args} // ['-q'] };
 	my $port = _free_port();
 	my $pid = fork() // die "fork: $!";
 	if (!$pid) {
+		if ($opt{env}) {
+			$ENV{$_} = $opt{env}{$_} for keys %{ $opt{env} };
+		}
 		# The daemon's own diagnostics are not the test's assertion channel
-		# (tests assert on the msgpack replies over TCP), so discard the
-		# child's stderr to keep `make test` output pristine.
-		open STDERR, '>', File::Spec->devnull or exit 1;
-		exec $engine, "-p$port", "-q";
+		# (tests assert on the msgpack replies over TCP), so stderr goes to
+		# the devnull default, or to a capture file when a test needs to
+		# assert on log output.
+		my $err = $opt{stderr_file} // File::Spec->devnull;
+		open STDERR, '>>', $err or exit 1;
+		exec $engine, "-p$port", @args;
 		exit 1;  # unreach
 	}
 	my $conn;
@@ -106,9 +113,28 @@ package SQE::Test::Daemon;
 use strict;
 use warnings;
 use Data::MessagePack ();
+use POSIX ();
+use Time::HiRes ();
 
 sub port { $_[0]{port} }
 sub mp   { $_[0]{mp} }
+sub pid  { $_[0]{pid} }
+
+sub wait_exit {
+	my ($self, $timeout) = @_;
+	$timeout //= 5;
+	return undef unless $self->{pid};
+	my $deadline = Time::HiRes::time() + $timeout;
+	while (Time::HiRes::time() < $deadline) {
+		my $r = waitpid($self->{pid}, POSIX::WNOHANG());
+		if ($r == $self->{pid}) {
+			$self->{pid} = undef;
+			return $?;
+		}
+		Time::HiRes::sleep(0.02);
+	}
+	return undef;
+}
 
 sub request {
 	my ($self, $d) = @_;

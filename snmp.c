@@ -25,12 +25,12 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 	struct sid_info *si;
 	char log[256];
 
-	snprintf(log, sizeof(log), "%s %s:%d", timestring(), inet_ntoa(from->sin_addr), ntohs(from->sin_port));
+	snprintf(log, sizeof(log), "%s:%d", inet_ntoa(from->sin_addr), ntohs(from->sin_port));
 
 	PS.octets_received += n;
 	dest = find_destination(&from->sin_addr, ntohs(from->sin_port));
 	if (!dest) {
-		fprintf(stderr, "%s: destination is not known, ignoring packet\n", log);
+		log_warn("%s: destination is not known, ignoring packet", log);
 		return;
 	}
 	dest->octets_received += n;
@@ -60,11 +60,11 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 		CHECK("PDU", decode_composite(e, PDU_GET_RESPONSE, NULL));
 		CHECK("request id", decode_integer(e, -1, &sid));
 
-		snprintf(log, sizeof(log), "%s %s:%d[%u]", timestring(), inet_ntoa(from->sin_addr), ntohs(from->sin_port), sid);
+		snprintf(log, sizeof(log), "%s:%d[%u]", inet_ntoa(from->sin_addr), ntohs(from->sin_port), sid);
 
 		si = find_sid_info(dest, sid);
 		if (!si) {
-			fprintf(stderr, "%s: late reply, ignoring packet\n", log);
+			log_info("%s: late reply, ignoring packet", log);
 			return;
 		}
 
@@ -87,7 +87,7 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 
         CHECK("msgGlobalData sequence", decode_sequence(e, NULL));
 		CHECK("msgID", decode_integer(e, -1, &mid));
-		snprintf(log, sizeof(log), "%s %s:%d[%u]", timestring(), inet_ntoa(from->sin_addr), ntohs(from->sin_port), mid);
+		snprintf(log, sizeof(log), "%s:%d[%u]", inet_ntoa(from->sin_addr), ntohs(from->sin_port), mid);
 		CHECK("msgMaxSize", decode_integer(e, -1, &v3.msg_max_size));
 		CHECK("msgFlags", decode_octets(e, &v3.msg_flags, 1, &msg_flags_len));
 		if (msg_flags_len != 1) {
@@ -123,14 +123,14 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 
 		si = find_sid_info(dest, mid);
 		if (!mid) {
-			fprintf(stderr, "%s: late reply, ignoring packet\n", log);
+			log_info("%s: late reply, ignoring packet", log);
 			trace = NULL;
 			goto bad_snmp_packet;
 		}
 
 		// - ignore if no si->v3 setup
 		if (si->cri->version != 3 || !si->cri->v3) {
-			fprintf(stderr, "%s: si->cri is not a V3, or no V3 info found, ignoring packet\n", log);
+			log_warn("%s: si->cri is not a V3, or no V3 info found, ignoring packet", log);
 			trace = NULL;
 			goto bad_snmp_packet;
 		}
@@ -142,23 +142,24 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
                    siv3->engine_id,
                    v3.engine_id_len) != 0)
 		{
-			fprintf(stderr, "%s: known engine-id ", log);
-			for (int i = 0; i < v3.engine_id_len; i++) {
-  				fprintf(stderr, "%02x", siv3->engine_id[i]);
-			}
-			fprintf(stderr, " does not match received engine-id ");
-			for (int i = 0; i < v3.engine_id_len; i++) {
-  				fprintf(stderr, "%02x", v3.engine_id[i]);
-			}
-			fprintf(stderr, ", ignoring packet\n");
+			char known[2*V3O_ENGINE_ID_MAXLEN+1] = "";
+			char received[2*V3O_ENGINE_ID_MAXLEN+1] = "";
+			int p, i;
+
+			for (p = 0, i = 0; i < v3.engine_id_len; i++)
+				p += snprintf(known+p, sizeof(known)-p, "%02x", siv3->engine_id[i]);
+			for (p = 0, i = 0; i < v3.engine_id_len; i++)
+				p += snprintf(received+p, sizeof(received)-p, "%02x", v3.engine_id[i]);
+			log_warn("%s: known engine-id %s does not match received engine-id %s, ignoring packet",
+					log, known, received);
 			trace = NULL;
 			goto bad_snmp_packet;
         }
 
 		// - verify username
 		if (strcmp(siv3->username, v3.username) != 0) {
-			fprintf(stderr, "%s: known username \"%s\" does not match "
-					"received username \"%s\", ignoring packet\n",
+			log_warn("%s: known username \"%s\" does not match "
+					"received username \"%s\", ignoring packet",
 					log, siv3->username, v3.username);
 			trace = NULL;
 			goto bad_snmp_packet;
@@ -179,17 +180,17 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 			memset(auth_param_ptr, 0, maclen); // clear original HMAC location for auth calculations
     		if (hmac_message(siv3, auth_param_ptr, maclen, e->buf, e->max_len, auth_param_ptr) < 0) {
 				memcpy(auth_param_ptr, auth_param, maclen);
-				fprintf(stderr, "%s: authentication failed: %s, prepare for packet dump:\n",
+				log_warn("%s: authentication failed: %s, prepare for packet dump:",
 						log, strerror(errno));
 				dump_buf(stderr, e->buf, e->max_len);
 				trace = NULL;
 				goto bad_snmp_packet;
 			}
 			if (memcmp(auth_param_ptr, auth_param, maclen) != 0) {
-				fprintf(stderr, "%s: authentication failed, calculated digest:\n", log);
+				log_warn("%s: authentication failed, calculated digest:", log);
 				dump_buf(stderr, auth_param_ptr, maclen);
 				memcpy(auth_param_ptr, auth_param, maclen);
-				fprintf(stderr, "prepare for packet dump:\n");
+				log_warn("prepare for packet dump:");
 				dump_buf(stderr, e->buf, e->max_len);
 				trace = NULL;
 				goto bad_snmp_packet;
@@ -207,7 +208,7 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
         	if (t != AT_STRING) goto bad_snmp_packet;
 			// - decrypt
 			if (decrypt_in_place(e->b, l, priv_param, siv3) < 0) {
-				fprintf(stderr, "%s: cannot decrypt, ignoring packet\n", log);
+				log_warn("%s: cannot decrypt, ignoring packet", log);
 				trace = NULL;
 				goto bad_snmp_packet;
 			}
@@ -218,15 +219,16 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 		CHECK("context-engine-id", decode_octets(e, context_engine_id, V3O_ENGINE_ID_MAXLEN, &l));
 		// - compare engine-id, must be same
         if (v3.engine_id_len != l || memcmp(v3.engine_id, context_engine_id, l) != 0) {
-			fprintf(stderr, "%s: authoritative-engine-id ", log);
-			for (int i = 0; i < l; i++) {
-  				fprintf(stderr, "%02x", v3.engine_id[i]);
-			}
-			fprintf(stderr, " does not match context-engine-id ");
-			for (int i = 0; i < l; i++) {
-  				fprintf(stderr, "%02x", context_engine_id[i]);
-			}
-			fprintf(stderr, ", ignoring packet\n");
+			char authoritative[2*V3O_ENGINE_ID_MAXLEN+1] = "";
+			char context[2*V3O_ENGINE_ID_MAXLEN+1] = "";
+			int p, i;
+
+			for (p = 0, i = 0; i < l; i++)
+				p += snprintf(authoritative+p, sizeof(authoritative)-p, "%02x", v3.engine_id[i]);
+			for (p = 0, i = 0; i < l; i++)
+				p += snprintf(context+p, sizeof(context)-p, "%02x", context_engine_id[i]);
+			log_warn("%s: authoritative-engine-id %s does not match context-engine-id %s, ignoring packet",
+					log, authoritative, context);
 			trace = NULL;
 			goto bad_snmp_packet;
         }
@@ -244,7 +246,7 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 		}
 		t = e->b[0];
 		if (t != PDU_REPORT && t != PDU_GET_RESPONSE) {
-			fprintf(stderr, "%s: unsupported PDU type %x, ignoring packet\n", log, t);
+			log_warn("%s: unsupported PDU type %x, ignoring packet", log, t);
 			trace = NULL;
 			goto bad_snmp_packet;
 		}
@@ -256,7 +258,7 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 			// if our request HMAC is wrong, some implementations return 0x7fffffff
 			// to be on the safe side, we generally ignore sid != mid situation
 			if (sid != 0x7fffffff)
-				fprintf(stderr, "%s: warning: message-id %u does not match request-id %u\n",
+				log_warn("%s: warning: message-id %u does not match request-id %u",
 						log, mid, sid);
 		}
 
@@ -268,11 +270,11 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 
 			CHECK("error-status", decode_integer(e, -1, &error_status));
 			if (error_status != 0) {
-				fprintf(stderr, "%s: warning: non-zero error-status (%d)\n", log, error_status);
+				log_warn("%s: warning: non-zero error-status (%d)", log, error_status);
 			}
 			CHECK("error-index", decode_integer(e, -1, &error_index));
 			if (error_index != 0) {
-				fprintf(stderr, "%s: warning: non-zero error-index (%d)\n", log, error_index);
+				log_warn("%s: warning: non-zero error-index (%d)", log, error_index);
 			}
 
 			// - analyze varbinds and report
@@ -290,11 +292,11 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 					resend_query_with_new_sid(si);
 					return;
 				} else if (oid_compare(&oid, &usmStatsWrongDigests) == 0) {
-					fprintf(stderr, "%s: report: our request had bad digest, ignoring packet\n", log);
+					log_warn("%s: report: our request had bad digest, ignoring packet", log);
 					trace = NULL;
 					goto bad_snmp_packet;
 				} else {
-					fprintf(stderr, "%s: report: %s: ", log, oid2str(oid));
+					log_warn("%s: report: %s:", log, oid2str(oid));
 					ber_dump(stderr, &val);
 					trace = NULL;
 					goto bad_snmp_packet;
@@ -320,7 +322,7 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 bad_snmp_packet:
 	PS.bad_snmp_responses++;
 	if (trace)
-		fprintf(stderr, "%s: bad SNMP packet, ignoring: %s\n", log, trace);
+		log_warn("%s: bad SNMP packet, ignoring: %s", log, trace);
 	maybe_query_destination(dest);
 }
 

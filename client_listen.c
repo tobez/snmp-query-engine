@@ -18,13 +18,14 @@ do_accept(struct socket_info *lsi)
 	len = sizeof(addr);
 	if ( (fd = accept(lsi->fd, (struct sockaddr *)&addr, &len)) < 0)
 		croak(1, "do_accept: accept");
-	if (!opt_quiet)
-		fprintf(stderr, "%s: incoming connection from %s!\n", timestring(), inet_ntoa(addr.sin_addr));
+	log_info("incoming connection from %s!", inet_ntoa(addr.sin_addr));
 	new_client_connection(fd);
 }
 
+struct socket_info *listener_si;
+
 void
-create_listening_socket(int port)
+create_listening_socket(struct in_addr addr, int port)
 {
 	int fd, on;
 	struct sockaddr_in servaddr;
@@ -36,7 +37,7 @@ create_listening_socket(int port)
 
 	bzero(&servaddr, sizeof(servaddr));
 	servaddr.sin_family      = PF_INET;
-	servaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	servaddr.sin_addr        = addr;
 	servaddr.sin_port        = htons(port);
 
 	on = 1;
@@ -51,5 +52,6 @@ create_listening_socket(int port)
 
 	si = new_socket_info(fd);
 	on_read(si, do_accept);
+	listener_si = si;
 }
 

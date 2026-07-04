@@ -71,7 +71,7 @@ flush_buffers(struct socket_info *si)
 	int i, n, tot;
 
 	if (!si->n_send_bufs) {
-		fprintf(stderr, "%s: flush_buffers: fd %d: unexpectedly nothing to flush\n", timestring(), si->fd);
+		log_warn("flush_buffers: fd %d: unexpectedly nothing to flush", si->fd);
 		on_write(si, NULL);
 		return;
 	}
@@ -90,11 +90,11 @@ flush_buffers(struct socket_info *si)
 	if ( (n = writev(si->fd, io_buf, i)) < 0) {
 		switch (errno) {
 		case EPIPE:
-			fprintf(stderr, "%s: flush_buffers: EPIPE during writev\n", timestring());
+			log_warn("flush_buffers: EPIPE during writev");
 			if (si->eof_handler)	si->eof_handler(si);
 			return;
 		case ECONNRESET:
-			fprintf(stderr, "%s: flush_buffers: ECONNRESET during writev\n", timestring());
+			log_warn("flush_buffers: ECONNRESET during writev");
 			if (si->eof_handler)	si->eof_handler(si);
 			return;
 		}
@@ -322,7 +322,7 @@ event_loop(void)
 	int nev, i, ms;
 	struct timespec to;
 
-    fprintf(stderr, "%s: kqueue event loop started\n", timestring());
+	log_info("kqueue event loop started");
 	while (1) {
 		ms = ms_to_next_timer();
 		to.tv_sec = ms / 1000;
@@ -341,13 +341,13 @@ event_loop(void)
 						if (si->eof_handler) {
 							si->eof_handler(si);
 						} else {
-							fprintf(stderr, "event_loop: EVFILT_READ: ident %u - socket does not have an eof handler\n", (unsigned)ke[i].ident);
+							log_error("event_loop: EVFILT_READ: ident %u - socket does not have an eof handler", (unsigned)ke[i].ident);
 						}
 					} else {
 						if (si->read_handler) {
 							si->read_handler(si);
 						} else {
-							fprintf(stderr, "event_loop: EVFILT_READ: ident %u - socket does not have a read handler\n", (unsigned)ke[i].ident);
+							log_error("event_loop: EVFILT_READ: ident %u - socket does not have a read handler", (unsigned)ke[i].ident);
 						}
 					}
 				}
@@ -359,18 +359,18 @@ event_loop(void)
 						if (si->eof_handler) {
 							si->eof_handler(si);
 						} else {
-							fprintf(stderr, "event_loop: EVFILT_WRITE: ident %u - socket does not have an eof handler\n", (unsigned)ke[i].ident);
+							log_error("event_loop: EVFILT_WRITE: ident %u - socket does not have an eof handler", (unsigned)ke[i].ident);
 						}
 					} else {
 						if (si->write_handler) {
 							si->write_handler(si);
 						} else {
-							fprintf(stderr, "event_loop: EVFILT_WRITE: ident %u - socket does not have a write handler\n", (unsigned)ke[i].ident);
+							log_error("event_loop: EVFILT_WRITE: ident %u - socket does not have a write handler", (unsigned)ke[i].ident);
 						}
 					}
 				}
 			} else {
-				fprintf(stderr, "event_loop: unexpected filter value %d, ident %u\n", ke[i].filter, (unsigned)ke[i].ident);
+				log_error("event_loop: unexpected filter value %d, ident %u", ke[i].filter, (unsigned)ke[i].ident);
 			}
 		}
 		trigger_timers();
@@ -383,7 +383,7 @@ event_loop(void)
 {
 	struct epoll_event ev[10];
 	int nev, i, ms;
-    fprintf(stderr, "%s: epoll event loop started\n", timestring());
+	log_info("epoll event loop started");
 	while (1) {
 		ms = ms_to_next_timer();
 		nev = epoll_wait(ep, ev, 10, ms);
@@ -399,7 +399,7 @@ event_loop(void)
 					if (si->read_handler) {
 						si->read_handler(si);
 					} else {
-						fprintf(stderr, "event_loop: EPOLLIN: fd %u - socket does not have a read handler\n", (unsigned)ev[i].data.fd);
+						log_error("event_loop: EPOLLIN: fd %u - socket does not have a read handler", (unsigned)ev[i].data.fd);
 					}
 				}
 			}
@@ -410,12 +410,12 @@ event_loop(void)
 					if (si->write_handler) {
 						si->write_handler(si);
 					} else {
-						fprintf(stderr, "event_loop: EPOLLOUT: fd %u - socket does not have a write handler\n", (unsigned)ev[i].data.fd);
+						log_error("event_loop: EPOLLOUT: fd %u - socket does not have a write handler", (unsigned)ev[i].data.fd);
 					}
 				}
 			}
 			if (!(ev[i].events & (EPOLLIN|EPOLLOUT))) {
-				fprintf(stderr, "event_loop: unexpected event 0x%x, fd %u\n", ev[i].events, (unsigned)ev[i].data.fd);
+				log_error("event_loop: unexpected event 0x%x, fd %u", ev[i].events, (unsigned)ev[i].data.fd);
 			}
 		}
 		trigger_timers();

@@ -35,11 +35,17 @@ http://msgpack.org/.
 -h
 :   produce usage text and quit
 
+-b **address**
+:   bind the client listener to **address** instead of the default **127.0.0.1**
+
+-d
+:   debug logging
+
 -p **prt**
 :   listen on port **prt** instead of default **7667**
 
 -q
-:   quiet operation
+:   quiet operation: log warnings and errors only
 
 -v
 :   print program version and quit
