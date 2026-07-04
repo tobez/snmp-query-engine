@@ -90,6 +90,7 @@ main(int argc, char **argv)
 		croak(1, "sigaction(SIGTERM)");
 	if (sigaction(SIGINT, &sa, NULL) < 0)
 		croak(1, "sigaction(SIGINT)");
+	notify_init();
 
     if (populate_well_known_oids() < 0) {
         log_error("unable to populate well-known oids: %s", strerror(errno));
@@ -98,6 +99,7 @@ main(int argc, char **argv)
 
 	create_snmp_socket();
 	create_listening_socket(bindaddr, port);
+	notify("READY=1");
 	event_loop();
 
 	log_info("shutdown complete");

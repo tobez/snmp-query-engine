@@ -27,6 +27,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #if defined(__FreeBSD__) || defined(__APPLE__)
@@ -505,6 +506,12 @@ void on_read(struct socket_info *si, void (*read_handler)(struct socket_info *si
 void on_write(struct socket_info *si, void (*write_handler)(struct socket_info *si));
 void event_loop(void);
 void tcp_send(struct socket_info *si, void *buf, int size);
+
+/* notify.c */
+void notify_init(void);
+void notify(const char *state);
+void notify_watchdog_tick(void);
+int notify_watchdog_interval_ms(void);
 
 /* timers.c */
 extern struct timer *new_timer(struct timeval *when);

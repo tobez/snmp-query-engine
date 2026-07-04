@@ -19,7 +19,7 @@ STDOBJ=event_loop.o carp.o client_input.o client_listen.o opts.o util.o destinat
 	client_requests_info.o cid_info.o ber.o oid_info.o sid_info.o \
 	snmp.o request_common.o request_setopt.o request_getopt.o \
 	request_info.o request_get.o request_gettable.o timers.o \
-	v3_keys.o v3_crypto.o log.o
+	v3_keys.o v3_crypto.o log.o notify.o
 
 STDLINK=$(STDOBJ) $(LIBPATH) -lJudy -lmsgpackc -lcrypto
 
@@ -101,6 +101,9 @@ v3_crypto.o: v3_crypto.c sqe.h
 
 log.o: log.c log.h sqe.h
 	$(CC) -c $(CFLAGS) -o log.o log.c
+
+notify.o: notify.c sqe.h
+	$(CC) -c $(CFLAGS) -o notify.o notify.c
 
 t/test_log: t/test_log.c t/tap.h $(STDOBJ)
 	$(CC) $(CFLAGS) -o t/test_log t/test_log.c $(STDLINK)

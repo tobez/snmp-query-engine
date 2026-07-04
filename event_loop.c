@@ -328,12 +328,15 @@ void
 event_loop(void)
 {
 	struct kevent ke[10];
-	int nev, i, ms;
+	int nev, i, ms, wd;
 	struct timespec to;
 
 	log_info("kqueue event loop started");
 	while (1) {
 		ms = ms_to_next_timer();
+		wd = notify_watchdog_interval_ms();
+		if (wd > 0 && wd < ms)
+			ms = wd;
 		to.tv_sec = ms / 1000;
 		to.tv_nsec = (ms % 1000)*1000000;
 		nev = kevent(kq, NULL, 0, ke, 10, &to);
@@ -387,6 +390,7 @@ event_loop(void)
 			}
 		}
 		trigger_timers();
+		notify_watchdog_tick();
 		if (event_loop_done())
 			return;
 	}
@@ -397,10 +401,13 @@ void
 event_loop(void)
 {
 	struct epoll_event ev[10];
-	int nev, i, ms;
+	int nev, i, ms, wd;
 	log_info("epoll event loop started");
 	while (1) {
 		ms = ms_to_next_timer();
+		wd = notify_watchdog_interval_ms();
+		if (wd > 0 && wd < ms)
+			ms = wd;
 		nev = epoll_wait(ep, ev, 10, ms);
 		if (nev < 0) {
 			if (errno == EINTR)
@@ -438,6 +445,7 @@ event_loop(void)
 			}
 		}
 		trigger_timers();
+		notify_watchdog_tick();
 		if (event_loop_done())
 			return;
 	}
