@@ -1,0 +1,3 @@
+kind: Fixed
+body: survive abrupt client disconnects (SIGPIPE)
+time: 2026-07-04T13:33:36.573153+02:00

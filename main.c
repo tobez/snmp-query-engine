@@ -8,6 +8,13 @@
  */
 #include "sqe.h"
 
+static void
+handle_stop_signal(int sig)
+{
+	(void)sig;
+	stop_requested = 1;
+}
+
 void
 usage(char *err)
 {
@@ -32,6 +39,7 @@ main(int argc, char **argv)
 	int o;
 	int port = 7667;
 	struct in_addr bindaddr;
+	struct sigaction sa;
 
 	gettimeofday(&prog_start, NULL);
 	bzero(&PS, sizeof(PS));
@@ -72,6 +80,18 @@ main(int argc, char **argv)
 	log_setup();
 	log_debug("debug logging enabled");
 
+	signal(SIGPIPE, SIG_IGN);
+	signal(SIGHUP, SIG_IGN);
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_handler = handle_stop_signal;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = 0;	/* no SA_RESTART: the event loop must see EINTR */
+	if (sigaction(SIGTERM, &sa, NULL) < 0)
+		croak(1, "sigaction(SIGTERM)");
+	if (sigaction(SIGINT, &sa, NULL) < 0)
+		croak(1, "sigaction(SIGINT)");
+	notify_init();
+
     if (populate_well_known_oids() < 0) {
         log_error("unable to populate well-known oids: %s", strerror(errno));
         exit(1);
@@ -79,8 +99,10 @@ main(int argc, char **argv)
 
 	create_snmp_socket();
 	create_listening_socket(bindaddr, port);
+	notify("READY=1");
 	event_loop();
 
+	log_info("shutdown complete");
 	return 0;
 }
 
