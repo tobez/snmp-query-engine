@@ -314,6 +314,15 @@ on_write(struct socket_info *si, void (*write_handler)(struct socket_info *si))
 #endif
 }
 
+static int
+event_loop_done(void)
+{
+	if (!stop_requested)
+		return 0;
+	log_info("shutting down on signal");
+	return 1;
+}
+
 #ifdef WITH_KQUEUE
 void
 event_loop(void)
@@ -328,8 +337,12 @@ event_loop(void)
 		to.tv_sec = ms / 1000;
 		to.tv_nsec = (ms % 1000)*1000000;
 		nev = kevent(kq, NULL, 0, ke, 10, &to);
-		if (nev < 0)
-			croak(1, "event_loop: kevent");
+		if (nev < 0) {
+			if (errno == EINTR)
+				nev = 0;
+			else
+				croak(1, "event_loop: kevent");
+		}
 		for (i = 0; i < nev; i++) {
 			struct socket_info *si, **slot;
 
@@ -374,6 +387,8 @@ event_loop(void)
 			}
 		}
 		trigger_timers();
+		if (event_loop_done())
+			return;
 	}
 }
 #endif
@@ -387,8 +402,12 @@ event_loop(void)
 	while (1) {
 		ms = ms_to_next_timer();
 		nev = epoll_wait(ep, ev, 10, ms);
-		if (nev < 0)
-			croak(1, "event_loop: epoll_wait");
+		if (nev < 0) {
+			if (errno == EINTR)
+				nev = 0;
+			else
+				croak(1, "event_loop: epoll_wait");
+		}
 		for (i = 0; i < nev; i++) {
 			struct socket_info *si, **slot;
 
@@ -419,6 +438,8 @@ event_loop(void)
 			}
 		}
 		trigger_timers();
+		if (event_loop_done())
+			return;
 	}
 }
 #endif

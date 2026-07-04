@@ -9,3 +9,4 @@
 #include "sqe.h"
 
 enum log_level opt_log_level = LL_INFO;
+volatile sig_atomic_t stop_requested = 0;

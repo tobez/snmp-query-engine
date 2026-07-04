@@ -18,6 +18,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <signal.h>
 #define __USE_XOPEN
 #include <limits.h>
 #include <fcntl.h>
@@ -183,6 +184,7 @@ struct program_stats
 
 extern struct timeval prog_start;
 extern struct program_stats PS;
+extern volatile sig_atomic_t stop_requested;
 
 struct ber
 {
