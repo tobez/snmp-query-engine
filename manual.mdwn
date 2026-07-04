@@ -50,6 +50,35 @@ http://msgpack.org/.
 -v
 :   print program version and quit
 
+# SIGNALS
+
+SIGTERM, SIGINT
+:   graceful shutdown: the daemon stops accepting connections, briefly
+    flushes already-queued client replies (bounded by one second),
+    abandons in-flight SNMP queries, and exits with status 0.
+
+SIGHUP
+:   ignored; there is no runtime configuration to reload.
+
+SIGPIPE
+:   ignored; abrupt client disconnects are handled on the write path.
+
+# ENVIRONMENT
+
+NOTIFY_SOCKET, WATCHDOG_USEC, WATCHDOG_PID
+:   when set by a service manager (systemd Type=notify), the daemon sends
+    readiness (READY=1), shutdown (STOPPING=1) and watchdog (WATCHDOG=1)
+    notifications; watchdog pings are sent every WATCHDOG_USEC/3.
+
+JOURNAL_STREAM
+:   when it matches stderr (systemd journal capture), log lines carry
+    sd-daemon `<N>` priority prefixes instead of timestamps.
+
+# EXIT STATUS
+
+0 on clean (signal-initiated) shutdown; non-zero on startup or runtime
+failure.
+
 # REQUESTS
 
 All requests are arrays of at least two elements.

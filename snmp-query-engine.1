@@ -40,6 +40,31 @@ quiet operation: log warnings and errors only
 .TP
 \-v
 print program version and quit
+.SH SIGNALS
+.TP
+SIGTERM, SIGINT
+graceful shutdown: the daemon stops accepting connections, briefly
+flushes already\-queued client replies (bounded by one second), abandons
+in\-flight SNMP queries, and exits with status 0.
+.TP
+SIGHUP
+ignored; there is no runtime configuration to reload.
+.TP
+SIGPIPE
+ignored; abrupt client disconnects are handled on the write path.
+.SH ENVIRONMENT
+.TP
+NOTIFY_SOCKET, WATCHDOG_USEC, WATCHDOG_PID
+when set by a service manager (systemd Type=notify), the daemon sends
+readiness (READY=1), shutdown (STOPPING=1) and watchdog (WATCHDOG=1)
+notifications; watchdog pings are sent every WATCHDOG_USEC/3.
+.TP
+JOURNAL_STREAM
+when it matches stderr (systemd journal capture), log lines carry
+sd\-daemon \f[CR]<N>\f[R] priority prefixes instead of timestamps.
+.SH EXIT STATUS
+0 on clean (signal\-initiated) shutdown; non\-zero on startup or runtime
+failure.
 .SH REQUESTS
 All requests are arrays of at least two elements.
 .TP
