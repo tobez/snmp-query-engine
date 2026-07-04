@@ -33,7 +33,7 @@ jobs:
       - name: Verify shipped service files (Linux)
         if: runner.os == 'Linux'
         run: |
-          sudo cp snmp-query-engine /usr/local/bin/
+          sudo make install
           systemd-analyze verify contrib/systemd/snmp-query-engine.service
           sh -n contrib/rc.d/snmp_query_engine
       - name: Verify shipped service files (macOS)
