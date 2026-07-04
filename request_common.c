@@ -107,7 +107,7 @@ msgpack_pack_options(msgpack_packer *pk, struct client_requests_info *cri)
 	msgpack_pack_named_int(pk, "ignore_threshold", cri->dest->ignore_threshold);
 	msgpack_pack_named_int(pk, "ignore_duration", cri->dest->ignore_duration);
 	if (cri->v3) {
-		char *s = "";
+		char *s;
 		msgpack_pack_named_string(pk, "username", cri->v3->username);
 		msgpack_pack_named_hex_buffer(pk, "engineid", cri->v3->engine_id, cri->v3->engine_id_len);
 		switch (cri->v3->auth_proto) {

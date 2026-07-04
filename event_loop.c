@@ -106,6 +106,8 @@ flush_buffers(struct socket_info *si)
 			croakx(2, "flush_buffers: send_bufs queue unexpectedly empty");
 		if (n >= sb->size - sb->offset) {
 			TAILQ_REMOVE(&si->send_bufs, sb, send_list);
+			if (TAILQ_FIRST(&si->send_bufs) == sb)
+				croakx(2, "flush_buffers: send_bufs queue is corrupted");
 			n -= sb->size - sb->offset;
 			free(sb->buf);
 			free(sb);
