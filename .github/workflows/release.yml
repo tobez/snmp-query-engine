@@ -1,0 +1,92 @@
+# ABOUTME: Release workflow: on v* tag push, builds a source tarball and
+# ABOUTME: static-deps Linux binaries, then creates the GitHub release.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  STATIC_LIBS: >-
+    -Wl,-Bstatic -lJudy -lmsgpackc -lcrypto -Wl,-Bdynamic -ldl -pthread
+
+jobs:
+  tarball:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Create source tarball
+        run: |
+          VER=${GITHUB_REF_NAME#v}
+          git archive --format=tar.gz --prefix="snmp-query-engine-${VER}/" \
+            -o "snmp-query-engine-${VER}.tar.gz" HEAD
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tarball
+          path: snmp-query-engine-*.tar.gz
+
+  linux-binary:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-22.04
+            arch: x86_64
+          - runner: ubuntu-22.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libjudy-dev libssl-dev cpanminus \
+            $(apt-cache -q0 show libmsgpack-c-dev >/dev/null 2>&1 && echo libmsgpack-c-dev || echo libmsgpack-dev)
+          sudo cpanm --notest Data::MessagePack Test2::Suite
+      - name: Build with static dependencies
+        run: make LIBS="$STATIC_LIBS"
+      - name: Verify static linking
+        run: |
+          ldd snmp-query-engine
+          ! ldd snmp-query-engine | grep -E 'msgpack|Judy|crypto'
+          ./snmp-query-engine -v
+      - name: Test
+        run: make LIBS="$STATIC_LIBS" test
+      - name: Name artifact
+        run: |
+          VER=${GITHUB_REF_NAME#v}
+          cp snmp-query-engine "snmp-query-engine-${VER}-linux-${{ matrix.arch }}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: linux-${{ matrix.arch }}
+          path: snmp-query-engine-*-linux-*
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [tarball, linux-binary]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Extract changelog section
+        run: |
+          awk -v ver="$GITHUB_REF_NAME" '
+            $0 ~ "^## \\[" ver "\\]" {on=1; next}
+            on && /^## \[/ {exit}
+            on {print}' CHANGELOG.md > notes.md
+          test -s notes.md
+      - name: Checksums
+        run: cd dist && sha256sum * > SHA256SUMS
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" \
+            --notes-file notes.md dist/*

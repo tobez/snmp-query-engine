@@ -57,6 +57,27 @@ suite against a real SNMP agent.
 
 ## 2. Installing
 
+### Prebuilt binaries
+
+Tagged releases publish prebuilt Linux binaries as GitHub release assets,
+alongside a source tarball. No compiler or dependencies are needed to use
+these.
+
+Each release ships `snmp-query-engine-X.Y.Z-linux-x86_64` and
+`snmp-query-engine-X.Y.Z-linux-arm64`, a `snmp-query-engine-X.Y.Z.tar.gz`
+source tarball, and a `SHA256SUMS` file covering all of them. The binaries
+statically link `msgpack`, `Judy`, and OpenSSL's `libcrypto`; glibc is linked
+dynamically, so the target system needs a glibc no older than Ubuntu 22.04's.
+
+Verify a downloaded binary against the published checksums before running
+it:
+
+```sh
+sha256sum -c SHA256SUMS --ignore-missing
+```
+
+### From a source build
+
 ```sh
 make install
 ```
