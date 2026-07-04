@@ -23,6 +23,7 @@
 #include <fcntl.h>
 #include <sys/param.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -44,6 +45,7 @@
 #endif
 
 #include "bsdqueue.h"
+#include "log.h"
 
 #define SQE_VERSION "2.0.0"
 
