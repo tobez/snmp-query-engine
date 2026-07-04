@@ -8,14 +8,14 @@
  */
 #include "sqe.h"
 
-static void v(int is_croak, int is_x, int exit_code, const char *fmt, va_list ap);
+static void v(int use_errno, int exit_code, const char *fmt, va_list ap) __attribute__((noreturn));
 
 void
 croak(int exit_code, const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	v(1, errno, exit_code, fmt, ap);
+	v(errno, exit_code, fmt, ap);
 	va_end(ap);
 }
 
@@ -24,12 +24,12 @@ croakx(int exit_code, const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	v(1, -1, exit_code, fmt, ap);
+	v(-1, exit_code, fmt, ap);
 	va_end(ap);
 }
 
 void
-v(int is_croak, int use_errno, int exit_code, const char *fmt, va_list ap)
+v(int use_errno, int exit_code, const char *fmt, va_list ap)
 {
 	char msg[1024];
 	int len = 0;
@@ -42,8 +42,7 @@ v(int is_croak, int use_errno, int exit_code, const char *fmt, va_list ap)
 		snprintf(msg + len, sizeof(msg) - len, "%s%s",
 		    fmt ? ": " : "", strerror(use_errno));
 	log_error("%s", msg);
-	if (is_croak)
-		exit(exit_code);
+	exit(exit_code);
 }
 
 #if defined(__linux__)

@@ -495,8 +495,8 @@ extern int oid_compare(struct ber *aa, struct ber *bb);
 
 /* other locations */
 const char *thisprogname(void);
-void croak(int exit_code, const char *fmt, ...);
-void croakx(int exit_code, const char *fmt, ...);
+void croak(int exit_code, const char *fmt, ...) __attribute__((noreturn));
+void croakx(int exit_code, const char *fmt, ...) __attribute__((noreturn));
 
 /* event_loop.c */
 struct socket_info *new_socket_info(int fd);
