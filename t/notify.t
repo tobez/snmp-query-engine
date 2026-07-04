@@ -55,4 +55,14 @@ subtest 'no NOTIFY_SOCKET: daemon simply works' => sub {
 	is($d->request([RT_INFO, 1])->[0], RT_INFO|RT_REPLY, 'answers without notify env');
 };
 
+subtest 'STOPPING=1 sent on SIGTERM before exit' => sub {
+	my ($dir, $path, $sock) = notify_listener();
+	my $d = spawn_daemon(env => { NOTIFY_SOCKET => $path });
+	drain_dgrams($sock, 0.3);   # discard READY
+	kill 'TERM', $d->pid;
+	my @msgs = drain_dgrams($sock, 1);
+	ok((grep { /(?:^|\n)STOPPING=1(?:\n|$)/ } @msgs), 'STOPPING=1 received');
+	is($d->wait_exit(5), 0, 'clean exit after STOPPING');
+};
+
 done_testing;

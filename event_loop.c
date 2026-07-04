@@ -314,13 +314,59 @@ on_write(struct socket_info *si, void (*write_handler)(struct socket_info *si))
 #endif
 }
 
+static int shutdown_active = 0;
+static struct timeval shutdown_started;
+
+static int
+pending_client_output(void)
+{
+	struct socket_info **slot;
+	Word_t fd = 0;
+
+	JLF(slot, socks, fd);
+	while (slot) {
+		if ((*slot)->n_send_bufs > 0)
+			return 1;
+		JLN(slot, socks, fd);
+	}
+	return 0;
+}
+
+static void
+begin_shutdown(void)
+{
+	struct socket_info **slot;
+	Word_t fd = 0;
+
+	shutdown_active = 1;
+	gettimeofday(&shutdown_started, NULL);
+	notify("STOPPING=1");
+	log_info("shutting down on signal");
+	if (listener_si) {
+		delete_socket_info(listener_si);
+		listener_si = NULL;
+	}
+	/* stop reading new client requests; only drain what is already queued */
+	JLF(slot, socks, fd);
+	while (slot) {
+		if ((*slot)->udata)
+			on_read(*slot, NULL);
+		JLN(slot, socks, fd);
+	}
+}
+
 static int
 event_loop_done(void)
 {
 	if (!stop_requested)
 		return 0;
-	log_info("shutting down on signal");
-	return 1;
+	if (!shutdown_active)
+		begin_shutdown();
+	if (!pending_client_output())
+		return 1;
+	if (ms_passed_since(&shutdown_started) >= 1000)
+		return 1;
+	return 0;
 }
 
 #ifdef WITH_KQUEUE
@@ -337,6 +383,8 @@ event_loop(void)
 		wd = notify_watchdog_interval_ms();
 		if (wd > 0 && wd < ms)
 			ms = wd;
+		if (shutdown_active && ms > 50)
+			ms = 50;
 		to.tv_sec = ms / 1000;
 		to.tv_nsec = (ms % 1000)*1000000;
 		nev = kevent(kq, NULL, 0, ke, 10, &to);
@@ -408,6 +456,8 @@ event_loop(void)
 		wd = notify_watchdog_interval_ms();
 		if (wd > 0 && wd < ms)
 			ms = wd;
+		if (shutdown_active && ms > 50)
+			ms = 50;
 		nev = epoll_wait(ep, ev, 10, ms);
 		if (nev < 0) {
 			if (errno == EINTR)
