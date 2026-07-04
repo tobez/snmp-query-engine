@@ -1,0 +1,24 @@
+#!/bin/sh
+
+# PROVIDE: snmp_query_engine
+# REQUIRE: NETWORKING
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name=snmp_query_engine
+rcvar=snmp_query_engine_enable
+
+load_rc_config $name
+
+: ${snmp_query_engine_enable:="NO"}
+: ${snmp_query_engine_user:="nobody"}
+: ${snmp_query_engine_args:=""}
+
+pidfile="/var/run/${name}.pid"
+procname="/usr/local/bin/snmp-query-engine"
+command="/usr/sbin/daemon"
+command_args="-rS -T snmp-query-engine -P ${pidfile} \
+    -u ${snmp_query_engine_user} ${procname} ${snmp_query_engine_args}"
+
+run_rc_command "$1"
