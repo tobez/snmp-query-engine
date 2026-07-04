@@ -76,35 +76,32 @@ hmac_message(const struct snmpv3info* v3,
     }
 
     ctx = HMAC_CTX_new();
+    if (!ctx)
+        goto fail;
 
-    if (!HMAC_Init_ex(ctx, v3->authkul, v3->authkul_len, md, NULL)) {
-        ERR_print_errors_fp(stderr);
-        return -1;
-    }
+    if (!HMAC_Init_ex(ctx, v3->authkul, v3->authkul_len, md, NULL))
+        goto fail;
 
     bzero(out, maclen);
-    if (!HMAC_Update(ctx, msg, auth_param - msg)) {
-        ERR_print_errors_fp(stderr);
-        return -1;
-    }
-    if (!HMAC_Update(ctx, out, maclen)) {
-        ERR_print_errors_fp(stderr);
-        return -1;
-    }
-    if (!HMAC_Update(ctx, auth_param + maclen, msg_len - (auth_param - msg + maclen))) {
-        ERR_print_errors_fp(stderr);
-        return -1;
-    }
+    if (!HMAC_Update(ctx, msg, auth_param - msg))
+        goto fail;
+    if (!HMAC_Update(ctx, out, maclen))
+        goto fail;
+    if (!HMAC_Update(ctx, auth_param + maclen, msg_len - (auth_param - msg + maclen)))
+        goto fail;
 
-    if (!HMAC_Final(ctx, md_value, &md_len)) {
-        ERR_print_errors_fp(stderr);
-        return -1;
-    }
+    if (!HMAC_Final(ctx, md_value, &md_len))
+        goto fail;
 
     HMAC_CTX_free(ctx);
     memcpy(out, md_value, maclen);
 
     return 0;
+
+fail:
+    ERR_print_errors_fp(stderr);
+    HMAC_CTX_free(ctx);
+    return -1;
 }
 
 /// @brief Encrypt SNMPv3 PDU in-place
@@ -143,27 +140,22 @@ encrypt_in_place(unsigned char *buf, int buf_len, unsigned char *privp, const st
     }
 
     ciphertext = malloc(buf_len + 32);  // 32 is too much but whatever
+    if (!ciphertext)
+        croak(2, "encrypt_in_place: malloc(ciphertext)");
 
-    if (!(ctx = EVP_CIPHER_CTX_new())) {
-        ERR_print_errors_fp(stderr);
-        return -1;
-    }
+    ctx = EVP_CIPHER_CTX_new();
+    if (!ctx)
+        goto fail;
 
-    if (1 != EVP_EncryptInit_ex(ctx, cipher, NULL, v3->x_privkul, ivtemp)) {
-        ERR_print_errors_fp(stderr);
-        return -1;
-    }
+    if (1 != EVP_EncryptInit_ex(ctx, cipher, NULL, v3->x_privkul, ivtemp))
+        goto fail;
 
-    if (1 != EVP_EncryptUpdate(ctx, ciphertext, &len, buf, buf_len)) {
-        ERR_print_errors_fp(stderr);
-        return -1;
-    }
+    if (1 != EVP_EncryptUpdate(ctx, ciphertext, &len, buf, buf_len))
+        goto fail;
     ciphertext_len = len;
 
-    if (1 != EVP_EncryptFinal_ex(ctx, ciphertext + len, &len)) {
-        ERR_print_errors_fp(stderr);
-        return -1;
-    }
+    if (1 != EVP_EncryptFinal_ex(ctx, ciphertext + len, &len))
+        goto fail;
     ciphertext_len += len;
 
     // fprintf(stderr, "encrypt_in_place: plaintext (%d bytes):\n", buf_len);
@@ -173,6 +165,8 @@ encrypt_in_place(unsigned char *buf, int buf_len, unsigned char *privp, const st
 
     if (buf_len != ciphertext_len) {
         log_error("encrypt_in_place: unexpectedly, ciphertext_len != plaintext_len in CFB mode");
+        EVP_CIPHER_CTX_free(ctx);
+        free(ciphertext);
         return -1;
     }
 
@@ -182,6 +176,12 @@ encrypt_in_place(unsigned char *buf, int buf_len, unsigned char *privp, const st
     free(ciphertext);
 
     return 0;
+
+fail:
+    ERR_print_errors_fp(stderr);
+    EVP_CIPHER_CTX_free(ctx);
+    free(ciphertext);
+    return -1;
 }
 
 /// @brief Decrypt SNMPv3 PDU in-place
@@ -217,27 +217,22 @@ decrypt_in_place(unsigned char *buf, int buf_len, unsigned char *privp, const st
     }
 
     plaintext = malloc(buf_len + 32);  // 32 is too much but whatever
+    if (!plaintext)
+        croak(2, "decrypt_in_place: malloc(plaintext)");
 
-    if (!(ctx = EVP_CIPHER_CTX_new())) {
-        ERR_print_errors_fp(stderr);
-        return -1;
-    }
+    ctx = EVP_CIPHER_CTX_new();
+    if (!ctx)
+        goto fail;
 
-    if (1 != EVP_DecryptInit_ex(ctx, cipher, NULL, v3->x_privkul, ivtemp)) {
-        ERR_print_errors_fp(stderr);
-        return -1;
-    }
+    if (1 != EVP_DecryptInit_ex(ctx, cipher, NULL, v3->x_privkul, ivtemp))
+        goto fail;
 
-    if (1 != EVP_DecryptUpdate(ctx, plaintext, &len, buf, buf_len)) {
-        ERR_print_errors_fp(stderr);
-        return -1;
-    }
+    if (1 != EVP_DecryptUpdate(ctx, plaintext, &len, buf, buf_len))
+        goto fail;
     plaintext_len = len;
 
-    if (1 != EVP_DecryptFinal_ex(ctx, plaintext + len, &len)) {
-        ERR_print_errors_fp(stderr);
-        return -1;
-    }
+    if (1 != EVP_DecryptFinal_ex(ctx, plaintext + len, &len))
+        goto fail;
     plaintext_len += len;
 
     // fprintf(stderr, "decrypt_in_place: ciphertext (%d bytes):\n", buf_len);
@@ -247,6 +242,8 @@ decrypt_in_place(unsigned char *buf, int buf_len, unsigned char *privp, const st
 
     if (buf_len != plaintext_len) {
         log_error("decrypt_in_place: unexpectedly, ciphertext_len != plaintext_len in CFB mode");
+        EVP_CIPHER_CTX_free(ctx);
+        free(plaintext);
         return -1;
     }
 
@@ -256,4 +253,10 @@ decrypt_in_place(unsigned char *buf, int buf_len, unsigned char *privp, const st
     free(plaintext);
 
     return 0;
+
+fail:
+    ERR_print_errors_fp(stderr);
+    EVP_CIPHER_CTX_free(ctx);
+    free(plaintext);
+    return -1;
 }
