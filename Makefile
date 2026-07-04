@@ -13,6 +13,10 @@ LIBPATH=	-L/usr/local/lib -L/opt/local/lib -L/opt/homebrew/lib
 CFLAGS=	-Wall -Wno-unused-function -Wno-deprecated-declarations -Werror $(OPTIMIZE) $(INCPATH)
 TESTBIN=	t/test_ber t/test_msgpack t/test_v3 t/test_sid_info t/test_log
 
+PREFIX?=	/usr/local
+BINDIR?=	$(PREFIX)/bin
+MANDIR?=	$(PREFIX)/share/man
+
 all: snmp-query-engine $(TESTBIN)
 
 STDOBJ=event_loop.o carp.o client_input.o client_listen.o opts.o util.o destination.o \
@@ -26,6 +30,12 @@ STDLINK=$(STDOBJ) $(LIBPATH) -lJudy -lmsgpackc -lcrypto
 clean:
 	rm -f *.o snmp-query-engine t/test_ber t/test_msgpack t/test_v3 t/test_sid_info t/test_log *.core core
 	rm -rf t/*.dSYM *.dSYM
+
+install: snmp-query-engine
+	mkdir -p $(DESTDIR)$(BINDIR)
+	mkdir -p $(DESTDIR)$(MANDIR)/man1
+	install -m 755 snmp-query-engine $(DESTDIR)$(BINDIR)
+	install -m 644 snmp-query-engine.1 $(DESTDIR)$(MANDIR)/man1
 
 snmp-query-engine: main.o $(STDOBJ)
 	$(CC) $(CFLAGS) -o snmp-query-engine main.o $(STDLINK)
