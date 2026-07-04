@@ -17,7 +17,7 @@ free_oid_info_list(struct oid_info_head *list)
 	while (n1 != NULL) {
 		n2 = TAILQ_NEXT(n1, oid_list);
 if (0){
-fprintf(stderr, "       freeing an oid (C:%u,S:%u) %s\n", n1->cid, n1->sid, oid2str(n1->oid));
+log_debug("       freeing an oid (C:%u,S:%u) %s", n1->cid, n1->sid, oid2str(n1->oid));
 }
 		free(n1->oid.buf);
 		free(n1->value.buf);

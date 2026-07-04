@@ -312,8 +312,8 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
                              &v3.authkul_len,
                              &err))
 		{
-            fprintf(stderr, "handle_setopt_request: authkul calculation error: "
-                    "password_to_kul: %s\n", err);
+            log_warn("handle_setopt_request: authkul calculation error: "
+                    "password_to_kul: %s", err);
             return error_reply(si, RT_SETOPT | RT_ERROR, cid, "authpass to kul calculation error");
         }
     }
@@ -331,8 +331,8 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
                              &v3.privkul_len,
                              &err))
 		{
-            fprintf(stderr, "handle_setopt_request: privkul calculation error: "
-                    "password_to_kul: %s\n", err);
+            log_warn("handle_setopt_request: privkul calculation error: "
+                    "password_to_kul: %s", err);
             return error_reply(si, RT_SETOPT | RT_ERROR, cid, "privpass to kul calculation error");
         }
 
@@ -347,8 +347,8 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
                         &v3.x_privkul_len,
                         &err))
 		{
-            fprintf(stderr, "handle_setopt_request: privkul calculation error: "
-                    "expand_kul: %s\n", err);
+            log_warn("handle_setopt_request: privkul calculation error: "
+                    "expand_kul: %s", err);
             return error_reply(si, RT_SETOPT | RT_ERROR, cid, "expand kul calculation error");
         }
     }
@@ -367,8 +367,8 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
                         &v3.x_privkul_len,
                         &err))
 		{
-            fprintf(stderr, "handle_setopt_request: x_privkul calculation error: "
-                    "expand_kul: %s\n", err);
+            log_warn("handle_setopt_request: x_privkul calculation error: "
+                    "expand_kul: %s", err);
             return error_reply(si, RT_SETOPT | RT_ERROR, cid, "x_privkul calculation error");
         }
 	}

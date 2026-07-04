@@ -421,8 +421,6 @@ struct oid_info
 	struct ber value;
 };
 
-extern int opt_quiet;
-
 /* ber.c */
 extern struct ber ber_init(void *buf, int size);
 extern struct ber ber_dup(struct ber *e);
