@@ -17,6 +17,7 @@ usage(char *err)
 	fprintf(f, "Usage:\n");
 	fprintf(f, "    %s [options]\n", thisprogname());
 	fprintf(f, "Usage parameters:\n");
+	fprintf(f, "\t-b address\tbind the client listener to address\n\t\t\t(default: 127.0.0.1)\n");
 	fprintf(f, "\t-d\t\tdebug logging\n");
 	fprintf(f, "\t-h\t\tproduce usage text and quit\n");
 	fprintf(f, "\t-p port\t\tlisten on port prt instead of default 7667\n");
@@ -30,14 +31,20 @@ main(int argc, char **argv)
 {
 	int o;
 	int port = 7667;
+	struct in_addr bindaddr;
 
 	gettimeofday(&prog_start, NULL);
 	bzero(&PS, sizeof(PS));
 	PS.max_packets_on_the_wire = 1000000;
 	PS.program_version = 2023082200; /* frozen for protocol compatibility; see SQE_VERSION */
+	bindaddr.s_addr = htonl(INADDR_LOOPBACK);
 
-	while ( (o = getopt(argc, argv, "dhp:qv")) != -1) {
+	while ( (o = getopt(argc, argv, "b:dhp:qv")) != -1) {
 		switch (o) {
+		case 'b':
+			if (!inet_aton(optarg, &bindaddr))
+				usage("cannot parse bind address");
+			break;
 		case 'd':
 			opt_log_level = LL_DEBUG;
 			break;
@@ -71,7 +78,7 @@ main(int argc, char **argv)
     }
 
 	create_snmp_socket();
-	create_listening_socket(port);
+	create_listening_socket(bindaddr, port);
 	event_loop();
 
 	return 0;

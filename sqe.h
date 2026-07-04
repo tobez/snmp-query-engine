@@ -515,7 +515,8 @@ extern void set_timeout(struct timeval *tv, int timeout);  /* timeout in ms */
 extern int64_t ms_passed_since(struct timeval *tv);
 
 /* client_listen.c */
-extern void create_listening_socket(int port);
+extern struct socket_info *listener_si;
+extern void create_listening_socket(struct in_addr addr, int port);
 
 /* snmp.c */
 extern void create_snmp_socket(void);
