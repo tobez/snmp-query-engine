@@ -30,6 +30,15 @@ jobs:
           cpanm --notest Data::MessagePack Test2::Suite
       - name: Build
         run: make
+      - name: Verify shipped service files (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo make install
+          systemd-analyze verify contrib/systemd/snmp-query-engine.service
+          sh -n contrib/rc.d/snmp_query_engine
+      - name: Verify shipped service files (macOS)
+        if: runner.os == 'macOS'
+        run: sh -n contrib/rc.d/snmp_query_engine
       - name: Start snmpd (Linux)
         if: runner.os == 'Linux'
         run: |

@@ -1,0 +1,37 @@
+[Unit]
+Description=Multiplexing SNMP query engine
+Documentation=man:snmp-query-engine(1) https://github.com/tobez/snmp-query-engine
+After=network.target
+
+[Service]
+Type=notify
+EnvironmentFile=-/etc/default/snmp-query-engine
+ExecStart=/usr/local/bin/snmp-query-engine $SQE_OPTS
+Restart=always
+RestartSec=1
+WatchdogSec=30
+
+# SQE keeps one UDP socket per polled destination plus client connections.
+LimitNOFILE=65536
+
+# SQE writes no files and needs no privileges: run it as a transient user.
+DynamicUser=yes
+
+# Hardening. SQE needs only network sockets (and AF_UNIX for sd_notify).
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallFilter=@system-service
+
+[Install]
+WantedBy=multi-user.target

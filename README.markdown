@@ -11,6 +11,11 @@ induced by multiple SNMP queries.
 
 See `manual.mdwn` for more.
 
+## Installation
+
+See `INSTALL.md` for building, `make install`, and running under
+systemd (Linux) or rc.d (FreeBSD).
+
 With regard to msgpack dependency:  snmp-query-engine
 requires at least msgpack 0.5.7, previous versions
 have bugs.  Unfortunately, msgpack website has changed
