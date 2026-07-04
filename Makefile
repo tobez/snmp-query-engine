@@ -16,6 +16,7 @@ TESTBIN=	t/test_ber t/test_msgpack t/test_v3 t/test_sid_info t/test_log
 PREFIX?=	/usr/local
 BINDIR?=	$(PREFIX)/bin
 MANDIR?=	$(PREFIX)/share/man
+LIBS?=	-lJudy -lmsgpackc -lcrypto
 
 all: snmp-query-engine $(TESTBIN)
 
@@ -25,7 +26,7 @@ STDOBJ=event_loop.o carp.o client_input.o client_listen.o opts.o util.o destinat
 	request_info.o request_get.o request_gettable.o timers.o \
 	v3_keys.o v3_crypto.o log.o notify.o
 
-STDLINK=$(STDOBJ) $(LIBPATH) -lJudy -lmsgpackc -lcrypto
+STDLINK=$(STDOBJ) $(LIBPATH) $(LIBS)
 
 clean:
 	rm -f *.o snmp-query-engine t/test_ber t/test_msgpack t/test_v3 t/test_sid_info t/test_log *.core core
