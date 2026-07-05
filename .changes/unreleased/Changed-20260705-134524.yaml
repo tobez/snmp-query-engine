@@ -1,0 +1,3 @@
+kind: Changed
+body: 'logs: emit machine-parseable key=value lines'
+time: 2026-07-05T13:45:24.176743+02:00
