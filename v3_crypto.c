@@ -60,17 +60,17 @@ hmac_message(const struct snmpv3info* v3,
     unsigned md_len = 0;
 
     if (!md || maclen < 0) {
-        log_error("bad auth protocol");
+        log_error("bad auth protocol", NULL);
         errno = EINVAL;
         return -1;
     }
     if (out_size < (unsigned)maclen) {
-        log_error("bad hmac output buffer size");
+        log_error("bad hmac output buffer size", NULL);
         errno = EINVAL;
         return -1;
     }
     if (auth_param - msg + maclen >= msg_len) {
-        log_error("bad auth_param pointer");
+        log_error("bad auth_param pointer", NULL);
         errno = EINVAL;
         return -1;
     }
@@ -134,7 +134,7 @@ encrypt_in_place(unsigned char *buf, int buf_len, unsigned char *privp, const st
         cipher = EVP_aes_256_cfb128();
         break;
     default:
-        log_error("encrypt_in_place: unrecognized or unsupported privacy algorithm");
+        log_error("unsupported privacy algorithm", "op", "encrypt", NULL);
         return -1;
         break;
     }
@@ -164,7 +164,7 @@ encrypt_in_place(unsigned char *buf, int buf_len, unsigned char *privp, const st
 	// dump_buf(stderr, ciphertext, ciphertext_len);
 
     if (buf_len != ciphertext_len) {
-        log_error("encrypt_in_place: unexpectedly, ciphertext_len != plaintext_len in CFB mode");
+        log_error("ciphertext length mismatch in CFB", "op", "encrypt", NULL);
         EVP_CIPHER_CTX_free(ctx);
         free(ciphertext);
         return -1;
@@ -211,7 +211,7 @@ decrypt_in_place(unsigned char *buf, int buf_len, unsigned char *privp, const st
         cipher = EVP_aes_256_cfb128();
         break;
     default:
-        log_error("decrypt_in_place: unrecognized or unsupported privacy algorithm");
+        log_error("unsupported privacy algorithm", "op", "decrypt", NULL);
         return -1;
         break;
     }
@@ -241,7 +241,7 @@ decrypt_in_place(unsigned char *buf, int buf_len, unsigned char *privp, const st
 	// dump_buf(stderr, plaintext, plaintext_len);
 
     if (buf_len != plaintext_len) {
-        log_error("decrypt_in_place: unexpectedly, ciphertext_len != plaintext_len in CFB mode");
+        log_error("ciphertext length mismatch in CFB", "op", "decrypt", NULL);
         EVP_CIPHER_CTX_free(ctx);
         free(plaintext);
         return -1;

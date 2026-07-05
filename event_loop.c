@@ -71,7 +71,7 @@ flush_buffers(struct socket_info *si)
 	int i, n, tot;
 
 	if (!si->n_send_bufs) {
-		log_warn("flush_buffers: fd %d: unexpectedly nothing to flush", si->fd);
+		log_warn("nothing to flush", "fd", U((unsigned)si->fd), "op", "flush_buffers", NULL);
 		on_write(si, NULL);
 		return;
 	}
@@ -90,11 +90,11 @@ flush_buffers(struct socket_info *si)
 	if ( (n = writev(si->fd, io_buf, i)) < 0) {
 		switch (errno) {
 		case EPIPE:
-			log_warn("flush_buffers: EPIPE during writev");
+			log_warn("EPIPE during write", "op", "flush_buffers", NULL);
 			if (si->eof_handler)	si->eof_handler(si);
 			return;
 		case ECONNRESET:
-			log_warn("flush_buffers: ECONNRESET during writev");
+			log_warn("ECONNRESET during write", "op", "flush_buffers", NULL);
 			if (si->eof_handler)	si->eof_handler(si);
 			return;
 		}
@@ -343,7 +343,7 @@ begin_shutdown(void)
 	shutdown_active = 1;
 	gettimeofday(&shutdown_started, NULL);
 	notify("STOPPING=1");
-	log_info("shutting down on signal");
+	log_info("shutting down", NULL);
 	if (listener_si) {
 		delete_socket_info(listener_si);
 		listener_si = NULL;
@@ -379,7 +379,7 @@ event_loop(void)
 	int nev, i, ms, wd;
 	struct timespec to;
 
-	log_info("kqueue event loop started");
+	log_info("event loop started", "op", "kqueue", NULL);
 	while (1) {
 		ms = ms_to_next_timer();
 		wd = notify_watchdog_interval_ms();
@@ -407,13 +407,13 @@ event_loop(void)
 						if (si->eof_handler) {
 							si->eof_handler(si);
 						} else {
-							log_error("event_loop: EVFILT_READ: ident %u - socket does not have an eof handler", (unsigned)ke[i].ident);
+							log_error("socket missing handler", "fd", U((unsigned)ke[i].ident), "op", "read_eof", NULL);
 						}
 					} else {
 						if (si->read_handler) {
 							si->read_handler(si);
 						} else {
-							log_error("event_loop: EVFILT_READ: ident %u - socket does not have a read handler", (unsigned)ke[i].ident);
+							log_error("socket missing handler", "fd", U((unsigned)ke[i].ident), "op", "read", NULL);
 						}
 					}
 				}
@@ -425,18 +425,19 @@ event_loop(void)
 						if (si->eof_handler) {
 							si->eof_handler(si);
 						} else {
-							log_error("event_loop: EVFILT_WRITE: ident %u - socket does not have an eof handler", (unsigned)ke[i].ident);
+							log_error("socket missing handler", "fd", U((unsigned)ke[i].ident), "op", "write_eof", NULL);
 						}
 					} else {
 						if (si->write_handler) {
 							si->write_handler(si);
 						} else {
-							log_error("event_loop: EVFILT_WRITE: ident %u - socket does not have a write handler", (unsigned)ke[i].ident);
+							log_error("socket missing handler", "fd", U((unsigned)ke[i].ident), "op", "write", NULL);
 						}
 					}
 				}
 			} else {
-				log_error("event_loop: unexpected filter value %d, ident %u", ke[i].filter, (unsigned)ke[i].ident);
+				log_error("unexpected kqueue filter", "filter", I(ke[i].filter),
+				    "fd", U((unsigned)ke[i].ident), NULL);
 			}
 		}
 		trigger_timers();
@@ -452,7 +453,7 @@ event_loop(void)
 {
 	struct epoll_event ev[10];
 	int nev, i, ms, wd;
-	log_info("epoll event loop started");
+	log_info("event loop started", "op", "epoll", NULL);
 	while (1) {
 		ms = ms_to_next_timer();
 		wd = notify_watchdog_interval_ms();
@@ -477,7 +478,7 @@ event_loop(void)
 					if (si->read_handler) {
 						si->read_handler(si);
 					} else {
-						log_error("event_loop: EPOLLIN: fd %u - socket does not have a read handler", (unsigned)ev[i].data.fd);
+						log_error("socket missing handler", "fd", U((unsigned)ev[i].data.fd), "op", "epollin", NULL);
 					}
 				}
 			}
@@ -488,12 +489,13 @@ event_loop(void)
 					if (si->write_handler) {
 						si->write_handler(si);
 					} else {
-						log_error("event_loop: EPOLLOUT: fd %u - socket does not have a write handler", (unsigned)ev[i].data.fd);
+						log_error("socket missing handler", "fd", U((unsigned)ev[i].data.fd), "op", "epollout", NULL);
 					}
 				}
 			}
 			if (!(ev[i].events & (EPOLLIN|EPOLLOUT))) {
-				log_error("event_loop: unexpected event 0x%x, fd %u", ev[i].events, (unsigned)ev[i].data.fd);
+				log_error("unexpected epoll event", "event", HEX(ev[i].events),
+				    "fd", U((unsigned)ev[i].data.fd), NULL);
 			}
 		}
 		trigger_timers();

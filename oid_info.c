@@ -16,9 +16,9 @@ free_oid_info_list(struct oid_info_head *list)
 	n1 = TAILQ_FIRST(list);
 	while (n1 != NULL) {
 		n2 = TAILQ_NEXT(n1, oid_list);
-if (0){
-log_debug("       freeing an oid (C:%u,S:%u) %s", n1->cid, n1->sid, oid2str(n1->oid));
-}
+		if (log_wants(LL_DEBUG))
+			log_debug("freeing oid", "cid", U(n1->cid), "sid", U(n1->sid),
+			    "oid", oid2str(n1->oid), NULL);
 		free(n1->oid.buf);
 		free(n1->value.buf);
 		PS.active_oid_infos--;

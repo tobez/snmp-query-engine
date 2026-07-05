@@ -1,5 +1,5 @@
 /* ABOUTME: Leveled logging API: severity enum, pure line formatter, and
- * ABOUTME: printf-style emitters used by every diagnostic in the daemon. */
+ * ABOUTME: logfmt key-value emitters used by every diagnostic in the daemon. */
 #ifndef SQE_LOG_H
 #define SQE_LOG_H
 
@@ -11,12 +11,25 @@ enum log_level { LL_ERROR, LL_WARN, LL_INFO, LL_DEBUG };
 extern enum log_level opt_log_level;
 
 void log_setup(void);
-int log_line(char *out, size_t outsz, enum log_level lvl, int journal_mode,
-    const char *stamp, const char *msg);
-void log_vemit(enum log_level lvl, const char *fmt, va_list ap);
-void log_error(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
-void log_warn(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
-void log_info(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
-void log_debug(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+size_t log_enc(char *out, size_t outsz, const char *val);
+int log_wants(enum log_level lvl);
+
+struct log_field { const char *k, *v; };
+int log_format(char *out, size_t outsz, enum log_level lvl, int journal_mode,
+    const char *stamp, const char *msg,
+    const struct log_field *fields, size_t nfields);
+
+void log_error(const char *msg, ...) __attribute__((sentinel));
+void log_warn (const char *msg, ...) __attribute__((sentinel));
+void log_info (const char *msg, ...) __attribute__((sentinel));
+void log_debug(const char *msg, ...) __attribute__((sentinel));
+const char *log_u(unsigned v);
+const char *log_i(int v);
+const char *log_hex(unsigned v);
+const char *log_hexbuf(const void *buf, size_t len);
+#define U(x)        log_u(x)
+#define I(x)        log_i(x)
+#define HEX(x)      log_hex(x)
+#define HEXBUF(b,l) log_hexbuf((b), (l))
 
 #endif

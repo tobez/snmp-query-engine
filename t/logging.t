@@ -24,11 +24,11 @@ subtest 'default level: info, plain format' => sub {
 	$d->request([RT_INFO, 1]);
 	$d->stop;
 	my $text = slurp("$log");
-	like($text, qr/^$TS info: (?:epoll|kqueue) event loop started$/m,
+	like($text, qr/^time=$TS level=info msg="event loop started" op=(?:epoll|kqueue)$/m,
 		'startup line at info with timestamp');
-	like($text, qr/^$TS info: .*incoming connection/m,
+	like($text, qr/^time=$TS level=info msg="incoming connection"/m,
 		'connection notice at info');
-	unlike($text, qr/ debug: /, 'no debug lines by default');
+	unlike($text, qr/level=debug/, 'no debug lines by default');
 };
 
 subtest '-q: warnings and errors only' => sub {
@@ -37,7 +37,7 @@ subtest '-q: warnings and errors only' => sub {
 	$d->request([RT_INFO, 1]);
 	$d->stop;
 	my $text = slurp("$log");
-	unlike($text, qr/ info: /, 'info suppressed under -q');
+	unlike($text, qr/level=info/, 'info suppressed under -q');
 };
 
 subtest '-d: debug enabled' => sub {
@@ -45,7 +45,7 @@ subtest '-d: debug enabled' => sub {
 	my $d = spawn_daemon(args => ['-d'], stderr_file => "$log");
 	$d->request([RT_INFO, 1]);
 	$d->stop;
-	like(slurp("$log"), qr/^$TS debug: debug logging enabled$/m,
+	like(slurp("$log"), qr/^time=$TS level=debug msg="debug logging enabled"$/m,
 		'debug line present under -d');
 };
 
@@ -57,7 +57,7 @@ subtest 'journald mode: <N> prefixes, no timestamps' => sub {
 	$d->request([RT_INFO, 1]);
 	$d->stop;
 	my $text = slurp("$log");
-	like($text, qr/^<6>(?:epoll|kqueue) event loop started$/m,
+	like($text, qr/^<6>msg="event loop started" op=(?:epoll|kqueue)$/m,
 		'info line carries <6> prefix');
 	unlike($text, qr/^$TS/m, 'no timestamps in journald mode');
 };

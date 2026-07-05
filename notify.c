@@ -28,7 +28,7 @@ notify_init(void)
 		notify_addr.sun_path[0] = '\0';
 	notify_addrlen = offsetof(struct sockaddr_un, sun_path) + len;
 	if ( (notify_fd = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0) {
-		log_debug("notify_init: socket: %s", strerror(errno));
+		log_debug("notify socket unavailable", "error", strerror(errno), NULL);
 		return;
 	}
 	if (usec && (!wpid || atoi(wpid) == (int)getpid())) {
@@ -46,7 +46,7 @@ notify(const char *state)
 		return;
 	if (sendto(notify_fd, state, strlen(state), 0,
 	    (struct sockaddr *)&notify_addr, notify_addrlen) < 0)
-		log_debug("notify: sendto: %s", strerror(errno));
+		log_debug("notify sendto failed", "error", strerror(errno), NULL);
 }
 
 void
