@@ -148,7 +148,7 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 				p += snprintf(known+p, sizeof(known)-p, "%02x", siv3->engine_id[i]);
 			for (p = 0, i = 0; i < v3.engine_id_len; i++)
 				p += snprintf(received+p, sizeof(received)-p, "%02x", v3.engine_id[i]);
-			log_warn("engine-id mismatch, ignoring packet", "peer", peer,
+			log_warn("engine-id mismatch, ignoring packet", "peer", peer, "mid", U(mid),
 					"known_engine_id", known, "recv_engine_id", received, NULL);
 			trace = NULL;
 			goto bad_snmp_packet;
@@ -156,7 +156,7 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 
 		// - verify username
 		if (strcmp(siv3->username, v3.username) != 0) {
-			log_warn("username mismatch, ignoring packet", "peer", peer,
+			log_warn("username mismatch, ignoring packet", "peer", peer, "mid", U(mid),
 					"known_username", siv3->username, "username", v3.username, NULL);
 			trace = NULL;
 			goto bad_snmp_packet;
@@ -177,8 +177,9 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 			memset(auth_param_ptr, 0, maclen); // clear original HMAC location for auth calculations
     		if (hmac_message(siv3, auth_param_ptr, maclen, e->buf, e->max_len, auth_param_ptr) < 0) {
 				memcpy(auth_param_ptr, auth_param, maclen);
-				log_warn("authentication failed", "peer", peer, "error", strerror(errno), NULL);
-				log_debug("authentication failed", "peer", peer,
+				log_warn("authentication failed", "peer", peer, "mid", U(mid),
+						"error", strerror(errno), NULL);
+				log_debug("authentication failed", "peer", peer, "mid", U(mid),
 						"packet", HEXBUF(e->buf, e->max_len), NULL);
 				trace = NULL;
 				goto bad_snmp_packet;
@@ -188,8 +189,8 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 
 				snprintf(auth_calc, sizeof(auth_calc), "%s", HEXBUF(auth_param_ptr, maclen));
 				memcpy(auth_param_ptr, auth_param, maclen);
-				log_warn("authentication failed", "peer", peer, NULL);
-				log_debug("authentication failed", "peer", peer,
+				log_warn("authentication failed", "peer", peer, "mid", U(mid), NULL);
+				log_debug("authentication failed", "peer", peer, "mid", U(mid),
 						"auth_calc", auth_calc,
 						"packet", HEXBUF(e->buf, e->max_len), NULL);
 				trace = NULL;
@@ -208,7 +209,7 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
         	if (t != AT_STRING) goto bad_snmp_packet;
 			// - decrypt
 			if (decrypt_in_place(e->b, l, priv_param, siv3) < 0) {
-				log_warn("cannot decrypt, ignoring packet", "peer", peer, NULL);
+				log_warn("cannot decrypt, ignoring packet", "peer", peer, "mid", U(mid), NULL);
 				trace = NULL;
 				goto bad_snmp_packet;
 			}
@@ -228,7 +229,7 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 			for (p = 0, i = 0; i < l; i++)
 				p += snprintf(context+p, sizeof(context)-p, "%02x", context_engine_id[i]);
 			log_warn("authoritative/context engine-id mismatch, ignoring packet", "peer", peer,
-					"auth_engine_id", authoritative, "context_engine_id", context, NULL);
+					"mid", U(mid), "auth_engine_id", authoritative, "context_engine_id", context, NULL);
 			trace = NULL;
 			goto bad_snmp_packet;
         }
@@ -246,7 +247,8 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 		}
 		t = e->b[0];
 		if (t != PDU_REPORT && t != PDU_GET_RESPONSE) {
-			log_warn("unsupported PDU type, ignoring packet", "peer", peer, "pdu_type", HEX(t), NULL);
+			log_warn("unsupported PDU type, ignoring packet", "peer", peer, "mid", U(mid),
+					"pdu_type", HEX(t), NULL);
 			trace = NULL;
 			goto bad_snmp_packet;
 		}
@@ -270,11 +272,13 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 
 			CHECK("error-status", decode_integer(e, -1, &error_status));
 			if (error_status != 0) {
-				log_warn("non-zero error-status", "peer", peer, "error_status", I(error_status), NULL);
+				log_warn("non-zero error-status", "peer", peer, "mid", U(mid),
+						"error_status", I(error_status), NULL);
 			}
 			CHECK("error-index", decode_integer(e, -1, &error_index));
 			if (error_index != 0) {
-				log_warn("non-zero error-index", "peer", peer, "error_index", I(error_index), NULL);
+				log_warn("non-zero error-index", "peer", peer, "mid", U(mid),
+						"error_index", I(error_index), NULL);
 			}
 
 			// - analyze varbinds and report
@@ -291,12 +295,12 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 					resend_query_with_new_sid(si);
 					return;
 				} else if (oid_compare(&oid, &usmStatsWrongDigests) == 0) {
-					log_warn("report: bad digest, ignoring packet", "peer", peer, NULL);
+					log_warn("report: bad digest, ignoring packet", "peer", peer, "mid", U(mid), NULL);
 					trace = NULL;
 					goto bad_snmp_packet;
 				} else {
-					log_warn("report", "peer", peer, "oid", oid2str(oid), NULL);
-					log_debug("report", "peer", peer,
+					log_warn("report", "peer", peer, "mid", U(mid), "oid", oid2str(oid), NULL);
+					log_debug("report", "peer", peer, "mid", U(mid),
 							"value", HEXBUF(val.buf, (size_t)val.len), NULL);
 					trace = NULL;
 					goto bad_snmp_packet;
