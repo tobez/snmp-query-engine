@@ -9,6 +9,7 @@ use Test2::V0;
 use File::Temp ();
 use SQE::Test qw(spawn_daemon request_match
 	RT_SETOPT RT_GET RT_INFO RT_REPLY RT_ERROR);
+use SQE::FakeAgent;
 
 my $TS = qr/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[-+]\d{4}/;
 
@@ -99,6 +100,27 @@ subtest 'client request errors logged at debug' => sub {
 	like($text,
 		qr/^time=$TS level=debug msg="client request error" cid=8 code=0x24 error="bad request length"$/m,
 		'get failure reason at debug (funnel covers all request types)');
+};
+
+subtest 'sid_info warns carry peer' => sub {
+	my $agent = SQE::FakeAgent->spawn(
+		tree     => [['1.3.6.1.2.1.1.5.0', str => 'fake']],
+		omit_oid => '1.3.6.1.2.1.1.6.0');
+	my $aport = $agent->port;
+	my $log = File::Temp->new;
+	my $d = spawn_daemon(args => [], stderr_file => "$log");
+	request_match($d, "setopt v2c to fake agent",
+		[RT_SETOPT, 1, "127.0.0.1", $aport, {version => 2}],
+		[RT_SETOPT|RT_REPLY, 1, T()]);
+	request_match($d, "get with an omitted oid",
+		[RT_GET, 2, "127.0.0.1", $aport,
+			["1.3.6.1.2.1.1.5.0", "1.3.6.1.2.1.1.6.0"]],
+		[RT_GET|RT_REPLY, 2, T()]);
+	$d->stop;
+	$agent->stop;
+	like(slurp("$log"),
+		qr/^time=$TS level=warn msg="not all oids accounted for" peer=127\.0\.0\.1:$aport sid=\d+$/m,
+		'warn carries peer and sid');
 };
 
 done_testing;

@@ -24,6 +24,7 @@ sub spawn {
 		drop_first => $opt{drop_first} // 0,
 		drop_all   => $opt{drop_all} // 0,
 		repeat_oid => $opt{repeat_oid},
+		omit_oid   => $opt{omit_oid},
 		malformed  => $opt{malformed} // '',
 		delay_ms   => $opt{delay_ms} // 0,
 	}, $class;
@@ -274,6 +275,9 @@ sub _handle {
 	} else {
 		die "unsupported pdu $pdu_tag\n";
 	}
+
+	@out = grep { $_->[0] ne $self->{omit_oid} } @out
+		if defined $self->{omit_oid};
 
 	my $vbl_out = join '', map {
 		_tlv(0x30, _tlv(0x06, _enc_oid_content($_->[0])) . _enc_value($_->[1], $_->[2]))
