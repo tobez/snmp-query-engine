@@ -19,5 +19,13 @@ void log_error(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 void log_warn(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 void log_info(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 void log_debug(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+const char *log_u(unsigned v);
+const char *log_i(int v);
+const char *log_hex(unsigned v);
+const char *log_hexbuf(const void *buf, size_t len);
+#define U(x)        log_u(x)
+#define I(x)        log_i(x)
+#define HEX(x)      log_hex(x)
+#define HEXBUF(b,l) log_hexbuf((b), (l))
 
 #endif

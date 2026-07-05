@@ -47,5 +47,18 @@ main(void)
 	is_enc("t\tend",        "\"t\\tend\"");
 	is_enc("r\rend",        "\"r\\rend\"");
 	is_enc("\x01",          "\"\\x01\"");
+	ok(strcmp(log_u(42u), "42") == 0, "U(42)");
+	ok(strcmp(log_i(-7), "-7") == 0, "I(-7)");
+	ok(strcmp(log_hex(0xa2u), "0xa2") == 0, "HEX(0xa2)");
+	{
+		unsigned char b[] = { 0x30, 0x82, 0x0f };
+		ok(strcmp(log_hexbuf(b, sizeof(b)), "30820f") == 0, "HEXBUF");
+	}
+	{
+		/* ring holds >=4 distinct live values in one expression */
+		const char *a = log_u(1), *b = log_u(2), *c = log_u(3), *d = log_u(4);
+		ok(strcmp(a, "1") == 0 && strcmp(b, "2") == 0 &&
+		   strcmp(c, "3") == 0 && strcmp(d, "4") == 0, "ring keeps 4 live");
+	}
 	return tap_done();
 }

@@ -103,3 +103,57 @@ LOG_FUNC(log_error, LL_ERROR)
 LOG_FUNC(log_warn, LL_WARN)
 LOG_FUNC(log_info, LL_INFO)
 LOG_FUNC(log_debug, LL_DEBUG)
+
+#define RING_SLOTS 8
+#define RING_SLOTSZ 32
+static char ring[RING_SLOTS][RING_SLOTSZ];
+static int ring_idx;
+
+static char *
+ring_next(void)
+{
+	char *s = ring[ring_idx];
+	ring_idx = (ring_idx + 1) % RING_SLOTS;
+	return s;
+}
+
+const char *
+log_u(unsigned v)
+{
+	char *s = ring_next();
+	snprintf(s, RING_SLOTSZ, "%u", v);
+	return s;
+}
+
+const char *
+log_i(int v)
+{
+	char *s = ring_next();
+	snprintf(s, RING_SLOTSZ, "%d", v);
+	return s;
+}
+
+const char *
+log_hex(unsigned v)
+{
+	char *s = ring_next();
+	snprintf(s, RING_SLOTSZ, "0x%x", v);
+	return s;
+}
+
+#define HEXBUF_MAX_IN 4096
+static char hexbuf_buf[2 * HEXBUF_MAX_IN + 1];
+
+const char *
+log_hexbuf(const void *buf, size_t len)
+{
+	static const char hexd[] = "0123456789abcdef";
+	const unsigned char *b = buf;
+	size_t i, n = len > HEXBUF_MAX_IN ? HEXBUF_MAX_IN : len;
+	for (i = 0; i < n; i++) {
+		hexbuf_buf[2 * i]     = hexd[b[i] >> 4];
+		hexbuf_buf[2 * i + 1] = hexd[b[i] & 0xf];
+	}
+	hexbuf_buf[2 * n] = '\0';
+	return hexbuf_buf;
+}
