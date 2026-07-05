@@ -53,7 +53,10 @@ client_input(struct socket_info *si)
 		return;
 	}
 
-	msgpack_unpacker_reserve_buffer(&c->unpacker, n);
+	if (!msgpack_unpacker_reserve_buffer(&c->unpacker, n)) {
+		client_gone(si);
+		return;
+	}
 	memcpy(msgpack_unpacker_buffer(&c->unpacker), buf, n);
 	msgpack_unpacker_buffer_consumed(&c->unpacker, n);
 
