@@ -98,10 +98,6 @@ client_input(struct socket_info *si)
         switch (type) {
         case RT_SETOPT:
             ok = handle_setopt_request(si, cid, o);
-            if (ok < 0) {
-                log_warn("problem handling setopt", "cid", U(cid), NULL);
-                msgpack_object_print(stderr, *o);
-            }
             break;
         case RT_GETOPT:
             ok = handle_getopt_request(si, cid, o);
