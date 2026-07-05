@@ -24,6 +24,16 @@ is_enc(const char *val, const char *expected)
 		tap_diag("got: %s want: %s", buf, expected);
 }
 
+static void
+is_fmt(enum log_level lvl, int jmode, const char *stamp, const char *msg,
+    const struct log_field *f, size_t nf, const char *expected)
+{
+	char buf[512];
+	log_format(buf, sizeof(buf), lvl, jmode, stamp, msg, f, nf);
+	if (!ok(strcmp(buf, expected) == 0, "fmt: %s", expected))
+		tap_diag("got: %s", buf);
+}
+
 int
 main(void)
 {
@@ -60,5 +70,28 @@ main(void)
 		ok(strcmp(a, "1") == 0 && strcmp(b, "2") == 0 &&
 		   strcmp(c, "3") == 0 && strcmp(d, "4") == 0, "ring keeps 4 live");
 	}
+	{
+		struct log_field none[1];
+		is_fmt(LL_INFO, 0, "TS", "hello", none, 0,
+		    "time=TS level=info msg=hello\n");
+		is_fmt(LL_WARN, 1, "IGN", "hello", none, 0,
+		    "<4>msg=hello\n");
+		is_fmt(LL_INFO, 0, "TS", "two words", none, 0,
+		    "time=TS level=info msg=\"two words\"\n");
+	}
+	{
+		struct log_field f[] = {
+			{ "peer", "10.0.0.1:161" },
+			{ "sid",  "42" },
+			{ "trace", "decoding pdu" },
+		};
+		is_fmt(LL_WARN, 0, "TS", "bad packet", f, 3,
+		    "time=TS level=warn msg=\"bad packet\" "
+		    "peer=10.0.0.1:161 sid=42 trace=\"decoding pdu\"\n");
+		is_fmt(LL_WARN, 1, "IGN", "bad packet", f, 3,
+		    "<4>msg=\"bad packet\" peer=10.0.0.1:161 sid=42 "
+		    "trace=\"decoding pdu\"\n");
+	}
+	ok(log_wants(LL_ERROR) == 1, "wants error at default level");
 	return tap_done();
 }

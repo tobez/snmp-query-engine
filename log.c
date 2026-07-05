@@ -66,6 +66,43 @@ log_enc(char *out, size_t outsz, const char *val)
 }
 
 int
+log_wants(enum log_level lvl)
+{
+	return lvl <= opt_log_level;
+}
+
+int
+log_format(char *out, size_t outsz, enum log_level lvl, int journal_mode,
+    const char *stamp, const char *msg,
+    const struct log_field *fields, size_t nfields)
+{
+	static const char *name[] = { "error", "warn", "info", "debug" };
+	static const int prio[] = { 3, 4, 6, 7 };
+	char enc[512];
+	size_t p = 0, i;
+
+#define APPEND(...) do { \
+	int _r = snprintf(out + p, p < outsz ? outsz - p : 0, __VA_ARGS__); \
+	if (_r > 0) p += (size_t)_r; \
+} while (0)
+
+	if (journal_mode) {
+		APPEND("<%d>", prio[lvl]);
+	} else {
+		APPEND("time=%s level=%s ", stamp, name[lvl]);
+	}
+	log_enc(enc, sizeof(enc), msg);
+	APPEND("msg=%s", enc);
+	for (i = 0; i < nfields; i++) {
+		log_enc(enc, sizeof(enc), fields[i].v);
+		APPEND(" %s=%s", fields[i].k, enc);
+	}
+	APPEND("\n");
+#undef APPEND
+	return (int)p;
+}
+
+int
 log_line(char *out, size_t outsz, enum log_level lvl, int jmode,
     const char *stamp, const char *msg)
 {
