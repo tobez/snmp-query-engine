@@ -285,7 +285,6 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 				CHECK("value", decode_any(e, &val));
 
 				if (oid_compare(&oid, &usmStatsNotInTimeWindows) == 0) {
-					// fprintf(stderr, "%s: report: our request not in time window, need to resend request\n", log);
 					sid_stop_timing(si);
 					si->retries_left++;  // a hack since resend() decrements this
 					// XXX resend() increments snmp_retries counter(s), which is misleading in this case
@@ -391,7 +390,6 @@ void snmp_send(struct destination *dest, struct ber *packet)
 
 	dest->packets_on_the_wire++;
 	PS.packets_on_the_wire++;
-//fprintf(stderr, "%s: snmp_send->(%d)\n", inet_ntoa(dest->ip), dest->packets_on_the_wire);
 	n = sendto(snmp->fd, packet->buf, packet->len, 0,
 			   (struct sockaddr *)&dest->dest_addr,
 			   sizeof(dest->dest_addr));
@@ -404,8 +402,6 @@ void snmp_send(struct destination *dest, struct ber *packet)
 	}
 	if (n != packet->len)
 		croakx(1, "snmp_send: short send");
-//fprintf(stderr, "UDP datagram of %d bytes sent to %s:%d\n", packet->len, inet_ntoa(dest->dest_addr.sin_addr), ntohs(dest->dest_addr.sin_port));
-//dump_buf(stderr, packet->buf, packet->len);
 
 	dest->octets_sent += packet->len;
 	PS.octets_sent += packet->len;

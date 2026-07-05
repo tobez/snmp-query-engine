@@ -67,11 +67,6 @@ client_input(struct socket_info *si)
 		PS.client_requests++;
 		si->PS.client_requests++;
 
-		//if (!opt_quiet) {
-		//	printf("got client input: ");
-		//	msgpack_object_print(stdout, c->input.data);
-		//	printf("\n");
-		//}
 		o = &c->input.data;
 		if (o->type != MSGPACK_OBJECT_ARRAY) {
 			error_reply(si, RT_ERROR, 0, "Request is not an array");
