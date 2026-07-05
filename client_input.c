@@ -12,6 +12,7 @@ static void
 client_gone(struct socket_info *si)
 {
 	struct client_connection *c = si->udata;
+	int fd = si->fd;
 
 	PS.active_client_connections--;
 
@@ -23,7 +24,7 @@ client_gone(struct socket_info *si)
 		msgpack_unpacker_destroy(&c->unpacker);
 		free(c);
 	}
-	log_info("client disconnect", NULL);
+	log_info("client disconnect", "fd", U((unsigned)fd), NULL);
 }
 
 static void

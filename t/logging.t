@@ -7,6 +7,7 @@ use FindBin;
 use lib "$FindBin::Bin/lib";
 use Test2::V0;
 use File::Temp ();
+use Time::HiRes ();
 use SQE::Test qw(spawn_daemon request_match
 	RT_SETOPT RT_GET RT_INFO RT_REPLY RT_ERROR);
 use SQE::FakeAgent;
@@ -24,12 +25,17 @@ subtest 'default level: info, plain format' => sub {
 	my $log = File::Temp->new;
 	my $d = spawn_daemon(args => [], stderr_file => "$log");
 	$d->request([RT_INFO, 1]);
+	$d->{conn}->close;
+	Time::HiRes::sleep(0.1);
 	$d->stop;
 	my $text = slurp("$log");
 	like($text, qr/^time=$TS level=info msg="event loop started" op=(?:epoll|kqueue)$/m,
 		'startup line at info with timestamp');
-	like($text, qr/^time=$TS level=info msg="incoming connection"/m,
-		'connection notice at info');
+	like($text, qr/^time=$TS level=info msg="incoming connection" peer=127\.0\.0\.1:\d+ fd=(\d+)$/m,
+		'connection notice carries peer:port and fd');
+	my ($fd) = $text =~ /msg="incoming connection" peer=[\d.]+:\d+ fd=(\d+)/;
+	like($text, qr/^time=$TS level=info msg="client disconnect" fd=\Q$fd\E$/m,
+		'disconnect carries the matching fd');
 	unlike($text, qr/level=debug/, 'no debug lines by default');
 };
 
