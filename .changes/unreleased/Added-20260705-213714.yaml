@@ -1,0 +1,3 @@
+kind: Added
+body: Log listening config at startup and the signal that triggered shutdown
+time: 2026-07-05T21:37:14.563136+02:00
