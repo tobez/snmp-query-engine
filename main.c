@@ -98,6 +98,13 @@ main(int argc, char **argv)
 
 	create_snmp_socket();
 	create_listening_socket(bindaddr, port);
+	log_info("listening",
+	    "client_addr", inet_ntoa(bindaddr),
+	    "client_port", U((unsigned)port),
+	    "snmp_rcvbuf", U((unsigned)PS.udp_receive_buffer_size),
+	    "snmp_sndbuf", U((unsigned)PS.udp_send_buffer_size),
+	    "max_packets_on_the_wire", U((unsigned)PS.max_packets_on_the_wire),
+	    "version", SQE_VERSION, NULL);
 	notify("READY=1");
 	event_loop();
 
