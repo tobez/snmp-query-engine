@@ -14,14 +14,11 @@ do_accept(struct socket_info *lsi)
 	struct sockaddr_in addr;
 	int fd;
 	unsigned len;
-	char peer[64];
 
 	len = sizeof(addr);
 	if ( (fd = accept(lsi->fd, (struct sockaddr *)&addr, &len)) < 0)
 		croak(1, "do_accept: accept");
-	snprintf(peer, sizeof(peer), "%s:%d", inet_ntoa(addr.sin_addr),
-	    ntohs(addr.sin_port));
-	log_info("incoming connection", "peer", peer, "fd", U((unsigned)fd), NULL);
+	log_info("incoming connection", "peer", peer_str(&addr), "fd", U((unsigned)fd), NULL);
 	new_client_connection(fd);
 }
 

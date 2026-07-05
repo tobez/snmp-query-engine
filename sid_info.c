@@ -8,16 +8,6 @@
  */
 #include "sqe.h"
 
-static const char *
-dest_peer(struct destination *dest)
-{
-	static char peer[64];
-
-	snprintf(peer, sizeof(peer), "%s:%d", inet_ntoa(dest->dest_addr.sin_addr),
-	    ntohs(dest->dest_addr.sin_port));
-	return peer;
-}
-
 struct sid_info *
 new_sid_info(struct client_requests_info *cri)
 {
@@ -459,7 +449,7 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 		}
 	} else {
 		if (!TAILQ_EMPTY(&si->oids_being_queried)) {
-			log_warn("not all oids accounted for", "peer", dest_peer(cri->dest),
+			log_warn("not all oids accounted for", "peer", peer_str(&cri->dest->dest_addr),
 			    "sid", U(si->sid), NULL);
 			all_oids_done(si, &BER_MISSING);
 		}
@@ -473,7 +463,7 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 	return 1;
 bad_snmp_packet:
 	PS.bad_snmp_responses++;
-	log_warn("bad SNMP packet, ignoring", "peer", dest_peer(cri->dest),
+	log_warn("bad SNMP packet, ignoring", "peer", peer_str(&cri->dest->dest_addr),
 	    "sid", U(si->sid), "trace", trace, NULL);
 	return 0;
 }

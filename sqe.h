@@ -544,6 +544,7 @@ extern unsigned next_sid(void);
 extern unsigned next_sid_from(unsigned cur);
 extern void dump_buf(FILE *f, void *buf, int len);
 extern char *oid2str(struct ber o);
+extern const char *peer_str(struct sockaddr_in *sa);
 extern char *timestring(void);
 
 /* destination.c */
