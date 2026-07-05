@@ -39,6 +39,17 @@ subtest 'default level: info, plain format' => sub {
 	unlike($text, qr/level=debug/, 'no debug lines by default');
 };
 
+subtest 'startup config summary' => sub {
+	my $log = File::Temp->new;
+	my $d = spawn_daemon(args => [], stderr_file => "$log");
+	my $port = $d->port;
+	$d->stop;
+	my $text = slurp("$log");
+	like($text,
+		qr/^time=$TS level=info msg=listening client_addr=127\.0\.0\.1 client_port=\Q$port\E snmp_rcvbuf=\d+ snmp_sndbuf=\d+ max_packets_on_the_wire=1000000 version=\S+$/m,
+		'startup line reports bind addr, port, negotiated buffers, limit, version');
+};
+
 subtest '-q: warnings and errors only' => sub {
 	my $log = File::Temp->new;
 	my $d = spawn_daemon(args => ['-q'], stderr_file => "$log");
@@ -127,6 +138,15 @@ subtest 'sid_info warns carry peer' => sub {
 	like(slurp("$log"),
 		qr/^time=$TS level=warn msg="not all oids accounted for" peer=127\.0\.0\.1:$aport sid=\d+$/m,
 		'warn carries peer and sid');
+};
+
+subtest 'shutdown reason' => sub {
+	my $log = File::Temp->new;
+	my $d = spawn_daemon(args => [], stderr_file => "$log");
+	$d->stop;   # sends SIGTERM (kill 15) and reaps
+	like(slurp("$log"),
+		qr/^time=$TS level=info msg="shutting down" signal=SIGTERM$/m,
+		'shutdown line names the signal that triggered it');
 };
 
 done_testing;
