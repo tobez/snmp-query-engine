@@ -90,11 +90,11 @@ flush_buffers(struct socket_info *si)
 	if ( (n = writev(si->fd, io_buf, i)) < 0) {
 		switch (errno) {
 		case EPIPE:
-			log_warn("EPIPE during write", "op", "flush_buffers", NULL);
+			log_warn("EPIPE during write", "fd", U((unsigned)si->fd), "op", "flush_buffers", NULL);
 			if (si->eof_handler)	si->eof_handler(si);
 			return;
 		case ECONNRESET:
-			log_warn("ECONNRESET during write", "op", "flush_buffers", NULL);
+			log_warn("ECONNRESET during write", "fd", U((unsigned)si->fd), "op", "flush_buffers", NULL);
 			if (si->eof_handler)	si->eof_handler(si);
 			return;
 		}

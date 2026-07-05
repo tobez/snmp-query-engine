@@ -8,6 +8,16 @@
  */
 #include "sqe.h"
 
+static const char *
+dest_peer(struct destination *dest)
+{
+	static char peer[64];
+
+	snprintf(peer, sizeof(peer), "%s:%d", inet_ntoa(dest->dest_addr.sin_addr),
+	    ntohs(dest->dest_addr.sin_port));
+	return peer;
+}
+
 struct sid_info *
 new_sid_info(struct client_requests_info *cri)
 {
@@ -291,7 +301,6 @@ sid_timer(struct sid_info *si)
 	PS.packets_on_the_wire--;
 	if (PS.packets_on_the_wire < 0)
 		PS.packets_on_the_wire = 0;
-// fprintf(stderr, "%s: sid_timer->(%d)\n", inet_ntoa(si->cri->dest->ip), si->cri->dest->packets_on_the_wire);
 	sid_stop_timing(si);
 	if (si->retries_left > 0) {
 		resend_query_with_new_sid(si);
@@ -450,7 +459,8 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 		}
 	} else {
 		if (!TAILQ_EMPTY(&si->oids_being_queried)) {
-			log_warn("not all oids accounted for", "sid", U(si->sid), NULL);
+			log_warn("not all oids accounted for", "peer", dest_peer(cri->dest),
+			    "sid", U(si->sid), NULL);
 			all_oids_done(si, &BER_MISSING);
 		}
 	}
@@ -463,7 +473,8 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 	return 1;
 bad_snmp_packet:
 	PS.bad_snmp_responses++;
-	log_warn("bad SNMP packet, ignoring", "sid", U(si->sid), "trace", trace, NULL);
+	log_warn("bad SNMP packet, ignoring", "peer", dest_peer(cri->dest),
+	    "sid", U(si->sid), "trace", trace, NULL);
 	return 0;
 }
 

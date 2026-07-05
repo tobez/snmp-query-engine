@@ -12,6 +12,7 @@ static void
 client_gone(struct socket_info *si)
 {
 	struct client_connection *c = si->udata;
+	int fd = si->fd;
 
 	PS.active_client_connections--;
 
@@ -23,7 +24,7 @@ client_gone(struct socket_info *si)
 		msgpack_unpacker_destroy(&c->unpacker);
 		free(c);
 	}
-	log_info("client disconnect", NULL);
+	log_info("client disconnect", "fd", U((unsigned)fd), NULL);
 }
 
 static void
@@ -67,11 +68,6 @@ client_input(struct socket_info *si)
 		PS.client_requests++;
 		si->PS.client_requests++;
 
-		//if (!opt_quiet) {
-		//	printf("got client input: ");
-		//	msgpack_object_print(stdout, c->input.data);
-		//	printf("\n");
-		//}
 		o = &c->input.data;
 		if (o->type != MSGPACK_OBJECT_ARRAY) {
 			error_reply(si, RT_ERROR, 0, "Request is not an array");
@@ -98,10 +94,6 @@ client_input(struct socket_info *si)
         switch (type) {
         case RT_SETOPT:
             ok = handle_setopt_request(si, cid, o);
-            if (ok < 0) {
-                log_warn("problem handling setopt", "cid", U(cid), NULL);
-                msgpack_object_print(stderr, *o);
-            }
             break;
         case RT_GETOPT:
             ok = handle_getopt_request(si, cid, o);
