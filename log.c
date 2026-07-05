@@ -86,7 +86,7 @@ log_format(char *out, size_t outsz, enum log_level lvl, int journal_mode,
 	size_t p = 0, i;
 
 #define APPEND(...) do { \
-	int _r = snprintf(out + p, p < outsz ? outsz - p : 0, __VA_ARGS__); \
+	int _r = snprintf(out + (p < outsz ? p : outsz), p < outsz ? outsz - p : 0, __VA_ARGS__); \
 	if (_r > 0) p += (size_t)_r; \
 } while (0)
 
@@ -103,6 +103,8 @@ log_format(char *out, size_t outsz, enum log_level lvl, int journal_mode,
 	}
 	APPEND("\n");
 #undef APPEND
+	if (p >= outsz && outsz >= 2)
+		out[outsz - 2] = '\n';
 	return (int)p;
 }
 

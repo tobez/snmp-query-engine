@@ -85,6 +85,18 @@ main(void)
 		if (!ok(strcmp(buf, expected) == 0, "long field value is not truncated"))
 			tap_diag("got len %zu want len %zu", strlen(buf), strlen(expected));
 	}
+	{
+		char longval[601];
+		char buf[64];
+		struct log_field f[] = { { "field", longval } };
+
+		memset(longval, 'a', sizeof(longval) - 1);
+		longval[sizeof(longval) - 1] = '\0';
+		log_format(buf, sizeof(buf), LL_INFO, 0, "TS", "hello", f, 1);
+		if (!ok(strlen(buf) == sizeof(buf) - 1 && buf[sizeof(buf) - 2] == '\n',
+		    "truncated line keeps trailing newline"))
+			tap_diag("got len %zu buf %s", strlen(buf), buf);
+	}
 	ok(log_wants(LL_ERROR) == 1, "wants error at default level");
 	return tap_done();
 }
