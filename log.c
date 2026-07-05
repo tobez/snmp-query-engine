@@ -71,6 +71,10 @@ log_wants(enum log_level lvl)
 	return lvl <= opt_log_level;
 }
 
+/* Largest legitimate field value is a HEXBUF() dump: HEXBUF_MAX_IN input
+ * bytes hex-encoded to twice that many chars, plus a NUL. */
+#define HEXBUF_MAX_IN 4096
+
 int
 log_format(char *out, size_t outsz, enum log_level lvl, int journal_mode,
     const char *stamp, const char *msg,
@@ -78,7 +82,7 @@ log_format(char *out, size_t outsz, enum log_level lvl, int journal_mode,
 {
 	static const char *name[] = { "error", "warn", "info", "debug" };
 	static const int prio[] = { 3, 4, 6, 7 };
-	char enc[512];
+	static char enc[2 * HEXBUF_MAX_IN + 1];
 	size_t p = 0, i;
 
 #define APPEND(...) do { \
@@ -179,7 +183,6 @@ log_hex(unsigned v)
 	return s;
 }
 
-#define HEXBUF_MAX_IN 4096
 static char hexbuf_buf[2 * HEXBUF_MAX_IN + 1];
 
 const char *

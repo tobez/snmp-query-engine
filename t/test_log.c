@@ -72,6 +72,19 @@ main(void)
 		    "<4>msg=\"bad packet\" peer=10.0.0.1:161 sid=42 "
 		    "trace=\"decoding pdu\"\n");
 	}
+	{
+		char longval[601];
+		char buf[8300], expected[8300];
+		struct log_field f[] = { { "field", longval } };
+
+		memset(longval, 'a', sizeof(longval) - 1);
+		longval[sizeof(longval) - 1] = '\0';
+		snprintf(expected, sizeof(expected),
+		    "time=TS level=info msg=hello field=%s\n", longval);
+		log_format(buf, sizeof(buf), LL_INFO, 0, "TS", "hello", f, 1);
+		if (!ok(strcmp(buf, expected) == 0, "long field value is not truncated"))
+			tap_diag("got len %zu want len %zu", strlen(buf), strlen(expected));
+	}
 	ok(log_wants(LL_ERROR) == 1, "wants error at default level");
 	return tap_done();
 }
