@@ -334,6 +334,16 @@ pending_client_output(void)
 	return 0;
 }
 
+static const char *
+sig_name(int sig)
+{
+	switch (sig) {
+	case SIGTERM: return "SIGTERM";
+	case SIGINT:  return "SIGINT";
+	default:      return U((unsigned)sig);
+	}
+}
+
 static void
 begin_shutdown(void)
 {
@@ -343,7 +353,7 @@ begin_shutdown(void)
 	shutdown_active = 1;
 	gettimeofday(&shutdown_started, NULL);
 	notify("STOPPING=1");
-	log_info("shutting down", NULL);
+	log_info("shutting down", "signal", sig_name(stop_signal), NULL);
 	if (listener_si) {
 		delete_socket_info(listener_si);
 		listener_si = NULL;

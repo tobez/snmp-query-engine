@@ -140,4 +140,13 @@ subtest 'sid_info warns carry peer' => sub {
 		'warn carries peer and sid');
 };
 
+subtest 'shutdown reason' => sub {
+	my $log = File::Temp->new;
+	my $d = spawn_daemon(args => [], stderr_file => "$log");
+	$d->stop;   # sends SIGTERM (kill 15) and reaps
+	like(slurp("$log"),
+		qr/^time=$TS level=info msg="shutting down" signal=SIGTERM$/m,
+		'shutdown line names the signal that triggered it');
+};
+
 done_testing;

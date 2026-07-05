@@ -11,7 +11,7 @@
 static void
 handle_stop_signal(int sig)
 {
-	(void)sig;
+	stop_signal = sig;
 	stop_requested = 1;
 }
 

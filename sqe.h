@@ -186,6 +186,7 @@ struct program_stats
 extern struct timeval prog_start;
 extern struct program_stats PS;
 extern volatile sig_atomic_t stop_requested;
+extern volatile sig_atomic_t stop_signal;
 
 struct ber
 {

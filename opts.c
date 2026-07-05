@@ -10,3 +10,4 @@
 
 enum log_level opt_log_level = LL_INFO;
 volatile sig_atomic_t stop_requested = 0;
+volatile sig_atomic_t stop_signal = 0;
