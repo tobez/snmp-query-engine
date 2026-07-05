@@ -23,7 +23,7 @@ client_gone(struct socket_info *si)
 		msgpack_unpacker_destroy(&c->unpacker);
 		free(c);
 	}
-	log_info("client disconnect");
+	log_info("client disconnect", NULL);
 }
 
 static void
@@ -99,7 +99,7 @@ client_input(struct socket_info *si)
         case RT_SETOPT:
             ok = handle_setopt_request(si, cid, o);
             if (ok < 0) {
-                log_warn("there was a problem handling setopt");
+                log_warn("problem handling setopt", NULL);
                 msgpack_object_print(stderr, *o);
             }
             break;

@@ -102,37 +102,38 @@ log_format(char *out, size_t outsz, enum log_level lvl, int journal_mode,
 	return (int)p;
 }
 
-int
-log_line(char *out, size_t outsz, enum log_level lvl, int jmode,
-    const char *stamp, const char *msg)
+#define LOG_MAXFIELDS 16
+#define LOG_LINESZ 8192
+
+static void
+log_vemit(enum log_level lvl, const char *msg, va_list ap)
 {
-	static const char *name[] = { "error", "warn", "info", "debug" };
-	static const int prio[] = { 3, 4, 6, 7 };
+	struct log_field f[LOG_MAXFIELDS];
+	size_t n = 0;
+	const char *k;
+	char line[LOG_LINESZ];
 
-	if (jmode)
-		return snprintf(out, outsz, "<%d>%s\n", prio[lvl], msg);
-	return snprintf(out, outsz, "%s %s: %s\n", stamp, name[lvl], msg);
-}
-
-void
-log_vemit(enum log_level lvl, const char *fmt, va_list ap)
-{
-	char msg[1024], line[1200];
-
-	if (lvl > opt_log_level)
+	if (!log_wants(lvl))
 		return;
-	vsnprintf(msg, sizeof(msg), fmt, ap);
-	log_line(line, sizeof(line), lvl, journal_mode, timestring(), msg);
+	while ((k = va_arg(ap, const char *)) != NULL) {
+		const char *v = va_arg(ap, const char *);
+		if (n < LOG_MAXFIELDS) {
+			f[n].k = k;
+			f[n].v = v;
+			n++;
+		}
+	}
+	log_format(line, sizeof(line), lvl, journal_mode, timestring(), msg, f, n);
 	fputs(line, stderr);
 }
 
 #define LOG_FUNC(fn, lvl) \
 void \
-fn(const char *fmt, ...) \
+fn(const char *msg, ...) \
 { \
 	va_list ap; \
-	va_start(ap, fmt); \
-	log_vemit(lvl, fmt, ap); \
+	va_start(ap, msg); \
+	log_vemit(lvl, msg, ap); \
 	va_end(ap); \
 }
 

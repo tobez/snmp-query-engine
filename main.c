@@ -77,7 +77,7 @@ main(int argc, char **argv)
 		usage("extraneous arguments");
 
 	log_setup();
-	log_debug("debug logging enabled");
+	log_debug("debug logging enabled", NULL);
 
 	signal(SIGPIPE, SIG_IGN);
 	signal(SIGHUP, SIG_IGN);
@@ -92,7 +92,7 @@ main(int argc, char **argv)
 	notify_init();
 
     if (populate_well_known_oids() < 0) {
-        log_error("unable to populate well-known oids: %s", strerror(errno));
+        log_error("unable to populate well-known oids", "error", strerror(errno), NULL);
         exit(1);
     }
 
@@ -101,7 +101,7 @@ main(int argc, char **argv)
 	notify("READY=1");
 	event_loop();
 
-	log_info("shutdown complete");
+	log_info("shutdown complete", NULL);
 	return 0;
 }
 

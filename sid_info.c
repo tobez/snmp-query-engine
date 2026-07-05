@@ -450,7 +450,7 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 		}
 	} else {
 		if (!TAILQ_EMPTY(&si->oids_being_queried)) {
-			log_warn("SID %u: unexpectedly, not all oids are accounted for!", si->sid);
+			log_warn("not all oids accounted for", "sid", U(si->sid), NULL);
 			all_oids_done(si, &BER_MISSING);
 		}
 	}
@@ -463,7 +463,7 @@ process_sid_info_response(struct sid_info *si, struct ber *e)
 	return 1;
 bad_snmp_packet:
 	PS.bad_snmp_responses++;
-	log_warn("sid %u: bad SNMP packet, ignoring: %s", si->sid, trace);
+	log_warn("bad SNMP packet, ignoring", "sid", U(si->sid), "trace", trace, NULL);
 	return 0;
 }
 

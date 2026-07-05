@@ -41,7 +41,7 @@ v(int use_errno, int exit_code, const char *fmt, va_list ap)
 	if (use_errno >= 0 && (size_t)len < sizeof(msg))
 		snprintf(msg + len, sizeof(msg) - len, "%s%s",
 		    fmt ? ": " : "", strerror(use_errno));
-	log_error("%s", msg);
+	log_error(msg, NULL);
 	exit(exit_code);
 }
 
