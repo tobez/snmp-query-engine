@@ -23,10 +23,7 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 	char *trace;
 	struct destination *dest;
 	struct sid_info *si;
-	char peer[64];
-
-	snprintf(peer, sizeof(peer), "%s:%d", inet_ntoa(from->sin_addr),
-	    ntohs(from->sin_port));
+	const char *peer = peer_str(from);
 
 	PS.octets_received += n;
 	dest = find_destination(&from->sin_addr, ntohs(from->sin_port));

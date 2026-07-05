@@ -205,6 +205,16 @@ oid2str(struct ber o)
 	return oid2str_buf;
 }
 
+static char peer_str_buf[64];
+
+const char *
+peer_str(struct sockaddr_in *sa)
+{
+	snprintf(peer_str_buf, sizeof(peer_str_buf), "%s:%d",
+	    inet_ntoa(sa->sin_addr), ntohs(sa->sin_port));
+	return peer_str_buf;
+}
+
 static char timestring_buf[256];
 
 char *
