@@ -312,7 +312,7 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
                              &v3.authkul_len,
                              &err))
 		{
-            log_warn("authkul calculation error", NULL);
+            log_warn("authkul calculation error", "cid", U(cid), "error", err, NULL);
             return error_reply(si, RT_SETOPT | RT_ERROR, cid, "authpass to kul calculation error");
         }
     }
@@ -330,7 +330,7 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
                              &v3.privkul_len,
                              &err))
 		{
-            log_warn("privkul calculation error", NULL);
+            log_warn("privkul calculation error", "cid", U(cid), "error", err, NULL);
             return error_reply(si, RT_SETOPT | RT_ERROR, cid, "privpass to kul calculation error");
         }
 
@@ -345,7 +345,7 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
                         &v3.x_privkul_len,
                         &err))
 		{
-            log_warn("privkul calculation error", NULL);
+            log_warn("privkul calculation error", "cid", U(cid), "error", err, NULL);
             return error_reply(si, RT_SETOPT | RT_ERROR, cid, "expand kul calculation error");
         }
     }
@@ -364,7 +364,7 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
                         &v3.x_privkul_len,
                         &err))
 		{
-            log_warn("x_privkul calculation error", NULL);
+            log_warn("x_privkul calculation error", "cid", U(cid), "error", err, NULL);
             return error_reply(si, RT_SETOPT | RT_ERROR, cid, "x_privkul calculation error");
         }
 	}
