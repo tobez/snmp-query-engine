@@ -20,6 +20,51 @@ log_setup(void)
 	}
 }
 
+static int
+needs_quote(const char *s)
+{
+	if (!*s)
+		return 1;
+	for (const unsigned char *p = (const unsigned char *)s; *p; p++)
+		if (*p == ' ' || *p == '=' || *p == '"' || *p == '\\' || *p < 0x20)
+			return 1;
+	return 0;
+}
+
+size_t
+log_enc(char *out, size_t outsz, const char *val)
+{
+	size_t n = 0;
+	if (outsz == 0)
+		return 0;
+	if (!needs_quote(val)) {
+		while (val[n] && n + 1 < outsz) {
+			out[n] = val[n];
+			n++;
+		}
+		out[n] = '\0';
+		return n;
+	}
+	/* quoted form */
+#define PUT(c) do { if (n + 1 < outsz) out[n++] = (c); } while (0)
+	PUT('"');
+	for (const unsigned char *p = (const unsigned char *)val; *p; p++) {
+		unsigned char c = *p;
+		if (c == '"' || c == '\\') { PUT('\\'); PUT(c); }
+		else if (c == '\n') { PUT('\\'); PUT('n'); }
+		else if (c == '\t') { PUT('\\'); PUT('t'); }
+		else if (c == '\r') { PUT('\\'); PUT('r'); }
+		else if (c < 0x20) {
+			static const char hexd[] = "0123456789abcdef";
+			PUT('\\'); PUT('x'); PUT(hexd[c >> 4]); PUT(hexd[c & 0xf]);
+		} else PUT(c);
+	}
+	PUT('"');
+#undef PUT
+	out[n < outsz ? n : outsz - 1] = '\0';
+	return n;
+}
+
 int
 log_line(char *out, size_t outsz, enum log_level lvl, int jmode,
     const char *stamp, const char *msg)

@@ -11,6 +11,7 @@ enum log_level { LL_ERROR, LL_WARN, LL_INFO, LL_DEBUG };
 extern enum log_level opt_log_level;
 
 void log_setup(void);
+size_t log_enc(char *out, size_t outsz, const char *val);
 int log_line(char *out, size_t outsz, enum log_level lvl, int journal_mode,
     const char *stamp, const char *msg);
 void log_vemit(enum log_level lvl, const char *fmt, va_list ap);
