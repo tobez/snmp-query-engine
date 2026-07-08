@@ -4,6 +4,8 @@
 
 static int journal_mode = 0;
 
+static const char hexd[] = "0123456789abcdef";
+
 void
 log_setup(void)
 {
@@ -20,17 +22,16 @@ log_setup(void)
 	}
 }
 
-/* Decode one strict UTF-8 sequence at p (RFC 3629: no overlongs, no
- * surrogates, max U+10FFFF).  Returns the sequence length and stores the
- * code point in *rune, or returns 0 if p does not start a valid sequence. */
+/* Return the length of the strict UTF-8 sequence at p (RFC 3629: no
+ * overlongs, no surrogates, max U+10FFFF) when it encodes a code point that
+ * may pass through unescaped (>= U+00A0, past the C1 controls), else 0. */
 static int
-utf8_decode(const unsigned char *p, unsigned *rune)
+utf8_passthrough(const unsigned char *p)
 {
 	unsigned r;
 	int len, i;
 
-	if (p[0] < 0x80)         { *rune = p[0]; return 1; }
-	if ((p[0] & 0xe0) == 0xc0) { len = 2; r = p[0] & 0x1f; }
+	if ((p[0] & 0xe0) == 0xc0)      { len = 2; r = p[0] & 0x1f; }
 	else if ((p[0] & 0xf0) == 0xe0) { len = 3; r = p[0] & 0x0f; }
 	else if ((p[0] & 0xf8) == 0xf0) { len = 4; r = p[0] & 0x07; }
 	else
@@ -40,14 +41,13 @@ utf8_decode(const unsigned char *p, unsigned *rune)
 			return 0;
 		r = (r << 6) | (p[i] & 0x3f);
 	}
-	if (len == 2 && r < 0x80)     return 0;
-	if (len == 3 && r < 0x800)    return 0;
-	if (len == 4 && r < 0x10000)  return 0;
+	if (len == 2 && r < 0xa0)     return 0;   /* overlong or C1 control */
+	if (len == 3 && r < 0x800)    return 0;   /* overlong */
+	if (len == 4 && r < 0x10000)  return 0;   /* overlong */
 	if (r >= 0xd800 && r <= 0xdfff)
 		return 0;
 	if (r > 0x10ffff)
 		return 0;
-	*rune = r;
 	return len;
 }
 
@@ -55,7 +55,6 @@ static int
 needs_quote(const char *s)
 {
 	const unsigned char *p = (const unsigned char *)s;
-	unsigned rune;
 	int len;
 
 	if (!*p)
@@ -68,8 +67,8 @@ needs_quote(const char *s)
 			p++;
 			continue;
 		}
-		len = utf8_decode(p, &rune);
-		if (!len || rune <= 0x9f)   /* invalid UTF-8 or a C1 control */
+		len = utf8_passthrough(p);
+		if (!len)
 			return 1;
 		p += len;
 	}
@@ -91,13 +90,11 @@ log_enc(char *out, size_t outsz, const char *val)
 		return n;
 	}
 	/* quoted form */
-	static const char hexd[] = "0123456789abcdef";
 #define PUT(c) do { if (n + 1 < outsz) out[n++] = (c); } while (0)
 #define PUTX(c) do { PUT('\\'); PUT('x'); PUT(hexd[(c) >> 4]); PUT(hexd[(c) & 0xf]); } while (0)
 	PUT('"');
 	for (const unsigned char *p = (const unsigned char *)val; *p; ) {
 		unsigned char c = *p;
-		unsigned rune;
 		int len;
 
 		if (c == '"' || c == '\\') { PUT('\\'); PUT(c); p++; }
@@ -106,13 +103,11 @@ log_enc(char *out, size_t outsz, const char *val)
 		else if (c == '\r') { PUT('\\'); PUT('r'); p++; }
 		else if (c < 0x20 || c == 0x7f) { PUTX(c); p++; }
 		else if (c < 0x80) { PUT(c); p++; }
-		else if ((len = utf8_decode(p, &rune)) == 0) {
-			/* invalid UTF-8: escape this byte, retry at the next */
+		else if ((len = utf8_passthrough(p)) == 0) {
+			/* invalid UTF-8 or a C1 control: escape this
+			 * byte, retry at the next */
 			PUTX(c);
 			p++;
-		} else if (rune <= 0x9f) {
-			/* C1 control, validly encoded */
-			while (len--) { PUTX(*p); p++; }
 		} else {
 			while (len--) { PUT(*p); p++; }
 		}
@@ -249,7 +244,6 @@ static char hexbuf_buf[2 * HEXBUF_MAX_IN + 1];
 const char *
 log_hexbuf(const void *buf, size_t len)
 {
-	static const char hexd[] = "0123456789abcdef";
 	const unsigned char *b = buf;
 	size_t i, n = len > HEXBUF_MAX_IN ? HEXBUF_MAX_IN : len;
 	for (i = 0; i < n; i++) {
