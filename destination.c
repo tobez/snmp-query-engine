@@ -58,6 +58,51 @@ struct destination *find_destination(struct in_addr *ip, unsigned port)
 	return *dest_slot;
 }
 
+int
+destination_log_allow(struct destination *dest, enum log_throttle_cat cat)
+{
+	struct timeval now;
+
+	if (!dest->throttle) {
+		dest->throttle = calloc(LTC_PERDEST_COUNT, sizeof(*dest->throttle));
+		if (!dest->throttle)
+			return 1;	/* OOM: prefer logging to silence */
+	}
+	gettimeofday(&now, NULL);
+	return log_throttle_allow(&dest->throttle[cat], &now);
+}
+
+void
+flush_destination_log_rollups(const struct timeval *now)
+{
+	struct destination **dest_slot;
+	void **ip_slot;
+	Word_t ip, port;
+	enum log_throttle_cat cat;
+
+	ip = 0;
+	JLF(ip_slot, by_ip, ip);
+	while (ip_slot) {
+		port = 0;
+		JLF(dest_slot, *ip_slot, port);
+		while (dest_slot) {
+			struct destination *d = *dest_slot;
+			if (d->throttle) {
+				struct log_field ctx[1];
+				ctx[0].k = "peer";
+				ctx[0].v = peer_str(&d->dest_addr);
+				for (cat = 0; cat < LTC_PERDEST_COUNT; cat++) {
+					unsigned n = log_throttle_flush_due(&d->throttle[cat], now);
+					if (n)
+						log_throttle_rollup(cat, n, ctx, 1);
+				}
+			}
+			JLN(dest_slot, *ip_slot, port);
+		}
+		JLN(ip_slot, by_ip, ip);
+	}
+}
+
 void
 flush_ignored_destination(struct destination *dest)
 {

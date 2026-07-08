@@ -43,5 +43,43 @@ main(void)
 
 	is_int(log_throttle_flush_due(&t, &now), 0, "flush on idle counter returns 0");
 
+	/* --- category table is fully populated --- */
+	{
+		int cat, all_ok = 1;
+		for (cat = 0; cat < LTC_COUNT; cat++)
+			if (log_throttle_cat_message(cat) == NULL)
+				all_ok = 0;
+		ok(all_ok, "every category has a message");
+	}
+
+	/* --- standalone adapter: first allowed, repeats suppressed in-window --- */
+	{
+		int a = log_throttle_allow_standalone(LTC_UNKNOWN_DESTINATION);
+		int b = log_throttle_allow_standalone(LTC_UNKNOWN_DESTINATION);
+		int c = log_throttle_allow_standalone(LTC_UNKNOWN_DESTINATION);
+		ok(a == 1 && b == 0 && c == 0, "standalone: first allowed, repeats suppressed");
+	}
+
+	/* --- per-destination adapter: lazy alloc + in-window suppression --- */
+	{
+		struct destination d;
+		unsigned n;
+		struct timeval future;
+
+		memset(&d, 0, sizeof(d));
+		ok(d.throttle == NULL, "destination starts with no throttle array");
+		ok(destination_log_allow(&d, LTC_BAD_PACKET) == 1, "per-dest: first allowed");
+		ok(d.throttle != NULL, "throttle array lazily allocated on first use");
+		ok(destination_log_allow(&d, LTC_BAD_PACKET) == 0, "per-dest: repeat suppressed");
+		ok(destination_log_allow(&d, LTC_BAD_PACKET) == 0, "per-dest: repeat suppressed");
+		is_int(d.throttle[LTC_BAD_PACKET].suppressed, 2, "per-dest: two suppressed");
+
+		future = d.throttle[LTC_BAD_PACKET].window_start;
+		future.tv_sec += LOG_THROTTLE_WINDOW_SEC + 1;
+		n = log_throttle_flush_due(&d.throttle[LTC_BAD_PACKET], &future);
+		is_int(n, 2, "per-dest: flush after window returns suppressed count");
+		free(d.throttle);
+	}
+
 	return tap_done();
 }
