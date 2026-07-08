@@ -1,0 +1,3 @@
+kind: Fixed
+body: 'daemon: survive transient accept() failures instead of exiting'
+time: 2026-07-08T14:27:01.991901+02:00
