@@ -51,7 +51,7 @@ like(slurp("$log"), qr/msg="cannot accept client connection" error=/,
 	'warning carries errno detail');
 
 # ...and survive: still running, still serving the existing connection.
-ok(kill(0, $d->pid), 'daemon still running under fd exhaustion');
+is($d->wait_exit(0.2), undef, 'daemon still running under fd exhaustion');
 $r = $d->request([RT_INFO, 2]);
 is($r->[0], RT_INFO|RT_REPLY, 'existing connection still served');
 
