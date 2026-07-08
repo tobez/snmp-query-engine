@@ -66,7 +66,7 @@ sub spawn_daemon {
 		# assert on log output.
 		my $err = $opt{stderr_file} // File::Spec->devnull;
 		open STDERR, '>>', $err or exit 1;
-		if (my $n = $opt{rlimit_nofile}) {
+		if (defined(my $n = $opt{rlimit_nofile})) {
 			$n =~ /^[0-9]+$/ or die "rlimit_nofile must be a non-negative integer\n";
 			exec '/bin/sh', '-c', qq{ulimit -n $n; exec "\$@"},
 				'sh', $engine, "-p$port", @args;
