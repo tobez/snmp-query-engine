@@ -200,3 +200,107 @@ log_hexbuf(const void *buf, size_t len)
 	hexbuf_buf[2 * n] = '\0';
 	return hexbuf_buf;
 }
+
+int
+log_throttle_allow(struct log_throttle *t, const struct timeval *now)
+{
+	if (t->window_start.tv_sec == 0) {
+		t->window_start = *now;
+		t->suppressed = 0;
+		return 1;
+	}
+	t->suppressed++;
+	return 0;
+}
+
+unsigned
+log_throttle_flush_due(struct log_throttle *t, const struct timeval *now)
+{
+	unsigned n;
+
+	if (t->window_start.tv_sec == 0)
+		return 0;   /* idle */
+	if (now->tv_sec - t->window_start.tv_sec < LOG_THROTTLE_WINDOW_SEC)
+		return 0;   /* window still open */
+	n = t->suppressed;
+	t->window_start.tv_sec = 0;
+	t->suppressed = 0;
+	return n;
+}
+
+static const struct {
+	const char *msg;
+	enum log_level lvl;
+} log_throttle_cat_tab[LTC_COUNT] = {
+	[LTC_LATE_REPLY]              = { "late reply, ignoring packet", LL_INFO },
+	[LTC_NO_V3_INFO]              = { "no v3 info for reply, ignoring packet", LL_WARN },
+	[LTC_ENGINE_ID_MISMATCH]      = { "engine-id mismatch, ignoring packet", LL_WARN },
+	[LTC_USERNAME_MISMATCH]       = { "username mismatch, ignoring packet", LL_WARN },
+	[LTC_AUTH_FAILED]             = { "authentication failed", LL_WARN },
+	[LTC_CANNOT_DECRYPT]          = { "cannot decrypt, ignoring packet", LL_WARN },
+	[LTC_AUTHCTX_ENGINE_MISMATCH] = { "authoritative/context engine-id mismatch, ignoring packet", LL_WARN },
+	[LTC_UNSUPPORTED_PDU]         = { "unsupported PDU type, ignoring packet", LL_WARN },
+	[LTC_MSGID_MISMATCH]          = { "message-id does not match request-id", LL_WARN },
+	[LTC_ERROR_STATUS]            = { "non-zero error-status", LL_WARN },
+	[LTC_ERROR_INDEX]             = { "non-zero error-index", LL_WARN },
+	[LTC_REPORT_BAD_DIGEST]       = { "report: bad digest, ignoring packet", LL_WARN },
+	[LTC_REPORT]                  = { "report", LL_WARN },
+	[LTC_BAD_PACKET]              = { "bad SNMP packet, ignoring", LL_WARN },
+	[LTC_OIDS_UNACCOUNTED]        = { "not all oids accounted for", LL_WARN },
+	[LTC_UNKNOWN_DESTINATION]     = { "destination not known, ignoring packet", LL_WARN },
+	[LTC_SEND_BUFFER_OVERFLOW]    = { "udp send buffer overflow, dropping datagram", LL_WARN },
+	[LTC_INCOMING_CONNECTION]     = { "incoming connection", LL_INFO },
+	[LTC_CLIENT_DISCONNECT]       = { "client disconnect", LL_INFO },
+};
+
+const char *
+log_throttle_cat_message(int cat)
+{
+	if (cat < 0 || cat >= LTC_COUNT)
+		return NULL;
+	return log_throttle_cat_tab[cat].msg;
+}
+
+void
+log_throttle_rollup(enum log_throttle_cat cat, unsigned suppressed,
+    const struct log_field *ctx, size_t nctx)
+{
+	struct log_field f[LOG_MAXFIELDS];
+	size_t n = 0, i;
+	enum log_level lvl = log_throttle_cat_tab[cat].lvl;
+	char line[LOG_LINESZ];
+
+	if (!log_wants(lvl))
+		return;
+	for (i = 0; i < nctx && n < LOG_MAXFIELDS - 2; i++)
+		f[n++] = ctx[i];
+	f[n].k = "repeated";   f[n].v = log_u(suppressed);                n++;
+	f[n].k = "interval_s"; f[n].v = log_u(LOG_THROTTLE_WINDOW_SEC);   n++;
+	log_format(line, sizeof(line), lvl, journal_mode, timestring(),
+	    log_throttle_cat_tab[cat].msg, f, n);
+	fputs(line, stderr);
+}
+
+static struct log_throttle standalone_throttle[LTC_COUNT - LTC_PERDEST_COUNT];
+
+int
+log_throttle_allow_standalone(enum log_throttle_cat cat)
+{
+	struct timeval now;
+
+	gettimeofday(&now, NULL);
+	return log_throttle_allow(&standalone_throttle[cat - LTC_PERDEST_COUNT], &now);
+}
+
+void
+log_throttle_flush_standalone(const struct timeval *now)
+{
+	enum log_throttle_cat cat;
+
+	for (cat = LTC_PERDEST_COUNT; cat < LTC_COUNT; cat++) {
+		unsigned n = log_throttle_flush_due(
+		    &standalone_throttle[cat - LTC_PERDEST_COUNT], now);
+		if (n)
+			log_throttle_rollup(cat, n, NULL, 0);
+	}
+}

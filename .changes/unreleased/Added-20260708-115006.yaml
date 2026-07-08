@@ -1,0 +1,3 @@
+kind: Added
+body: Coalesce repeated per-agent and per-connection log messages to prevent log floods.
+time: 2026-07-08T11:50:06.078792+02:00

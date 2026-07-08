@@ -149,4 +149,45 @@ subtest 'shutdown reason' => sub {
 		'shutdown line names the signal that triggered it');
 };
 
+subtest 'per-destination anomaly logs coalesce' => sub {
+	my $log = File::Temp->new;
+	my $d = spawn_daemon(args => [], stderr_file => "$log");
+	my $agent = SQE::FakeAgent->spawn(
+		tree      => [['1.3.6.1.2.1.1.5.0', str => 'x']],
+		malformed => 'garbage',
+	);
+	my $port = $agent->port;
+	# fast timeout + retries so several garbage replies arrive within one window
+	$d->request([RT_SETOPT, 1, "127.0.0.1", $port, {timeout => 50, retries => 2}]);
+	for my $id (2 .. 4) {
+		$d->request([RT_GET, $id, "127.0.0.1", $port, ["1.3.6.1.2.1.1.5.0"]]);
+	}
+	$d->stop;
+	my $text = slurp("$log");
+	my @immediate = $text =~ /msg="bad SNMP packet, ignoring"[^\n]*trace=/g;
+	is(scalar @immediate, 1,
+		'repeated bad-packet anomalies from one agent coalesce to a single immediate line');
+};
+
+subtest 'client churn notices coalesce' => sub {
+	my $log = File::Temp->new;
+	my $d = spawn_daemon(args => [], stderr_file => "$log");   # opens connection #1
+	my $port = $d->port;
+	my @extra;
+	for (1 .. 3) {
+		my $c = IO::Socket::INET->new(PeerAddr => "127.0.0.1:$port", Proto => "tcp")
+			or die "connect: $!";
+		push @extra, $c;
+	}
+	Time::HiRes::sleep(0.1);
+	$_->close for @extra;
+	Time::HiRes::sleep(0.1);
+	$d->stop;
+	my $text = slurp("$log");
+	my @conn = $text =~ /msg="incoming connection" peer=\S+ fd=\d+/g;
+	my @disc = $text =~ /msg="client disconnect" fd=\d+/g;
+	is(scalar @conn, 1, 'repeated incoming connections coalesce to one immediate line');
+	is(scalar @disc, 1, 'repeated client disconnects coalesce to one immediate line');
+};
+
 done_testing;

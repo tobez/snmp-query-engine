@@ -140,6 +140,8 @@ trigger_timers(void)
 	if (last_unclog.tv_sec < now.tv_sec) {
 		last_unclog = now;
 		unclog_all_destinations();
+		flush_destination_log_rollups(&now);
+		log_throttle_flush_standalone(&now);
 	}
 
 again:

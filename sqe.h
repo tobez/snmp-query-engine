@@ -303,6 +303,10 @@ struct destination
 	/* destination-specific stats */
 	int64_t octets_received;
 	int64_t octets_sent;
+
+	/* lazily-allocated per-destination log-throttle counters,
+	   indexed by the per-destination log_throttle_cat values */
+	struct log_throttle *throttle;
 };
 
 #define V3O_ENGINE_ID_MAXLEN 64
@@ -558,6 +562,8 @@ extern void destination_stop_timing(struct destination *dest);
 extern void destination_timer(struct destination *dest);
 extern void dump_all_destinations(msgpack_packer *pk);
 extern void unclog_all_destinations(void);
+extern int destination_log_allow(struct destination *dest, enum log_throttle_cat cat);
+extern void flush_destination_log_rollups(const struct timeval *now);
 
 /* client_requests_info.c */
 extern struct client_requests_info *get_client_requests_info(struct in_addr *ip, unsigned port, struct socket_info *si);

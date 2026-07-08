@@ -18,7 +18,8 @@ do_accept(struct socket_info *lsi)
 	len = sizeof(addr);
 	if ( (fd = accept(lsi->fd, (struct sockaddr *)&addr, &len)) < 0)
 		croak(1, "do_accept: accept");
-	log_info("incoming connection", "peer", peer_str(&addr), "fd", U((unsigned)fd), NULL);
+	if (log_throttle_allow_standalone(LTC_INCOMING_CONNECTION))
+		log_info("incoming connection", "peer", peer_str(&addr), "fd", U((unsigned)fd), NULL);
 	new_client_connection(fd);
 }
 
