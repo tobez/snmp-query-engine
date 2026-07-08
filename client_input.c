@@ -24,7 +24,8 @@ client_gone(struct socket_info *si)
 		msgpack_unpacker_destroy(&c->unpacker);
 		free(c);
 	}
-	log_info("client disconnect", "fd", U((unsigned)fd), NULL);
+	if (log_throttle_allow_standalone(LTC_CLIENT_DISCONNECT))
+		log_info("client disconnect", "fd", U((unsigned)fd), NULL);
 }
 
 static void
