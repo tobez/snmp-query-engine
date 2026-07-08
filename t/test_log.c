@@ -8,7 +8,7 @@ is_enc(const char *val, const char *expected)
 {
 	char buf[256];
 	log_enc(buf, sizeof(buf), val);
-	if (!ok(strcmp(buf, expected) == 0, "enc(%s)", val))
+	if (!ok(strcmp(buf, expected) == 0, "enc -> %s", expected))
 		tap_diag("got: %s want: %s", buf, expected);
 }
 
@@ -37,6 +37,26 @@ main(void)
 	is_enc("t\tend",        "\"t\\tend\"");
 	is_enc("r\rend",        "\"r\\rend\"");
 	is_enc("\x01",          "\"\\x01\"");
+	/* DEL and C1 controls must not reach the output raw */
+	is_enc("\x7f",          "\"\\x7f\"");
+	is_enc("a\x7f" "b",     "\"a\\x7fb\"");
+	is_enc("\x9b",          "\"\\x9b\"");            /* bare continuation byte */
+	is_enc("\xc2\x9b",      "\"\\xc2\\x9b\"");       /* U+009B CSI */
+	is_enc("\xc2\x80",      "\"\\xc2\\x80\"");       /* U+0080 */
+	/* valid printable UTF-8 passes through, bare or quoted */
+	is_enc("bl\xc3\xa5" "b\xc3\xa6r", "bl\xc3\xa5" "b\xc3\xa6r");
+	is_enc("s\xc3\xb8 blue", "\"s\xc3\xb8 blue\"");
+	is_enc("\xc2\xa0",      "\xc2\xa0");             /* U+00A0, first past C1 */
+	is_enc("\xe2\x82\xac",  "\xe2\x82\xac");         /* U+20AC */
+	is_enc("\xf0\x9f\x98\x80", "\xf0\x9f\x98\x80");  /* U+1F600 */
+	/* malformed UTF-8 is escaped byte by byte */
+	is_enc("\xc0\x9b",      "\"\\xc0\\x9b\"");       /* overlong 2-byte */
+	is_enc("\xe0\x80\xa0",  "\"\\xe0\\x80\\xa0\"");  /* overlong 3-byte */
+	is_enc("\xed\xa0\x80",  "\"\\xed\\xa0\\x80\"");  /* surrogate U+D800 */
+	is_enc("\xf4\x90\x80\x80", "\"\\xf4\\x90\\x80\\x80\""); /* above U+10FFFF */
+	is_enc("\xc3",          "\"\\xc3\"");            /* truncated at end */
+	is_enc("\xe2\x80",      "\"\\xe2\\x80\"");       /* truncated at end */
+	is_enc("\xe2" "AB",     "\"\\xe2AB\"");          /* resync after bad lead */
 	ok(strcmp(log_u(42u), "42") == 0, "U(42)");
 	ok(strcmp(log_i(-7), "-7") == 0, "I(-7)");
 	ok(strcmp(log_hex(0xa2u), "0xa2") == 0, "HEX(0xa2)");

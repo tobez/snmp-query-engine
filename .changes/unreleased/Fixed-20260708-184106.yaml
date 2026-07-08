@@ -1,0 +1,3 @@
+kind: Fixed
+body: 'logging: escape DEL, C1 controls, and invalid UTF-8 in field values'
+time: 2026-07-08T18:41:06.151703+02:00
