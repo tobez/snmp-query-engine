@@ -251,6 +251,7 @@ static const struct {
 	[LTC_SEND_BUFFER_OVERFLOW]    = { "udp send buffer overflow, dropping datagram", LL_WARN },
 	[LTC_INCOMING_CONNECTION]     = { "incoming connection", LL_INFO },
 	[LTC_CLIENT_DISCONNECT]       = { "client disconnect", LL_INFO },
+	[LTC_ACCEPT_FAILURE]          = { "cannot accept client connection", LL_WARN },
 };
 
 const char *

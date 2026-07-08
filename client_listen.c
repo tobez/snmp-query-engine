@@ -16,8 +16,31 @@ do_accept(struct socket_info *lsi)
 	unsigned len;
 
 	len = sizeof(addr);
-	if ( (fd = accept(lsi->fd, (struct sockaddr *)&addr, &len)) < 0)
-		croak(1, "do_accept: accept");
+	if ( (fd = accept(lsi->fd, (struct sockaddr *)&addr, &len)) < 0) {
+		switch (errno) {
+		case EINTR:
+		case ECONNABORTED:
+		case EAGAIN:
+#if EWOULDBLOCK != EAGAIN
+		case EWOULDBLOCK:
+#endif
+#ifdef EPROTO
+		case EPROTO:
+#endif
+		case EMFILE:
+		case ENFILE:
+		case ENOBUFS:
+		case ENOMEM:
+			/* transient: the daemon must outlive fd exhaustion
+			 * and clients aborting mid-handshake */
+			if (log_throttle_allow_standalone(LTC_ACCEPT_FAILURE))
+				log_warn("cannot accept client connection",
+					"error", strerror(errno), NULL);
+			return;
+		default:
+			croak(1, "do_accept: accept");
+		}
+	}
 	if (log_throttle_allow_standalone(LTC_INCOMING_CONNECTION))
 		log_info("incoming connection", "peer", peer_str(&addr), "fd", U((unsigned)fd), NULL);
 	new_client_connection(fd);
