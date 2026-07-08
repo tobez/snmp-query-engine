@@ -672,6 +672,18 @@ non\-increasing
 this oid is less than or equal than the previous oid in the table; there
 will be no further attempts to continue iterating the table
 .PP
+In practice, the \(lqno\-such\-object\(rq and \(lqno\-such\-instance\(rq
+errors never occur in \f[B]GETTABLE\f[R] replies, because the underlying
+SNMP get\-next and get\-bulk queries do not produce them.
+.PP
+A successful reply with an empty array means that no oids exist under
+the requested oid.
+This happens both when the table is empty and when the destination does
+not implement the table at all: SNMP get\-next and get\-bulk queries
+cannot distinguish between these two cases, so, unlike \f[B]GET\f[R], an
+attempt to walk a non\-existent table is not reported as a
+\(lqno\-such\-object\(rq error.
+.PP
 The requested table oid is never present in the reply itself if there
 were no errors.
 .PP
@@ -693,7 +705,9 @@ Example request 2:
 [GETTABLE, $id, \(dq127.0.0.1\(dq, 161, \(dq1.3.6.1.2.1.1.5.0\(dq]
 .EE
 .PP
-Example reply 2 (\(lqempty table\(rq):
+Example reply 2 (\(lqno oids under the requested oid\(rq \- here because
+a leaf oid was requested; an empty or non\-existent table produces the
+same reply):
 .IP
 .EX
 [GETTABLE|0x10, $id, []]
