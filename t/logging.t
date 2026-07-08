@@ -149,4 +149,24 @@ subtest 'shutdown reason' => sub {
 		'shutdown line names the signal that triggered it');
 };
 
+subtest 'per-destination anomaly logs coalesce' => sub {
+	my $log = File::Temp->new;
+	my $d = spawn_daemon(args => [], stderr_file => "$log");
+	my $agent = SQE::FakeAgent->spawn(
+		tree      => [['1.3.6.1.2.1.1.5.0', str => 'x']],
+		malformed => 'garbage',
+	);
+	my $port = $agent->port;
+	# fast timeout + retries so several garbage replies arrive within one window
+	$d->request([RT_SETOPT, 1, "127.0.0.1", $port, {timeout => 50, retries => 2}]);
+	for my $id (2 .. 4) {
+		$d->request([RT_GET, $id, "127.0.0.1", $port, ["1.3.6.1.2.1.1.5.0"]]);
+	}
+	$d->stop;
+	my $text = slurp("$log");
+	my @immediate = $text =~ /msg="bad SNMP packet, ignoring"[^\n]*trace=/g;
+	is(scalar @immediate, 1,
+		'repeated bad-packet anomalies from one agent coalesce to a single immediate line');
+};
+
 done_testing;
