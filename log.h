@@ -5,6 +5,7 @@
 
 #include <stdarg.h>
 #include <stddef.h>
+#include <sys/time.h>
 
 enum log_level { LL_ERROR, LL_WARN, LL_INFO, LL_DEBUG };
 
@@ -13,6 +14,16 @@ extern enum log_level opt_log_level;
 void log_setup(void);
 size_t log_enc(char *out, size_t outsz, const char *val);
 int log_wants(enum log_level lvl);
+
+#define LOG_THROTTLE_WINDOW_SEC 10
+
+struct log_throttle {
+	unsigned       suppressed;     /* events coalesced since the window opened */
+	struct timeval window_start;   /* tv_sec == 0 -> idle, no open window */
+};
+
+int log_throttle_allow(struct log_throttle *t, const struct timeval *now);
+unsigned log_throttle_flush_due(struct log_throttle *t, const struct timeval *now);
 
 struct log_field { const char *k, *v; };
 int log_format(char *out, size_t outsz, enum log_level lvl, int journal_mode,

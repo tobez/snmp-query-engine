@@ -200,3 +200,30 @@ log_hexbuf(const void *buf, size_t len)
 	hexbuf_buf[2 * n] = '\0';
 	return hexbuf_buf;
 }
+
+int
+log_throttle_allow(struct log_throttle *t, const struct timeval *now)
+{
+	if (t->window_start.tv_sec == 0) {
+		t->window_start = *now;
+		t->suppressed = 0;
+		return 1;
+	}
+	t->suppressed++;
+	return 0;
+}
+
+unsigned
+log_throttle_flush_due(struct log_throttle *t, const struct timeval *now)
+{
+	unsigned n;
+
+	if (t->window_start.tv_sec == 0)
+		return 0;   /* idle */
+	if (now->tv_sec - t->window_start.tv_sec < LOG_THROTTLE_WINDOW_SEC)
+		return 0;   /* window still open */
+	n = t->suppressed;
+	t->window_start.tv_sec = 0;
+	t->suppressed = 0;
+	return n;
+}
