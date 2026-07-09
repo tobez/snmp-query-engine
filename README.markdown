@@ -21,7 +21,7 @@ install`, and running under systemd (Linux) or rc.d (FreeBSD).
     make test
 
 runs the C unit tests and the Perl integration tests via `prove`.
-The Perl tests need `Data::MessagePack` and `Test2::Suite` from CPAN.
+The Perl tests need `Data::MessagePack`, `Test2::Suite`, and `Crypt::Rijndael` from CPAN.
 No local snmpd is required. To additionally run sanity tests against a
 real SNMP agent, set `SQE_REAL_SNMPD=1` (see `t/real-snmpd.t` for the
 `SQE_SNMPD_*` variables that pick the target agent and credentials).

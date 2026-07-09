@@ -1,5 +1,5 @@
 package SQE::FakeAgent;
-# ABOUTME: Scriptable fake SNMP v1/v2c agent for integration tests: serves a
+# ABOUTME: Scriptable fake SNMP v1/v2c/v3 agent for integration tests: serves a
 # ABOUTME: fixed OID tree over UDP with configurable misbehavior.
 use strict;
 use warnings;
@@ -334,14 +334,12 @@ sub _rand_salt { join '', map { chr int rand 256 } 1 .. 8 }
 # offset/length of msgAuthenticationParameters within $pkt (for HMAC checking).
 sub _parse_v3 {
 	my ($self, $pkt) = @_;
-	my ($tag, $body, undef) = _get_tlv($pkt, 0);          # outer SEQUENCE
-	my $base = 2;                                          # header of outer SEQUENCE is 1-byte tag + len;
-	# locate body offset within $pkt precisely:
-	$base = length($pkt) - length($body);
+	my (undef, $body, undef) = _get_tlv($pkt, 0);         # outer SEQUENCE
+	my $base = length($pkt) - length($body);              # offset of the SEQUENCE body within $pkt
 	my $pos = 0;
-	(undef, my $ver_c, $pos) = _get_tlv($body, $pos);     # version (already known == 3)
+	(undef, undef,     $pos) = _get_tlv($body, $pos);     # version (already known == 3)
 	(undef, my $gdata, $pos) = _get_tlv($body, $pos);     # msgGlobalData SEQUENCE
-	my ($sp_tag, $sp, $sp_end) = _get_tlv($body, $pos);   # msgSecurityParams OCTET STRING
+	(undef, my $sp, my $sp_end) = _get_tlv($body, $pos);  # msgSecurityParams OCTET STRING
 	my $sp_body_off = $base + ($sp_end - length($sp));    # offset of $sp within $pkt
 	$pos = $sp_end;
 	(my $spd_tag, my $spd, undef) = _get_tlv($body, $pos);# scopedPduData (SEQ or OCTETSTR)
@@ -353,7 +351,7 @@ sub _parse_v3 {
 	(undef, my $flags_c, $gp) = _get_tlv($gdata, $gp);
 
 	# USM security params sequence
-	my ($usm_tag, $usm) = _get_tlv($sp, 0);
+	(undef, my $usm) = _get_tlv($sp, 0);
 	my $up = 0;
 	(undef, my $eid,  $up) = _get_tlv($usm, $up);
 	(undef, my $bo_c, $up) = _get_tlv($usm, $up);
@@ -515,7 +513,8 @@ sub _handle_v3 {
 	return $reply;
 }
 
-# Build a noAuthNoPriv report carrying $type; syncs the agent's boots/time.
+# Build a noAuthNoPriv report carrying $type; carries the agent's boots/time so
+# the client can sync to them.
 sub _v3_report {
 	my ($self, $r, $type) = @_;
 	my $s = $self->{v3set};

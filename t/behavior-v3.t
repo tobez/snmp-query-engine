@@ -39,7 +39,7 @@ request_match($d, 'v3 authPriv get sysName',
 	[RT_GET, 201, $target, $port, ['1.3.6.1.2.1.1.5.0']],
 	[RT_GET|RT_REPLY, 201, [['1.3.6.1.2.1.1.5.0', $hostname]]]);
 
-# never_sync: the agent ignores discovery, so the GET times out.
+# never_sync: the agent ignores all v3 requests, so the GET times out.
 {
 	my $a2 = SQE::FakeAgent->spawn(tree => \@tree, v3 => \%v3, v3_never_sync => 1);
 	request_match($d, 'v3 set creds (never_sync agent)',
