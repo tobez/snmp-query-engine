@@ -187,6 +187,72 @@ sub _next_entry {
 	return undef;
 }
 
+sub _process_pdu {
+	my ($self, $version, $pdu_tag, $f1_c, $f2_c, $oids) = @_;
+	my @oids = @$oids;
+	my ($errst, $erridx, @out) = (0, 0);
+	if ($pdu_tag == 0xa0) {          # GET
+		if ($version == 0) {         # v1: all-or-nothing
+			for my $i (0 .. $#oids) {
+				unless ($self->_find($oids[$i])) {
+					($errst, $erridx) = (2, $i + 1);   # noSuchName
+					last;
+				}
+			}
+			if ($errst) {
+				@out = map { [$_, 0x05, ''] } @oids;   # echo request varbinds
+			} else {
+				@out = map { $self->_find($_) } @oids;
+			}
+		} else {                     # v2c/v3: per-varbind exceptions
+			@out = map { $self->_find($_) // [$_, 0x80, ''] } @oids;   # noSuchObject
+		}
+	} elsif ($pdu_tag == 0xa1) {     # GETNEXT
+		if ($version == 0) {
+			for my $i (0 .. $#oids) {
+				unless ($self->_next_entry($oids[$i])) {
+					($errst, $erridx) = (2, $i + 1);
+					last;
+				}
+			}
+			if ($errst) {
+				@out = map { [$_, 0x05, ''] } @oids;
+			} else {
+				@out = map { $self->_next_entry($_) } @oids;
+			}
+		} else {
+			@out = map { $self->_next_entry($_) // [$_, 0x82, ''] } @oids;   # endOfMibView
+		}
+	} elsif ($pdu_tag == 0xa5) {     # GETBULK (v2c/v3)
+		my $nonrep = _dec_uint($f1_c);
+		my $maxrep = _dec_uint($f2_c);
+		my @cursors = @oids;
+		for my $i (0 .. $nonrep - 1) {
+			last if $i > $#cursors;
+			my $e = $self->_next_entry($cursors[$i]);
+			push @out, $e // [$cursors[$i], 0x82, ''];
+		}
+		my @rep = @cursors[$nonrep .. $#cursors];
+		for my $round (1 .. $maxrep) {
+			my $progress = 0;
+			for my $j (0 .. $#rep) {
+				my $e = $self->_next_entry($rep[$j]);
+				if ($e) {
+					push @out, $e;
+					$rep[$j] = $e->[0];
+					$progress = 1;
+				} else {
+					push @out, [$rep[$j], 0x82, ''];
+				}
+			}
+			last unless $progress;
+		}
+	} else {
+		die "unsupported pdu $pdu_tag\n";
+	}
+	return ($errst, $erridx, \@out);
+}
+
 sub _handle {
 	my ($self, $pkt) = @_;
 	my ($tag, $msg) = _get_tlv($pkt, 0);
@@ -215,66 +281,8 @@ sub _handle {
 		push @oids, _dec_oid($oid_c);
 	}
 
-	my ($errst, $erridx, @out) = (0, 0);
-	if ($pdu_tag == 0xa0) {          # GET
-		if ($version == 0) {         # v1: all-or-nothing
-			for my $i (0 .. $#oids) {
-				unless ($self->_find($oids[$i])) {
-					($errst, $erridx) = (2, $i + 1);   # noSuchName
-					last;
-				}
-			}
-			if ($errst) {
-				@out = map { [$_, 0x05, ''] } @oids;   # echo request varbinds
-			} else {
-				@out = map { $self->_find($_) } @oids;
-			}
-		} else {                     # v2c: per-varbind exceptions
-			@out = map { $self->_find($_) // [$_, 0x80, ''] } @oids;   # noSuchObject
-		}
-	} elsif ($pdu_tag == 0xa1) {     # GETNEXT
-		if ($version == 0) {
-			for my $i (0 .. $#oids) {
-				unless ($self->_next_entry($oids[$i])) {
-					($errst, $erridx) = (2, $i + 1);
-					last;
-				}
-			}
-			if ($errst) {
-				@out = map { [$_, 0x05, ''] } @oids;
-			} else {
-				@out = map { $self->_next_entry($_) } @oids;
-			}
-		} else {
-			@out = map { $self->_next_entry($_) // [$_, 0x82, ''] } @oids;   # endOfMibView
-		}
-	} elsif ($pdu_tag == 0xa5) {     # GETBULK (v2c)
-		my $nonrep = _dec_uint($f1_c);
-		my $maxrep = _dec_uint($f2_c);
-		my @cursors = @oids;
-		for my $i (0 .. $nonrep - 1) {
-			last if $i > $#cursors;
-			my $e = $self->_next_entry($cursors[$i]);
-			push @out, $e // [$cursors[$i], 0x82, ''];
-		}
-		my @rep = @cursors[$nonrep .. $#cursors];
-		for my $round (1 .. $maxrep) {
-			my $progress = 0;
-			for my $j (0 .. $#rep) {
-				my $e = $self->_next_entry($rep[$j]);
-				if ($e) {
-					push @out, $e;
-					$rep[$j] = $e->[0];
-					$progress = 1;
-				} else {
-					push @out, [$rep[$j], 0x82, ''];
-				}
-			}
-			last unless $progress;
-		}
-	} else {
-		die "unsupported pdu $pdu_tag\n";
-	}
+	my ($errst, $erridx, $out) = $self->_process_pdu($version, $pdu_tag, $f1_c, $f2_c, \@oids);
+	my @out = @$out;
 
 	@out = grep { $_->[0] ne $self->{omit_oid} } @out
 		if defined $self->{omit_oid};
