@@ -5,6 +5,7 @@ use strict;
 use warnings;
 use IO::Socket::INET;
 use POSIX ();
+use SQE::USM;
 
 sub _oid_cmp {
 	my @a = split /\./, $_[0];
@@ -27,7 +28,24 @@ sub spawn {
 		omit_oid   => $opt{omit_oid},
 		malformed  => $opt{malformed} // '',
 		delay_ms   => $opt{delay_ms} // 0,
+		v3             => $opt{v3},
+		v3_never_sync  => $opt{v3_never_sync} // 0,
+		v3_report      => $opt{v3_report}     // '',
+		v3_reply_fault => $opt{v3_reply_fault} // '',
 	}, $class;
+	if (my $v = $self->{v3}) {
+		my $eid = pack('H*', $v->{engine_id});
+		$self->{v3set} = {
+			eid        => $eid,
+			username   => $v->{username},
+			auth_proto => $v->{auth_proto},
+			auth_kul   => SQE::USM::password_to_kul($v->{auth_proto}, $v->{auth_pass}, $eid),
+			priv_key   => SQE::USM::priv_key($v->{auth_proto}, $v->{priv_pass}, $eid),
+			maclen     => SQE::USM::maclen($v->{auth_proto}),
+			boots      => $v->{boots} // 1,
+			time       => $v->{time}  // 0,
+		};
+	}
 	pipe(my $rd, my $wr) or die "pipe: $!";
 	my $pid = fork() // die "fork: $!";
 	if (!$pid) {
@@ -72,6 +90,7 @@ sub _serve {
 		$n++;
 		next if $self->{drop_all};
 		next if $n <= $self->{drop_first};
+		$self->{_last_pkt} = $pkt;
 		my $reply = eval { $self->_handle($pkt) };
 		next unless defined $reply;
 		if ($self->{malformed} eq 'truncate') {
@@ -261,6 +280,7 @@ sub _handle {
 	(my $t, my $ver_c, $pos) = _get_tlv($msg, $pos);
 	die "bad version\n" unless $t == 0x02;
 	my $version = _dec_uint($ver_c);            # 0 = v1, 1 = v2c
+	return $self->_handle_v3($msg, $pos) if $version == 3;
 	($t, my $community, $pos) = _get_tlv($msg, $pos);
 	die "bad community\n" unless $t == 0x04;
 	return undef unless $community eq $self->{community};
@@ -296,6 +316,215 @@ sub _handle {
 		. _enc_uint(0x02, $erridx)
 		. _tlv(0x30, $vbl_out));
 	return _tlv(0x30, _enc_uint(0x02, $version) . _tlv(0x04, $community) . $resp);
+}
+
+# ---- SNMPv3 / USM handling ----
+
+# usmStats OIDs (value is a Counter32)
+my %USM_STATS = (
+	not_in_time    => '1.3.6.1.6.3.15.1.1.2.0',
+	wrong_digests  => '1.3.6.1.6.3.15.1.1.5.0',
+	unknown_user   => '1.3.6.1.6.3.15.1.1.3.0',
+	unknown_engine => '1.3.6.1.6.3.15.1.1.4.0',
+);
+
+sub _rand_salt { join '', map { chr int rand 256 } 1 .. 8 }
+
+# Parse the v3 envelope. Returns a hashref with the decoded fields plus the byte
+# offset/length of msgAuthenticationParameters within $pkt (for HMAC checking).
+sub _parse_v3 {
+	my ($self, $pkt) = @_;
+	my ($tag, $body, undef) = _get_tlv($pkt, 0);          # outer SEQUENCE
+	my $base = 2;                                          # header of outer SEQUENCE is 1-byte tag + len;
+	# locate body offset within $pkt precisely:
+	$base = length($pkt) - length($body);
+	my $pos = 0;
+	(undef, my $ver_c, $pos) = _get_tlv($body, $pos);     # version (already known == 3)
+	(undef, my $gdata, $pos) = _get_tlv($body, $pos);     # msgGlobalData SEQUENCE
+	my ($sp_tag, $sp, $sp_end) = _get_tlv($body, $pos);   # msgSecurityParams OCTET STRING
+	my $sp_body_off = $base + ($sp_end - length($sp));    # offset of $sp within $pkt
+	$pos = $sp_end;
+	(my $spd_tag, my $spd, undef) = _get_tlv($body, $pos);# scopedPduData (SEQ or OCTETSTR)
+
+	# msgGlobalData: msgID, msgMaxSize, msgFlags, msgSecurityModel
+	my $gp = 0;
+	(undef, my $mid_c, $gp)   = _get_tlv($gdata, $gp);
+	(undef, undef,     $gp)   = _get_tlv($gdata, $gp);    # msgMaxSize
+	(undef, my $flags_c, $gp) = _get_tlv($gdata, $gp);
+
+	# USM security params sequence
+	my ($usm_tag, $usm) = _get_tlv($sp, 0);
+	my $up = 0;
+	(undef, my $eid,  $up) = _get_tlv($usm, $up);
+	(undef, my $bo_c, $up) = _get_tlv($usm, $up);
+	(undef, my $ti_c, $up) = _get_tlv($usm, $up);
+	(undef, my $user, $up) = _get_tlv($usm, $up);
+	my $auth_val_off_in_usm = $up + 2;                    # skip authParams tag+len (maclen<128 => 1-byte len)
+	(undef, my $authp, $up) = _get_tlv($usm, $up);
+	(undef, my $privp, $up) = _get_tlv($usm, $up);
+
+	# absolute offset of authParams value inside $pkt:
+	my $usm_hdr = length($sp) - length($usm);             # OCTETSTR-value contains SEQUENCE header
+	my $auth_abs = $sp_body_off + $usm_hdr + $auth_val_off_in_usm;
+
+	return {
+		mid      => _dec_uint($mid_c),
+		flags    => ord($flags_c),
+		eid      => $eid,
+		boots    => _dec_uint($bo_c),
+		time     => _dec_uint($ti_c),
+		user     => $user,
+		authp    => $authp,
+		privp    => $privp,
+		auth_abs => $auth_abs,
+		spd_tag  => $spd_tag,
+		spd      => $spd,
+	};
+}
+
+# Build an OCTET STRING TLV
+sub _octet { _tlv(0x04, $_[0]) }
+
+# Build a full v3 message. %a keys: mid, flags, boots, time, authenticated (bool),
+# scoped (raw scopedPDU bytes, already encrypted or plaintext), encrypted (bool),
+# privp (8-byte salt or ''), eid, username, auth_kul, auth_proto.
+sub _build_v3 {
+	my ($self, %a) = @_;
+	my $maclen = $a{authenticated} ? SQE::USM::maclen($a{auth_proto}) : 0;
+
+	my $usm_pre  = _octet($a{eid}) . _enc_uint(0x02, $a{boots}) . _enc_uint(0x02, $a{time})
+	             . _octet($a{username});
+	my $authtlv  = _octet("\x00" x $maclen);
+	my $auth_hdr = length($authtlv) - $maclen;            # tag+len bytes
+	my $privtlv  = _octet($a{privp} // '');
+	my $usm_body = $usm_pre . $authtlv . $privtlv;
+	my $auth_off = length($usm_pre) + $auth_hdr;          # within $usm_body
+
+	my $usm_seq  = _tlv(0x30, $usm_body);
+	$auth_off   += length($usm_seq) - length($usm_body);  # + SEQUENCE header
+	my $secparams= _octet($usm_seq);
+	$auth_off   += length($secparams) - length($usm_seq); # + OCTETSTR header
+
+	my $gdata = _tlv(0x30,
+		_enc_uint(0x02, $a{mid}) . _enc_uint(0x02, 65535)
+		. _octet(chr $a{flags}) . _enc_uint(0x02, 3));
+	my $ver   = _enc_uint(0x02, 3);
+	my $spd   = $a{encrypted} ? _octet($a{scoped}) : $a{scoped};
+
+	my $prefix = $ver . $gdata;
+	$auth_off += length($prefix);                         # secparams follows ver+gdata
+	my $body   = $prefix . $secparams . $spd;
+	my $msg    = _tlv(0x30, $body);
+	$auth_off += length($msg) - length($body);            # + outer SEQUENCE header
+
+	if ($a{authenticated}) {
+		my $mac = SQE::USM::hmac($a{auth_proto}, $a{auth_kul}, $msg);
+		substr($msg, $auth_off, $maclen) = $mac;
+	}
+	return $msg;
+}
+
+# Build a scopedPDU SEQUENCE: ctxEngineID, ctxName(""), inner PDU bytes.
+sub _scoped { my ($self, $eid, $pdu) = @_; return _tlv(0x30, _octet($eid) . _octet('') . $pdu) }
+
+# Build a REPORT PDU carrying one usmStats varbind (Counter32 = 1).
+sub _report_pdu {
+	my ($self, $mid, $oid) = @_;
+	my $vb  = _tlv(0x30, _tlv(0x06, _enc_oid_content($oid)) . _enc_uint(0x41, 1));
+	return _tlv(0xa8,
+		_enc_uint(0x02, $mid) . _enc_uint(0x02, 0) . _enc_uint(0x02, 0) . _tlv(0x30, $vb));
+}
+
+sub _handle_v3 {
+	my ($self, $msg, undef) = @_;
+	my $s = $self->{v3set} or die "v3 packet but agent not configured for v3\n";
+	return undef if $self->{v3_never_sync};
+
+	my $r = $self->_parse_v3($self->{_last_pkt});
+
+	# username must match, else send unknown-user report (noAuth)
+	if ($r->{user} ne $s->{username}) {
+		return $self->_v3_report($r, 'unknown_user');
+	}
+
+	# request-side auth verification: zero the auth field, recompute, compare
+	my $pkt = $self->{_last_pkt};
+	my $got = substr($pkt, $r->{auth_abs}, $s->{maclen});
+	substr($pkt, $r->{auth_abs}, $s->{maclen}) = "\x00" x $s->{maclen};
+	my $calc = SQE::USM::hmac($s->{auth_proto}, $s->{auth_kul}, $pkt);
+	return $self->_v3_report($r, 'wrong_digests') if $calc ne $got;
+
+	# forced-report knob (e.g. always answer with a chosen report type)
+	return $self->_v3_report($r, $self->{v3_report}) if $self->{v3_report};
+
+	# time-window check: out of window -> notInTimeWindows report
+	if ($r->{boots} != $s->{boots} || abs($r->{time} - $s->{time}) > 150) {
+		return $self->_v3_report($r, 'not_in_time');
+	}
+
+	# in window: decrypt, process, reply
+	my $scoped = $r->{spd};
+	if ($r->{flags} & 0x02) {           # ENCRYPTED
+		$scoped = SQE::USM::aes_cfb('d', $s->{priv_key}, $r->{boots}, $r->{time}, $r->{privp}, $r->{spd});
+	}
+	# scoped is now a SEQUENCE { ctxEngineID, ctxName, PDU }
+	my (undef, $seq_body) = _get_tlv($scoped, 0);
+	my $bp = 0;
+	(undef, undef,       $bp) = _get_tlv($seq_body, $bp); # ctxEngineID
+	(undef, undef,       $bp) = _get_tlv($seq_body, $bp); # ctxName
+	(my $pdu_tag, my $pdu, $bp) = _get_tlv($seq_body, $bp);
+
+	my $pp = 0;
+	(undef, my $reqid_c, $pp) = _get_tlv($pdu, $pp);
+	(undef, my $f1_c,    $pp) = _get_tlv($pdu, $pp);
+	(undef, my $f2_c,    $pp) = _get_tlv($pdu, $pp);
+	(undef, my $vbl,     $pp) = _get_tlv($pdu, $pp);
+	my @oids;
+	my $vp = 0;
+	while ($vp < length $vbl) {
+		(undef, my $vb, $vp) = _get_tlv($vbl, $vp);
+		my (undef, $oid_c) = _get_tlv($vb, 0);            # varbind = SEQ { OID, value }
+		push @oids, _dec_oid($oid_c);
+	}
+
+	my ($errst, $erridx, $out) = $self->_process_pdu(1, $pdu_tag, $f1_c, $f2_c, \@oids);
+	@$out = grep { $_->[0] ne $self->{omit_oid} } @$out if defined $self->{omit_oid};
+
+	my $vbl_out = join '', map {
+		_tlv(0x30, _tlv(0x06, _enc_oid_content($_->[0])) . _enc_value($_->[1], $_->[2]))
+	} @$out;
+	my $resp_pdu = _tlv(0xa2,
+		_tlv(0x02, $reqid_c) . _enc_uint(0x02, $errst) . _enc_uint(0x02, $erridx) . _tlv(0x30, $vbl_out));
+
+	my $eid = ($self->{v3_reply_fault} eq 'engine_id') ? ($s->{eid} . "\x01") : $s->{eid};
+	my $user= ($self->{v3_reply_fault} eq 'username')  ? ($s->{username} . 'X') : $s->{username};
+
+	my $scoped_plain = $self->_scoped($eid, $resp_pdu);
+	my $salt = _rand_salt();
+	my $enc  = SQE::USM::aes_cfb('e', $s->{priv_key}, $s->{boots}, $s->{time}, $salt, $scoped_plain);
+
+	my $reply = $self->_build_v3(
+		mid => $r->{mid}, flags => 0x03, boots => $s->{boots}, time => $s->{time},
+		authenticated => 1, encrypted => 1, scoped => $enc, privp => $salt,
+		eid => $eid, username => $user, auth_kul => $s->{auth_kul}, auth_proto => $s->{auth_proto},
+	);
+	if ($self->{v3_reply_fault} eq 'bad_hmac') {
+		substr($reply, -1) = chr((ord(substr $reply, -1) ^ 0xff));  # corrupt last byte (inside MAC region unlikely; see note)
+	}
+	return $reply;
+}
+
+# Build a noAuthNoPriv report carrying $type; syncs the agent's boots/time.
+sub _v3_report {
+	my ($self, $r, $type) = @_;
+	my $s = $self->{v3set};
+	my $oid = $USM_STATS{$type} or die "unknown report type $type\n";
+	my $scoped = $self->_scoped($s->{eid}, $self->_report_pdu($r->{mid}, $oid));
+	return $self->_build_v3(
+		mid => $r->{mid}, flags => 0x00, boots => $s->{boots}, time => $s->{time},
+		authenticated => 0, encrypted => 0, scoped => $scoped, privp => '',
+		eid => $s->{eid}, username => $s->{username},
+	);
 }
 
 1;
