@@ -471,10 +471,6 @@ extern int decode_composite(struct ber *e, unsigned char comp_type, int *composi
 extern int decode_any(struct ber *src, struct ber *dst);
 extern int decode_oid(struct ber *src, struct ber *dst);
 
-extern int build_get_request_packet(int version, const char *community,
-									const char *oid_list,
-									unsigned request_id, struct ber *e);
-
 extern int
 start_snmp_packet(struct packet_builder* pb,
                   int version,
