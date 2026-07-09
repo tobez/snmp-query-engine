@@ -46,7 +46,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libjudy-dev libssl-dev cpanminus \
             $(apt-cache -q0 show libmsgpack-c-dev >/dev/null 2>&1 && echo libmsgpack-c-dev || echo libmsgpack-dev)
-          sudo cpanm --notest Data::MessagePack Test2::Suite
+          sudo cpanm --notest Data::MessagePack Test2::Suite Crypt::Rijndael
       - name: Build with static dependencies
         run: make LIBS="$STATIC_LIBS"
       - name: Verify static linking
