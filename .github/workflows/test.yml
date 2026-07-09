@@ -22,12 +22,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libjudy-dev libssl-dev snmpd snmp cpanminus \
             $(apt-cache -q0 show libmsgpack-c-dev >/dev/null 2>&1 && echo libmsgpack-c-dev || echo libmsgpack-dev)
-          sudo cpanm --notest Data::MessagePack Test2::Suite
+          sudo cpanm --notest Data::MessagePack Test2::Suite Crypt::Rijndael
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
           brew install msgpack judy openssl@3 perl cpanminus
-          cpanm --notest Data::MessagePack Test2::Suite
+          cpanm --notest Data::MessagePack Test2::Suite Crypt::Rijndael
       - name: Build
         run: make
       - name: Verify shipped service files (Linux)
@@ -79,6 +79,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libjudy-dev libssl-dev cpanminus \
             $(apt-cache -q0 show libmsgpack-c-dev >/dev/null 2>&1 && echo libmsgpack-c-dev || echo libmsgpack-dev)
-          sudo cpanm --notest Data::MessagePack Test2::Suite
+          sudo cpanm --notest Data::MessagePack Test2::Suite Crypt::Rijndael
       - name: Build and test with ASan+UBSan
         run: make OPTIMIZE="-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer" test
