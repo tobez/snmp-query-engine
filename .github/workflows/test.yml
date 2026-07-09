@@ -14,6 +14,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - name: Install dependencies (Linux)
@@ -69,6 +70,7 @@ jobs:
 
   sanitize:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       ASAN_OPTIONS: detect_leaks=0
       UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1:abort_on_error=1
