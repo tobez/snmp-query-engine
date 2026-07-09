@@ -503,14 +503,15 @@ sub _handle_v3 {
 	my $salt = _rand_salt();
 	my $enc  = SQE::USM::aes_cfb('e', $s->{priv_key}, $s->{boots}, $s->{time}, $salt, $scoped_plain);
 
+	my $auth_kul = $s->{auth_kul};
+	$auth_kul = ($auth_kul ^ ("\x01" . "\x00" x (length($auth_kul) - 1)))
+		if $self->{v3_reply_fault} eq 'bad_hmac';
+
 	my $reply = $self->_build_v3(
 		mid => $r->{mid}, flags => 0x03, boots => $s->{boots}, time => $s->{time},
 		authenticated => 1, encrypted => 1, scoped => $enc, privp => $salt,
-		eid => $eid, username => $user, auth_kul => $s->{auth_kul}, auth_proto => $s->{auth_proto},
+		eid => $eid, username => $user, auth_kul => $auth_kul, auth_proto => $s->{auth_proto},
 	);
-	if ($self->{v3_reply_fault} eq 'bad_hmac') {
-		substr($reply, -1) = chr((ord(substr $reply, -1) ^ 0xff));  # corrupt last byte (inside MAC region unlikely; see note)
-	}
 	return $reply;
 }
 

@@ -72,5 +72,26 @@ request_match($d, 'v3 authPriv get sysName',
 	ok($after > $before, 'wrong-digests report bumped bad_snmp_responses');
 }
 
+# reply-integrity faults: SQE must reject a well-formed but tampered reply.
+my @faults = qw(bad_hmac engine_id username);
+for my $i (0 .. $#faults) {
+	my $fault = $faults[$i];
+	my $base  = 400 + 10 * $i;
+	my $af = SQE::FakeAgent->spawn(tree => \@tree, v3 => \%v3, v3_reply_fault => $fault);
+	request_match($d, "v3 set creds ($fault agent)",
+		[RT_SETOPT, $base, $target, $af->port, {
+			version => 3, engineid => $v3{engine_id}, username => $v3{username},
+			authprotocol => 'sha256', authpassword => $v3{auth_pass},
+			privprotocol => 'aes128', privpassword => $v3{priv_pass},
+			timeout => 100, retries => 1 }],
+		[RT_SETOPT|RT_REPLY, $base, T()]);
+	my $before = $d->request([RT_INFO, $base + 1])->[2]{global}{bad_snmp_responses};
+	request_match($d, "v3 get fails under $fault",
+		[RT_GET, $base + 2, $target, $af->port, ['1.3.6.1.2.1.1.5.0']],
+		[RT_GET|RT_REPLY, $base + 2, [['1.3.6.1.2.1.1.5.0', ['timeout']]]]);
+	my $after = $d->request([RT_INFO, $base + 3])->[2]{global}{bad_snmp_responses};
+	ok($after > $before, "$fault reply bumped bad_snmp_responses");
+}
+
 $d->stop;
 done_testing;
