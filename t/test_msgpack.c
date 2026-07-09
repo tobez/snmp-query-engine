@@ -11,6 +11,16 @@
 #include "sqe.h"
 #include "tap.h"
 
+/* One test deliberately asks the unpacker to reserve an impossibly large
+ * buffer so the reservation fails; under AddressSanitizer such a request aborts
+ * by default, so make the allocator return NULL instead.  Unused (harmless) in
+ * non-sanitizer builds. */
+const char *
+__asan_default_options(void)
+{
+	return "allocator_may_return_null=1";
+}
+
 /* Feed sz bytes into the unpacker without extracting objects. */
 static void
 feed(msgpack_unpacker *unpacker, const char *buf, int sz)
