@@ -534,6 +534,7 @@ extern void snmp_send(struct destination *dest, struct ber *packet);
 
 /* client_input.c */
 extern void new_client_connection(int fd);
+extern int feed_client_unpacker(struct client_connection *c, const uint8_t *buf, size_t n);
 
 /* util.c */
 extern char *object_strdup(msgpack_object *o);

@@ -11,6 +11,16 @@
 #include "sqe.h"
 #include "tap.h"
 
+/* One test deliberately asks the unpacker to reserve an impossibly large
+ * buffer so the reservation fails; under AddressSanitizer such a request aborts
+ * by default, so make the allocator return NULL instead.  Unused (harmless) in
+ * non-sanitizer builds. */
+const char *
+__asan_default_options(void)
+{
+	return "allocator_may_return_null=1";
+}
+
 /* Feed sz bytes into the unpacker without extracting objects. */
 static void
 feed(msgpack_unpacker *unpacker, const char *buf, int sz)
@@ -96,5 +106,29 @@ main(void)
 	ok(!msgpack_unpacker_next(&unpacker, &result), "no extra objects");
 	msgpack_unpacked_destroy(&result);
 	msgpack_unpacker_destroy(&unpacker);
+
+	/* feed_client_unpacker() feeds a chunk into a connection's unpacker and
+	 * must report an allocation failure rather than memcpy into a buffer that
+	 * was never reserved. */
+	{
+		struct client_connection c;
+		msgpack_unpacked r;
+		const uint8_t doc[] = "\x92\x01\x02"; /* [1,2] */
+
+		msgpack_unpacker_init(&c.unpacker, MSGPACK_UNPACKER_INIT_BUFFER_SIZE);
+		msgpack_unpacked_init(&r);
+
+		is_int(feed_client_unpacker(&c, doc, 3), 0,
+		    "feed_client_unpacker accepts a normal chunk");
+		ok(msgpack_unpacker_next(&c.unpacker, &r), "fed document parses");
+		is_int(r.data.via.array.size, 2, "fed document has 2 elements");
+
+		is_int(feed_client_unpacker(&c, doc, (size_t)1 << 60), -1,
+		    "feed_client_unpacker reports reserve failure instead of overrunning");
+
+		msgpack_unpacked_destroy(&r);
+		msgpack_unpacker_destroy(&c.unpacker);
+	}
+
 	return tap_done();
 }
