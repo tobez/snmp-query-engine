@@ -28,6 +28,16 @@ client_gone(struct socket_info *si)
 		log_info("client disconnect", "fd", U((unsigned)fd), NULL);
 }
 
+int
+feed_client_unpacker(struct client_connection *c, const uint8_t *buf, size_t n)
+{
+	if (!msgpack_unpacker_reserve_buffer(&c->unpacker, n))
+		return -1;
+	memcpy(msgpack_unpacker_buffer(&c->unpacker), buf, n);
+	msgpack_unpacker_buffer_consumed(&c->unpacker, n);
+	return 0;
+}
+
 static void
 client_input(struct socket_info *si)
 {
@@ -55,9 +65,10 @@ client_input(struct socket_info *si)
 		return;
 	}
 
-	msgpack_unpacker_reserve_buffer(&c->unpacker, n);
-	memcpy(msgpack_unpacker_buffer(&c->unpacker), buf, n);
-	msgpack_unpacker_buffer_consumed(&c->unpacker, n);
+	if (feed_client_unpacker(c, buf, n) < 0) {
+		client_gone(si);
+		return;
+	}
 
 	while (msgpack_unpacker_next(&c->unpacker, &c->input)) {
 		msgpack_object *o;
