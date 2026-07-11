@@ -132,6 +132,17 @@ Authoritative SNMP engine ID of the destination (for SNMPv3).
 The default is \f[B]\(lq\(lq\f[R].
 Valid values must be (optionally space\-separated) hex strings, for
 example \(lq39 6a 66 39 4d 5a 35 6b 68 49 72 61\(rq.
+If \f[CR]engineid\f[R] is omitted, the engine discovers it from the
+agent on first use (RFC 3414 discovery) and then treats it as fixed
+until the options are set again.
+Note the security tradeoff: omitting \f[CR]engineid\f[R] means any
+holder of the credentials can answer the discovery probe and impersonate
+the agent.
+When the same credentials are shared across a fleet of devices, a pinned
+per\-device \f[CR]engineid\f[R] is the only thing binding a session to a
+specific device \(em pin engineids in such deployments.
+Localized keys (\f[CR]authkul\f[R]/\f[CR]privkul\f[R]) cannot be
+re\-localized, so \f[CR]engineid\f[R] is required with them.
 This is a per destination/client option which does not affect other
 clients.
 .TP
@@ -186,6 +197,35 @@ It is an error to specify both \f[CR]privpassword\f[R] and
 \f[CR]privkul\f[R].
 This is a per destination/client option which does not affect other
 clients.
+.PP
+Any \f[B]SETOPT\f[R] request that contains at least one of the SNMPv3
+options above (\f[CR]engineid\f[R], \f[CR]username\f[R],
+\f[CR]authprotocol\f[R], \f[CR]authpassword\f[R], \f[CR]authkul\f[R],
+\f[CR]privprotocol\f[R], \f[CR]privpassword\f[R], \f[CR]privkul\f[R])
+replaces the whole SNMPv3 configuration for the destination/client
+session with the contents of that request; SNMPv3 options from earlier
+requests are not carried over.
+Re\-issuing such a request without \f[CR]engineid\f[R] is also how a
+client asks for a fresh engine ID discovery, for example after a device
+swap.
+The engine ID handling depends on the combination of options supplied:
+.IP \(bu 2
+\f[B]\f[CB]engineid\f[B] present, passwords supplied\f[R]: the passwords
+are localized to keys immediately.
+.IP \(bu 2
+\f[B]\f[CB]engineid\f[B] present, localized keys supplied\f[R]: the keys
+are used as given.
+.IP \(bu 2
+\f[B]\f[CB]engineid\f[B] absent, passwords supplied\f[R]: engine ID
+discovery; the passwords are localized once the engine ID has been
+discovered from the agent on first use.
+Until then, \f[B]GETOPT\f[R] returns empty \f[CR]engineid\f[R],
+\f[CR]authkul\f[R] and \f[CR]privkul\f[R]; after discovery it returns
+the discovered values, which the client may store and use to pin the
+device later.
+.IP \(bu 2
+\f[B]\f[CB]engineid\f[B] absent, localized keys supplied\f[R]: an error,
+\(lqengineid is required with authkul/privkul\(rq.
 .TP
 \f[B]\f[CB]global_max_packets\f[B]\f[R]
 Maximum global number of SNMP packets being \(lqon the wire\(rq at any
@@ -551,6 +591,13 @@ total number of \(lqsoft\(rq timeouts
 \f[B]\f[CB]uptime\f[B]\f[R]
 daemon uptime in milliseconds
 .TP
+\f[B]\f[CB]v3_engineid_discoveries\f[B]\f[R]
+number of times an SNMPv3 engine ID was discovered from an agent (see
+the \f[CR]engineid\f[R] option of the \f[B]SETOPT\f[R] request)
+.TP
+\f[B]\f[CB]v3_engineid_mismatches\f[B]\f[R]
+number of requests failed with an \f[CR]engine\-id\-mismatch\f[R] error
+.TP
 \f[B]\f[CB]program_version\f[B]\f[R]
 numeric version of the engine program (frozen; see
 \f[B]\f[CB]version\f[B]\f[R])
@@ -617,8 +664,14 @@ unsupported type 0xHH
 the \f[CR]snmp\-query\-engine\f[R] does not support values of this type
 (yet)
 .TP
-XXXv3
-there are SNMPv3\-related errors
+engine\-id\-mismatch: HEX
+the agent (or something claiming to be it) reported an SNMP engine ID
+different from the configured or previously discovered one; HEX is the
+engine ID the peer claimed
+.TP
+kul\-calculation\-error
+localizing the configured SNMPv3 passwords to keys failed after engine
+ID discovery
 .PP
 Example request:
 .IP
