@@ -128,6 +128,28 @@ free_client_request_info(struct client_requests_info *cri)
 	return 1;
 }
 
+/* Fails every oid still queued (never sent) on this cri with the given
+ * value, delivering replies to the client as the cids complete. */
+void
+fail_queued_oids(struct client_requests_info *cri, struct ber *val)
+{
+	struct oid_info *oi, *oi_temp;
+	struct cid_info *ci;
+
+	TAILQ_FOREACH_SAFE(oi, &cri->oids_to_query, oid_list, oi_temp) {
+		ci = get_cid_info(cri, oi->cid);
+		if (!ci || ci->n_oids == 0)
+			croakx(2, "fail_queued_oids: cid_info unexpectedly missing");
+		oi->value = ber_rewind(ber_dup(val));
+		oi->sid = 0;
+		TAILQ_REMOVE(&cri->oids_to_query, oi, oid_list);
+		TAILQ_INSERT_TAIL(&ci->oids_done, oi, oid_list);
+		ci->n_oids_done++;
+		if (ci->n_oids_done == ci->n_oids)
+			cid_reply(ci, oi->last_known_table_entry ? RT_GETTABLE : RT_GET);
+	}
+}
+
 void
 dump_client_request_info(msgpack_packer *pk, struct client_requests_info *cri)
 {

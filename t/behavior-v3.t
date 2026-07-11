@@ -155,5 +155,30 @@ for my $i (0 .. $#faults) {
 	is($after->[2]{timeout}, 1500, 'non-v3 option still applied by the same setopt');
 }
 
+# probe timeout: held queries fail with plain ["timeout"], nothing else hits the wire
+{
+	my $asilent = SQE::FakeAgent->spawn(tree => \@tree, v3 => \%v3, v3_never_sync => 1);
+	request_match($d, 'discovery setopt against a silent agent',
+		[RT_SETOPT, 520, $target, $asilent->port, {
+			version => 3, username => $v3{username},
+			authprotocol => 'sha256', authpassword => $v3{auth_pass},
+			privprotocol => 'aes128', privpassword => $v3{priv_pass},
+			timeout => 100, retries => 2 }],
+		[RT_SETOPT|RT_REPLY, 520, T()]);
+	my $sends0 = $d->request([RT_INFO, 521])->[2]{global}{snmp_sends};
+	request_match($d, 'probe timeout fails all held oids with timeout',
+		[RT_GET, 522, $target, $asilent->port,
+			['1.3.6.1.2.1.1.5.0', '1.3.6.1.2.1.1.3.0']],
+		[RT_GET|RT_REPLY, 522, [
+			['1.3.6.1.2.1.1.5.0', ['timeout']],
+			['1.3.6.1.2.1.1.3.0', ['timeout']]]]);
+	my $sends1 = $d->request([RT_INFO, 523])->[2]{global}{snmp_sends};
+	is($sends1 - $sends0, 2, 'only the probe (2 sends) hit the wire, held oids never did');
+	request_match($d, 'engineid still empty after probe timeout',
+		[RT_GETOPT, 524, $target, $asilent->port],
+		[RT_GETOPT|RT_REPLY, 524, {engineid => ''}]);
+	$asilent->stop;
+}
+
 $d->stop;
 done_testing;

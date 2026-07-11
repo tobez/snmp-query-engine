@@ -411,6 +411,7 @@ struct sid_info
 	struct timeval will_timeout_at;
 	int retries_left;
 	unsigned version;
+	int probe;  /* engine id discovery probe; carries no oids */
 
 	struct packet_builder pb;
 	struct ber packet;
@@ -578,6 +579,7 @@ extern struct client_requests_info *get_client_requests_info(struct in_addr *ip,
 extern int free_client_request_info(struct client_requests_info *cri);
 extern int free_all_client_request_info_for_fd(int fd);
 extern void dump_client_request_info(msgpack_packer *pk, struct client_requests_info *cri);
+extern void fail_queued_oids(struct client_requests_info *cri, struct ber *val);
 
 /* cid_info.c */
 extern struct cid_info *get_cid_info(struct client_requests_info *cri, unsigned cid);
