@@ -130,7 +130,6 @@ ok(defined $treply && length($treply) == int(length($expect_reply) / 2)
 $trunc->stop;
 
 # ---- v3 engine id dialect ----
-use SQE::USM;
 
 my %v3 = (
 	engine_id  => '80001f88047371656369',

@@ -322,6 +322,10 @@ test_ber_string_error(void)
 		tap_diag("ber_string_error: unexpected encoding");
 		r = 0;
 	}
+	if (b.len != 0) {
+		tap_diag("ber_string_error: result must be rewound (len == 0)");
+		r = 0;
+	}
 	free(b.buf);
 	return r;
 }
