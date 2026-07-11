@@ -51,7 +51,7 @@ sub spawn {
 	if (!$pid) {
 		close $rd;
 		my $sock = IO::Socket::INET->new(LocalAddr => '127.0.0.1',
-			LocalPort => 0, Proto => 'udp') or POSIX::_exit(1);
+			LocalPort => $opt{port} // 0, Proto => 'udp') or POSIX::_exit(1);
 		print $wr $sock->sockport, "\n";
 		close $wr;
 		$self->_serve($sock);
@@ -439,6 +439,12 @@ sub _handle_v3 {
 	return undef if $self->{v3_never_sync};
 
 	my $r = $self->_parse_v3($self->{_last_pkt});
+
+	# engine id must match, else send unknown-engine report (noAuth);
+	# an empty engine id is the RFC 3414 discovery probe
+	if ($r->{eid} ne $s->{eid}) {
+		return $self->_v3_report($r, 'unknown_engine');
+	}
 
 	# username must match, else send unknown-user report (noAuth)
 	if ($r->{user} ne $s->{username}) {
