@@ -353,5 +353,72 @@ for my $i (0 .. $#faults) {
 	$abogus->stop;
 }
 
+# ignore-flush frees a live discovery probe: a normal sid timing out and
+# tripping ignore_threshold must not strand cri->v3->probe_sid, or every
+# later query on that destination hangs forever. (Route A for the
+# free_sid_info probe_sid clause; Route B, where the probe itself dies via
+# sid_timer and self-clears probe_sid, is covered by the stale-probe test
+# above.)
+{
+	my $asilent = SQE::FakeAgent->spawn(tree => \@tree, v3 => \%v3, drop_all => 1);
+	my $ignport = $asilent->port;
+
+	request_match($d, 'pin v3 creds with a short timeout and ignore_threshold=1',
+		[RT_SETOPT, 590, $target, $ignport, {
+			version => 3, engineid => $v3{engine_id}, username => $v3{username},
+			authprotocol => 'sha256', authpassword => $v3{auth_pass},
+			privprotocol => 'aes128', privpassword => $v3{priv_pass},
+			timeout => 150, retries => 1,
+			ignore_threshold => 1, ignore_duration => 300 }],
+		[RT_SETOPT|RT_REPLY, 590, T()]);
+
+	# GET1: a normal (non-probe) sid, sent under the pinned config above.
+	$d->lone_request([RT_GET, 591, $target, $ignport, ['1.3.6.1.2.1.1.5.0']]);
+
+	# Re-setopt into discovery mode on the same target/port while GET1's sid
+	# is still in flight; its own timeout (500ms) is well past GET1's (150ms)
+	# so the probe sent for GET2 below is still alive when GET1 times out.
+	request_match($d, 're-setopt to discovery mode while the normal sid is still in flight',
+		[RT_SETOPT, 592, $target, $ignport, {
+			version => 3, username => $v3{username},
+			authprotocol => 'sha256', authpassword => $v3{auth_pass},
+			privprotocol => 'aes128', privpassword => $v3{priv_pass},
+			timeout => 500, retries => 1 }],
+		[RT_SETOPT|RT_REPLY, 592, {engineid => ''}]);
+
+	# GET2: held behind the discovery probe just sent for it.
+	$d->lone_request([RT_GET, 593, $target, $ignport, ['1.3.6.1.2.1.1.5.0']]);
+
+	# GET1 times out first and trips ignore_threshold; flush_ignored_destination
+	# must free the still-live discovery probe (and clear probe_sid) as part of
+	# ignoring GET2's held oid.
+	my @got;
+	local $SIG{ALRM} = sub { die "timed out waiting for GET1/GET2 replies\n" };
+	alarm(3);
+	push @got, $d->bulk_response while @got < 2;
+	alarm(0);
+	my %by_cid = map { ($_->[1], $_) } @got;
+	is($by_cid{591}, to_check([RT_GET|RT_REPLY, 591, [['1.3.6.1.2.1.1.5.0', ['timeout']]]]),
+		'GET1 times out normally and trips the destination ignore threshold');
+	is($by_cid{593}, to_check([RT_GET|RT_REPLY, 593, [['1.3.6.1.2.1.1.5.0', ['ignored']]]]),
+		'GET2 (held behind the live probe) is ignored by the same flush');
+
+	Time::HiRes::sleep(0.45);   # past ignore_duration
+
+	local $SIG{ALRM} = sub { die "GET3 hung: stale probe_sid was not cleared by the flush\n" };
+	alarm(3);
+	request_match($d, 'GET3 after the ignore window still probes and times out, rather than hanging',
+		[RT_GET, 594, $target, $ignport, ['1.3.6.1.2.1.1.5.0']],
+		[RT_GET|RT_REPLY, 594, [['1.3.6.1.2.1.1.5.0', ['timeout']]]]);
+	alarm(0);
+
+	request_match($d, 'engineid is still empty (discovery mode, not stranded)',
+		[RT_GETOPT, 595, $target, $ignport],
+		[RT_GETOPT|RT_REPLY, 595, {engineid => ''}]);
+	ok(kill(0, $d->pid), 'daemon is still alive');
+
+	$asilent->stop;
+}
+
 $d->stop;
 done_testing;
