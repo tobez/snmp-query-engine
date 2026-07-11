@@ -222,6 +222,12 @@ free_sid_info(struct sid_info *si)
 	PS.active_sid_infos--;
 	si->cri->si->PS.active_sid_infos--;
 
+	/* Freeing the tracked discovery probe must clear probe_sid, otherwise the
+	 * cri stays in V3_ENGINE_DISCOVERY with a dead nonzero probe_sid and
+	 * build_snmp_query never sends another probe (every future query hangs). */
+	if (si->probe && si->cri->v3 && si->cri->v3->probe_sid == si->sid)
+		si->cri->v3->probe_sid = 0;
+
 	TAILQ_REMOVE(&si->cri->sid_infos, si, sid_list);
 	JLD(rc, si->cri->dest->sid_info, si->sid);
 	sid_stop_timing(si);

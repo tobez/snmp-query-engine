@@ -321,6 +321,19 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 			goto bad_snmp_packet;
         }
 
+		// - a discovery probe whose reply reached here carries an engine id equal
+		//   to the stored one (empty during discovery), so it bypassed the mismatch
+		//   branch where probe adoption lives.  A real discovery REPORT always
+		//   carries a non-empty engine id and goes through that branch; anything
+		//   else answering a probe is bogus and must never be processed as a GET.
+		if (si->probe) {
+			if (destination_log_allow(dest, LTC_REPORT))
+				log_warn("unexpected reply to discovery probe, ignoring packet",
+						"peer", peer, "mid", U(mid), NULL);
+			trace = NULL;
+			goto bad_snmp_packet;
+		}
+
 		// - verify username
 		if (strcmp(siv3->username, v3.username) != 0) {
 			if (destination_log_allow(dest, LTC_USERNAME_MISMATCH))

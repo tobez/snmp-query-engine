@@ -318,5 +318,40 @@ for my $i (0 .. $#faults) {
 	$aslow->stop;
 }
 
+# empty-engineid reply during discovery: a bogus GET-RESPONSE carrying an empty
+# authoritative engineID matches the (empty) stored one and so bypasses the
+# mismatch branch. It must be ignored, never processed as a GET reply nor allowed
+# to strand the discovery state so future queries hang.
+{
+	my $abogus = SQE::FakeAgent->spawn(tree => \@tree, v3 => \%v3, v3_empty_eid_reply => 1);
+	request_match($d, 'discovery setopt (empty-eid-reply agent)',
+		[RT_SETOPT, 580, $target, $abogus->port, {
+			version => 3, username => $v3{username},
+			authprotocol => 'sha256', authpassword => $v3{auth_pass},
+			privprotocol => 'aes128', privpassword => $v3{priv_pass},
+			timeout => 100, retries => 2 }],
+		[RT_SETOPT|RT_REPLY, 580, T()]);
+	my $g0 = $d->request([RT_INFO, 581])->[2]{global};
+	request_match($d, 'bogus empty-eid reply is ignored; get times out',
+		[RT_GET, 582, $target, $abogus->port, ['1.3.6.1.2.1.1.5.0']],
+		[RT_GET|RT_REPLY, 582, [['1.3.6.1.2.1.1.5.0', ['timeout']]]]);
+	my $g1 = $d->request([RT_INFO, 583])->[2]{global};
+	is($g1->{v3_engineid_discoveries} - $g0->{v3_engineid_discoveries}, 0,
+		'the bogus empty-eid reply did not adopt an engine id');
+	ok($g1->{snmp_sends} - $g0->{snmp_sends} >= 2,
+		'the first get sent probe traffic (initial + retry)');
+	request_match($d, 'engineid still empty after the bogus reply',
+		[RT_GETOPT, 584, $target, $abogus->port],
+		[RT_GETOPT|RT_REPLY, 584, {engineid => ''}]);
+	# a second get must send a NEW probe, not hang forever on a stranded probe_sid
+	request_match($d, 'second get still probes (does not hang) and times out',
+		[RT_GET, 585, $target, $abogus->port, ['1.3.6.1.2.1.1.5.0']],
+		[RT_GET|RT_REPLY, 585, [['1.3.6.1.2.1.1.5.0', ['timeout']]]]);
+	my $g2 = $d->request([RT_INFO, 586])->[2]{global};
+	ok($g2->{snmp_sends} - $g1->{snmp_sends} >= 2,
+		'the second get sent a fresh probe (discovery state was not stranded)');
+	$abogus->stop;
+}
+
 $d->stop;
 done_testing;
