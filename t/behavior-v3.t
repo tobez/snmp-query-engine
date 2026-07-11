@@ -281,5 +281,42 @@ for my $i (0 .. $#faults) {
 	$aswap2->stop;
 }
 
+# re-setopt while the probe is in flight: the stale probe's REPORT must not
+# adopt (nor fast-fail as a normal sid), and the held query survives to be
+# served under the new configuration
+{
+	my $aslow = SQE::FakeAgent->spawn(tree => \@tree, v3 => \%v3, delay_ms => 500);
+	request_match($d, 'discovery setopt (slow agent)',
+		[RT_SETOPT, 570, $target, $aslow->port, {
+			version => 3, username => $v3{username},
+			authprotocol => 'sha256', authpassword => $v3{auth_pass},
+			privprotocol => 'aes128', privpassword => $v3{priv_pass},
+			timeout => 1000, retries => 1 }],
+		[RT_SETOPT|RT_REPLY, 570, T()]);
+	my $g0 = $d->request([RT_INFO, 571])->[2]{global};
+	$d->lone_request([RT_GET, 572, $target, $aslow->port, ['1.3.6.1.2.1.1.5.0']]);
+	Time::HiRes::sleep(0.15);   # probe is out; its REPORT is still ~350ms away
+	request_match($d, 're-pin (to a wrong engine id) while the probe is in flight',
+		[RT_SETOPT, 573, $target, $aslow->port, {
+			version => 3, engineid => '80001f8804deadbeef', username => $v3{username},
+			authprotocol => 'sha256', authpassword => $v3{auth_pass},
+			privprotocol => 'aes128', privpassword => $v3{priv_pass},
+			timeout => 1000, retries => 3 }],
+		[RT_SETOPT|RT_REPLY, 573, T()]);
+	my ($get) = $d->bulk_response;
+	is($get, to_check([RT_GET|RT_REPLY, 572,
+			[['1.3.6.1.2.1.1.5.0', ["engine-id-mismatch: $v3{engine_id}"]]]]),
+		'held query survives the re-setopt and fails under the new pin, not as a probe timeout');
+	my $g1 = $d->request([RT_INFO, 574])->[2]{global};
+	is($g1->{v3_engineid_discoveries} - $g0->{v3_engineid_discoveries}, 0,
+		'the stale probe reply did not adopt');
+	is($g1->{v3_engineid_mismatches} - $g0->{v3_engineid_mismatches}, 1,
+		'only the real query fast-failed; the stale probe reply was plain-ignored');
+	request_match($d, 'engine id is the re-pinned one, untouched by the stale probe',
+		[RT_GETOPT, 575, $target, $aslow->port],
+		[RT_GETOPT|RT_REPLY, 575, {engineid => '80001f8804deadbeef'}]);
+	$aslow->stop;
+}
+
 $d->stop;
 done_testing;
