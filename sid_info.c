@@ -8,8 +8,8 @@
  */
 #include "sqe.h"
 
-struct sid_info *
-new_sid_info(struct client_requests_info *cri)
+static struct sid_info *
+alloc_sid_info(struct client_requests_info *cri)
 {
 	struct sid_info *si, **si_slot;
 	unsigned sid;
@@ -19,12 +19,12 @@ new_sid_info(struct client_requests_info *cri)
 	dest = cri->dest;
 	JLI(si_slot, dest->sid_info, sid);
 	if (si_slot == PJERR)
-		croak(2, "new_sid_info: JLI(sid_info) failed");
+		croak(2, "alloc_sid_info: JLI(sid_info) failed");
 	if (*si_slot)
-		croak(2, "new_sid_info: sid_info must not be there");
+		croak(2, "alloc_sid_info: sid_info must not be there");
 	si = malloc(sizeof(*si));
 	if (!si)
-		croak(2, "new_sid_info: malloc(sid_info)");
+		croak(2, "alloc_sid_info: malloc(sid_info)");
 
 	bzero(si, sizeof(*si));
 	si->sid = sid;
@@ -32,8 +32,6 @@ new_sid_info(struct client_requests_info *cri)
 	si->retries_left = cri->retries;
 	si->version = cri->version;
 	TAILQ_INIT(&si->oids_being_queried);
-	if (start_snmp_packet(&si->pb, si->version, sid, cri->v3, cri->community) < 0)
-		croak(2, "new_sid_info: start_snmp_get_packet");
 	*si_slot = si;
 	TAILQ_INSERT_TAIL(&cri->sid_infos, si, sid_list);
 
@@ -42,6 +40,44 @@ new_sid_info(struct client_requests_info *cri)
 	cri->si->PS.active_sid_infos++;
 	cri->si->PS.total_sid_infos++;
 	return si;
+}
+
+struct sid_info *
+new_sid_info(struct client_requests_info *cri)
+{
+	struct sid_info *si = alloc_sid_info(cri);
+
+	if (start_snmp_packet(&si->pb, si->version, si->sid, cri->v3, cri->community) < 0)
+		croak(2, "new_sid_info: start_snmp_get_packet");
+	return si;
+}
+
+static struct sid_info *
+new_probe_sid_info(struct client_requests_info *cri)
+{
+	struct sid_info *si = alloc_sid_info(cri);
+
+	si->probe = 1;
+	if (build_v3_discovery_packet(si->sid, cri->v3->msg_max_size, &si->packet) < 0)
+		croak(2, "new_probe_sid_info: build_v3_discovery_packet");
+	return si;
+}
+
+static void
+send_discovery_probe(struct client_requests_info *cri)
+{
+	struct sid_info *si;
+
+	si = new_probe_sid_info(cri);
+	cri->v3->probe_sid = si->sid;
+	sid_start_timing(si);
+	si->retries_left--;
+
+	PS.snmp_sends++;
+	cri->si->PS.snmp_sends++;
+	PS.snmp_v3_sends++;
+	cri->si->PS.snmp_v3_sends++;
+	snmp_send(cri->dest, &si->packet);
 }
 
 struct sid_info *
@@ -64,6 +100,15 @@ build_snmp_query(struct client_requests_info *cri)
 	int extra_size;
 
 	if (TAILQ_EMPTY(&cri->oids_to_query))	return; /* XXX */
+
+	if (cri->version == 3 && cri->v3 &&
+	    cri->v3->engine_state == V3_ENGINE_DISCOVERY)
+	{
+		/* queries hold in oids_to_query until the engine id is discovered */
+		if (!cri->v3->probe_sid)
+			send_discovery_probe(cri);
+		return;
+	}
 
 	dest = cri->dest;
 	si = new_sid_info(cri);
@@ -177,6 +222,12 @@ free_sid_info(struct sid_info *si)
 	PS.active_sid_infos--;
 	si->cri->si->PS.active_sid_infos--;
 
+	/* Freeing the tracked discovery probe must clear probe_sid, otherwise the
+	 * cri stays in V3_ENGINE_DISCOVERY with a dead nonzero probe_sid and
+	 * build_snmp_query never sends another probe (every future query hangs). */
+	if (si->probe && si->cri->v3 && si->cri->v3->probe_sid == si->sid)
+		si->cri->v3->probe_sid = 0;
+
 	TAILQ_REMOVE(&si->cri->sid_infos, si, sid_list);
 	JLD(rc, si->cri->dest->sid_info, si->sid);
 	sid_stop_timing(si);
@@ -234,12 +285,21 @@ resend_query_with_new_sid(struct sid_info *si)
 {
 	struct sid_info **si_slot;
 	struct oid_info *oi;
+	unsigned old_sid;
 	Word_t rc;
 
 	JLD(rc, si->cri->dest->sid_info, si->sid);
+	old_sid = si->sid;
 	si->sid = next_sid();
 
-	if (si->cri->version == 3 && si->cri->v3) {
+	if (si->probe) {
+		free(si->packet.buf);
+		si->packet.buf = NULL;
+		if (build_v3_discovery_packet(si->sid, si->cri->v3->msg_max_size, &si->packet) < 0)
+			croak(2, "resend_query_with_new_sid: build_v3_discovery_packet");
+		if (si->cri->v3->probe_sid == old_sid)
+			si->cri->v3->probe_sid = si->sid;
+	} else if (si->cri->version == 3 && si->cri->v3) {
 		regenerate_v3_packet(si);
 	} else {
 		si->packet.buf[si->pi.sid_offset+0] = (si->sid >> 24) & 0xff;
@@ -299,7 +359,16 @@ sid_timer(struct sid_info *si)
 	PS.snmp_timeouts++;
 	si->cri->si->PS.snmp_timeouts++;
 
-	if (si->table_oid) {
+	if (si->probe) {
+		struct snmpv3info *v3 = si->cri->v3;
+
+		if (v3 && v3->engine_state == V3_ENGINE_DISCOVERY &&
+		    v3->probe_sid == si->sid)
+		{
+			v3->probe_sid = 0;
+			fail_queued_oids(si->cri, &BER_TIMEOUT);
+		}
+	} else if (si->table_oid) {
 		oid_done(si, si->table_oid, &BER_TIMEOUT, RT_GETTABLE, 0);
 		si->table_oid = NULL;
 	} else {

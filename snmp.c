@@ -12,6 +12,157 @@
 
 static struct socket_info *snmp = NULL;
 
+/* Checks (on a private copy of the parse state) whether an unencrypted reply,
+ * positioned at the scoped PDU, is a REPORT carrying the given usmStats oid. */
+static int
+report_carries_usm_stat(struct ber e, struct ber *stat_oid)
+{
+	unsigned char t;
+	unsigned char context_engine_id[V3O_ENGINE_ID_MAXLEN];
+	unsigned l, dummy;
+	int oids_stop;
+	struct ber oid, val;
+
+	if (decode_sequence(&e, NULL) < 0)                                      return 0;
+	if (decode_octets(&e, context_engine_id, V3O_ENGINE_ID_MAXLEN, &l) < 0) return 0;
+	if (decode_type_len(&e, &t, &l) < 0)                                    return 0;
+	if (t != AT_STRING)                                                     return 0;
+	e.b += l;   /* skip context-name */
+	e.len += l;
+	if (e.len + 1 > e.max_len)                                              return 0;
+	if (e.b[0] != PDU_REPORT)                                               return 0;
+	if (decode_composite(&e, PDU_REPORT, NULL) < 0)                         return 0;
+	if (decode_integer(&e, -1, &dummy) < 0)                                 return 0; /* request-id */
+	if (decode_integer(&e, -1, &dummy) < 0)                                 return 0; /* error-status */
+	if (decode_integer(&e, -1, &dummy) < 0)                                 return 0; /* error-index */
+	if (decode_sequence(&e, &oids_stop) < 0)                                return 0;
+	while (inside_sequence(&e, oids_stop)) {
+		if (decode_sequence(&e, NULL) < 0)                                  return 0;
+		if (decode_oid(&e, &oid) < 0)                                       return 0;
+		if (decode_any(&e, &val) < 0)                                       return 0;
+		if (oid_compare(&oid, stat_oid) == 0)                               return 1;
+	}
+	return 0;
+}
+
+/* Handles the REPORT answering an engine id discovery probe: adopts the
+ * agent's engine id, localizes the stored passwords against it, and releases
+ * the queries held during discovery.  Returns 1 when the packet was fully
+ * handled, 0 when the caller should ignore it via the bad-packet path. */
+static int
+adopt_discovered_engine_id(struct sid_info *si, struct snmpv3info *pkt_v3, struct ber *e,
+                           const char *peer, struct destination *dest)
+{
+	struct client_requests_info *cri = si->cri;
+	struct snmpv3info *siv3 = cri->v3;
+	char hex_eid[2*V3O_ENGINE_ID_MAXLEN+1] = "";
+	char *err;
+	int p, i;
+
+	if (siv3->engine_state != V3_ENGINE_DISCOVERY || siv3->probe_sid != si->sid) {
+		if (destination_log_allow(dest, LTC_REPORT))
+			log_info("reply to a stale discovery probe, ignoring packet",
+					"peer", peer, "mid", U(si->sid), NULL);
+		return 0;
+	}
+	if ((pkt_v3->msg_flags & V3F_ENCRYPTED) ||
+	    !report_carries_usm_stat(*e, &usmStatsUnknownEngineIDs))
+	{
+		if (destination_log_allow(dest, LTC_REPORT))
+			log_warn("unexpected reply to discovery probe, ignoring packet",
+					"peer", peer, "mid", U(si->sid), NULL);
+		return 0;
+	}
+
+	memcpy(siv3->engine_id, pkt_v3->engine_id, pkt_v3->engine_id_len);
+	siv3->engine_id_len = pkt_v3->engine_id_len;
+	siv3->engine_boots  = pkt_v3->engine_boots;
+	siv3->engine_time   = pkt_v3->engine_time;
+	for (p = 0, i = 0; i < siv3->engine_id_len; i++)
+		p += snprintf(hex_eid+p, sizeof(hex_eid)-p, "%02x", siv3->engine_id[i]);
+
+	if (siv3->authpass[0] &&
+	    !password_to_kul(siv3->auth_proto, siv3->authpass, strlen(siv3->authpass),
+	                     siv3->engine_id, siv3->engine_id_len,
+	                     siv3->authkul, V3O_AUTHKUL_MAXSIZE, &siv3->authkul_len, &err))
+		goto kul_error;
+	if (siv3->privpass[0]) {
+		if (!password_to_kul(siv3->auth_proto, siv3->privpass, strlen(siv3->privpass),
+		                     siv3->engine_id, siv3->engine_id_len,
+		                     siv3->privkul, V3O_PRIVKUL_MAXSIZE, &siv3->privkul_len, &err))
+			goto kul_error;
+		if (!expand_kul(siv3->auth_proto, siv3->priv_proto,
+		                siv3->privkul, siv3->privkul_len,
+		                siv3->engine_id, siv3->engine_id_len,
+		                siv3->x_privkul, V3O_PRIVKUL_MAXSIZE, &siv3->x_privkul_len, &err))
+			goto kul_error;
+	}
+
+	siv3->engine_state = V3_ENGINE_KNOWN;
+	siv3->probe_sid = 0;
+	PS.v3_engineid_discoveries++;
+	log_info("discovered engine id", "peer", peer, "engine_id", hex_eid, NULL);
+	free_sid_info(si);
+	maybe_query_destination(dest);
+	return 1;
+
+kul_error:
+	{
+		struct ber errval = ber_string_error("kul-calculation-error");
+
+		errval.len = errval.max_len; /* fail_queued_oids ber_dup()s the encoded
+		                               * length, not the rewound decode position */
+		log_error("kul calculation error after engine id discovery",
+				"peer", peer, "engine_id", hex_eid, "error", err, NULL);
+		siv3->engine_id_len = 0;
+		siv3->probe_sid = 0;
+		fail_queued_oids(cri, &errval);
+		free(errval.buf);
+		free_sid_info(si);
+		maybe_query_destination(dest);
+	}
+	return 1;
+}
+
+/* Fails all of a sid's oids with ["engine-id-mismatch: <hex>"] carrying the
+ * engine id the peer claimed.  Only the one request fails; the cri keeps its
+ * configuration, so a corrected setopt recovers instantly. */
+static void
+fail_sid_engine_id_mismatch(struct sid_info *si, struct snmpv3info *pkt_v3,
+                            const char *peer, struct destination *dest)
+{
+	char known[2*V3O_ENGINE_ID_MAXLEN+1] = "";
+	char received[2*V3O_ENGINE_ID_MAXLEN+1] = "";
+	char errstr[2*V3O_ENGINE_ID_MAXLEN+32];
+	struct snmpv3info *siv3 = si->cri->v3;
+	struct ber errval;
+	int p, i;
+
+	for (p = 0, i = 0; i < siv3->engine_id_len; i++)
+		p += snprintf(known+p, sizeof(known)-p, "%02x", siv3->engine_id[i]);
+	for (p = 0, i = 0; i < pkt_v3->engine_id_len; i++)
+		p += snprintf(received+p, sizeof(received)-p, "%02x", pkt_v3->engine_id[i]);
+	snprintf(errstr, sizeof(errstr), "engine-id-mismatch: %s", received);
+
+	PS.v3_engineid_mismatches++;
+	if (destination_log_allow(dest, LTC_ENGINE_ID_MISMATCH))
+		log_warn("engine-id mismatch, failing request", "peer", peer, "mid", U(si->sid),
+				"known_engine_id", known, "recv_engine_id", received, NULL);
+
+	errval = ber_string_error(errstr);
+	errval.len = errval.max_len; /* oid_done/all_oids_done ber_dup() the encoded
+	                               * length, not the rewound decode position */
+	if (si->table_oid) {
+		oid_done(si, si->table_oid, &errval, RT_GETTABLE, 0);
+		si->table_oid = NULL;
+	} else {
+		all_oids_done(si, &errval);
+	}
+	free(errval.buf);
+	free_sid_info(si);
+	maybe_query_destination(dest);
+}
+
 static void
 snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *buf, int n)
 {
@@ -145,6 +296,20 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 			char received[2*V3O_ENGINE_ID_MAXLEN+1] = "";
 			int p, i;
 
+			if (si->probe) {
+				if (adopt_discovered_engine_id(si, &v3, e, peer, dest))
+					return;
+				trace = NULL;
+				goto bad_snmp_packet;
+			}
+
+			if (!(v3.msg_flags & V3F_ENCRYPTED) &&
+			    report_carries_usm_stat(*e, &usmStatsUnknownEngineIDs))
+			{
+				fail_sid_engine_id_mismatch(si, &v3, peer, dest);
+				return;
+			}
+
 			for (p = 0, i = 0; i < v3.engine_id_len; i++)
 				p += snprintf(known+p, sizeof(known)-p, "%02x", siv3->engine_id[i]);
 			for (p = 0, i = 0; i < v3.engine_id_len; i++)
@@ -155,6 +320,19 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 			trace = NULL;
 			goto bad_snmp_packet;
         }
+
+		// - a discovery probe whose reply reached here carries an engine id equal
+		//   to the stored one (empty during discovery), so it bypassed the mismatch
+		//   branch where probe adoption lives.  A real discovery REPORT always
+		//   carries a non-empty engine id and goes through that branch; anything
+		//   else answering a probe is bogus and must never be processed as a GET.
+		if (si->probe) {
+			if (destination_log_allow(dest, LTC_REPORT))
+				log_warn("unexpected reply to discovery probe, ignoring packet",
+						"peer", peer, "mid", U(mid), NULL);
+			trace = NULL;
+			goto bad_snmp_packet;
+		}
 
 		// - verify username
 		if (strcmp(siv3->username, v3.username) != 0) {

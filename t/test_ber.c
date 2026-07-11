@@ -250,6 +250,87 @@ test_v3_header_encoding(void)
 }
 
 int
+test_v3_discovery_packet(void)
+{
+	static unsigned char expected[] = {
+		0x30,0x3d,                          /* message SEQUENCE */
+		0x02,0x01,0x03,                     /* version 3 */
+		0x30,0x10,                          /* msgGlobalData */
+		0x02,0x04,0x01,0x02,0x03,0x04,      /* msgID */
+		0x02,0x02,0x05,0xc0,                /* msgMaxSize 1472 */
+		0x04,0x01,0x04,                     /* msgFlags: reportable */
+		0x02,0x01,0x03,                     /* msgSecurityModel USM */
+		0x04,0x10,                          /* msgSecurityParameters */
+		0x30,0x0e,
+		0x04,0x00,                          /* engine id "" */
+		0x02,0x01,0x00,                     /* boots 0 */
+		0x02,0x01,0x00,                     /* time 0 */
+		0x04,0x00,                          /* username "" */
+		0x04,0x00,                          /* auth params "" */
+		0x04,0x00,                          /* priv params "" */
+		0x30,0x14,                          /* plaintext scoped PDU */
+		0x04,0x00,                          /* context engine id "" */
+		0x04,0x00,                          /* context name "" */
+		0xa0,0x0e,                          /* GetRequest PDU */
+		0x02,0x04,0x01,0x02,0x03,0x04,      /* request-id */
+		0x02,0x01,0x00,                     /* error-status */
+		0x02,0x01,0x00,                     /* error-index */
+		0x30,0x00,                          /* empty varbind list */
+	};
+	struct ber pkt;
+	int r = 1;
+
+	if (build_v3_discovery_packet(0x01020304, 1472, &pkt) < 0) {
+		tap_diag("build_v3_discovery_packet failed");
+		return 0;
+	}
+	if (pkt.len != (int)sizeof(expected)) {
+		tap_diag("discovery packet length %d != %d", pkt.len, (int)sizeof(expected));
+		r = 0;
+	} else if (memcmp(pkt.buf, expected, sizeof(expected)) != 0) {
+		tap_diag("discovery packet bytes differ");
+		r = 0;
+	}
+	free(pkt.buf);
+	return r;
+}
+
+int
+test_usm_stats_unknown_engine_ids_oid(void)
+{
+	char tmp_buf[64];
+	struct ber e = ber_init(tmp_buf, 64);
+
+	if (populate_well_known_oids() < 0) {
+		tap_diag("populate_well_known_oids failed");
+		return 0;
+	}
+	if (encode_string_oid("1.3.6.1.6.3.15.1.1.4.0", -1, &e) < 0) {
+		tap_diag("encode_string_oid failed");
+		return 0;
+	}
+	return ber_equal(&e, &usmStatsUnknownEngineIDs);
+}
+
+int
+test_ber_string_error(void)
+{
+	struct ber b = ber_string_error("hello");
+	int r = 1;
+
+	if (b.max_len != 7 || memcmp(b.buf, "\x90\x05hello", 7) != 0) {
+		tap_diag("ber_string_error: unexpected encoding");
+		r = 0;
+	}
+	if (b.len != 0) {
+		tap_diag("ber_string_error: result must be rewound (len == 0)");
+		r = 0;
+	}
+	free(b.buf);
+	return r;
+}
+
+int
 test_v2c_getbulk_packet(int max_repetitions, const char *mrep_tlv)
 {
 	struct packet_builder pb;
@@ -391,6 +472,9 @@ main(void)
 	ok(test_next_sid_from(0, 0x01000001), "next_sid_from 0");
 
 	ok(test_v3_header_encoding(), "v3_header_encoding");
+	ok(test_v3_discovery_packet(), "v3_discovery_packet");
+	ok(test_usm_stats_unknown_engine_ids_oid(), "usmStatsUnknownEngineIDs oid");
+	ok(test_ber_string_error(), "ber_string_error");
 	ok(test_v2c_getbulk_packet(100, "\x02\x01\x64"), "v2c_getbulk_packet max_repetitions=100");
 	ok(test_v2c_getbulk_packet(200, "\x02\x01\x7f"), "v2c_getbulk_packet max_repetitions=200");
 

@@ -53,6 +53,21 @@ if ($user && $engineid) {
 	request_match($d, "v3 get sysName",
 		[RT_GET, 201, $host, $port, ["1.3.6.1.2.1.1.5.0"]],
 		[RT_GET|RT_REPLY, 201, [["1.3.6.1.2.1.1.5.0", match qr/./]]]);
+
+	# engine id discovery: same credentials with engineid omitted; the env's
+	# engine id is the known-right answer, so this cross-checks discovery
+	# against a real net-snmp agent
+	my %v3d = %v3;
+	delete $v3d{engineid};
+	request_match($d, "set v3 credentials (discovery)",
+		[RT_SETOPT, 210, $host, $port, \%v3d],
+		[RT_SETOPT|RT_REPLY, 210, {engineid => ''}]);
+	request_match($d, "v3 get sysName via discovered engine id",
+		[RT_GET, 211, $host, $port, ["1.3.6.1.2.1.1.5.0"]],
+		[RT_GET|RT_REPLY, 211, [["1.3.6.1.2.1.1.5.0", match qr/./]]]);
+	request_match($d, "discovered engine id matches the configured one",
+		[RT_GETOPT, 212, $host, $port],
+		[RT_GETOPT|RT_REPLY, 212, {engineid => lc $engineid}]);
 } elsif ($user) {
 	note "SQE_SNMPD_V3_USER set but SQE_SNMPD_V3_ENGINEID missing; v3 needs the agent's engine id, skipping v3 checks";
 } else {

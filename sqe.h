@@ -142,6 +142,8 @@ struct program_stats
 	int64_t snmp_v1_sends;
 	int64_t snmp_v2c_sends;
 	int64_t snmp_v3_sends;
+	int64_t v3_engineid_discoveries;
+	int64_t v3_engineid_mismatches;
 	int64_t snmp_retries;
 	int64_t snmp_timeouts;
 	int64_t udp_timeouts;
@@ -335,6 +337,10 @@ struct destination
 #define V3F_ENCRYPTED		0x02
 #define V3F_AUTHENTICATED	0x01
 
+/* engine id acquisition state (struct snmpv3info.engine_state) */
+#define V3_ENGINE_KNOWN     0  /* engine id pinned via setopt, or discovered */
+#define V3_ENGINE_DISCOVERY 1  /* engine id unknown; discover it on first query */
+
 struct snmpv3info {
 	// these can be set via setopt and (mostly) obtained via getopt
 	unsigned  engine_id_len;
@@ -356,6 +362,9 @@ struct snmpv3info {
 	u_int32_t engine_boots;
 	u_int32_t engine_time;
 	u_int8_t  msg_flags;
+	// engine id acquisition (never packed by getopt)
+	int       engine_state;  /* V3_ENGINE_KNOWN / V3_ENGINE_DISCOVERY */
+	unsigned  probe_sid;     /* sid of the in-flight discovery probe, 0 = none */
 };
 
 struct client_requests_info
@@ -402,6 +411,7 @@ struct sid_info
 	struct timeval will_timeout_at;
 	int retries_left;
 	unsigned version;
+	int probe;  /* engine id discovery probe; carries no oids */
 
 	struct packet_builder pb;
 	struct ber packet;
@@ -437,9 +447,11 @@ extern void ber_dump(FILE *f, struct ber *e);
 extern int ber_equal(struct ber *b1, struct ber *b2);
 extern int ber_is_null(struct ber *ber);
 extern struct ber ber_error_status(int error_status);
+extern struct ber ber_string_error(const char *error_string);
 
 extern struct ber usmStatsNotInTimeWindows;
 extern struct ber usmStatsWrongDigests;
+extern struct ber usmStatsUnknownEngineIDs;
 
 extern int populate_well_known_oids(void);
 
@@ -486,6 +498,7 @@ finalize_snmp_packet(struct packet_builder* pb,
                      struct packet_info* out_pi,
                      unsigned char type,
                      int max_repetitions);
+extern int build_v3_discovery_packet(unsigned request_id, unsigned msg_max_size, struct ber *out_packet);
 extern int oid_belongs_to_table(struct ber *oid, struct ber *table);
 extern int oid_compare(struct ber *aa, struct ber *bb);
 /* returns -9999 if there is a problem,
@@ -567,6 +580,7 @@ extern struct client_requests_info *get_client_requests_info(struct in_addr *ip,
 extern int free_client_request_info(struct client_requests_info *cri);
 extern int free_all_client_request_info_for_fd(int fd);
 extern void dump_client_request_info(msgpack_packer *pk, struct client_requests_info *cri);
+extern void fail_queued_oids(struct client_requests_info *cri, struct ber *val);
 
 /* cid_info.c */
 extern struct cid_info *get_cid_info(struct client_requests_info *cri, unsigned cid);

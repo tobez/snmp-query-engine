@@ -1,0 +1,3 @@
+kind: Added
+body: 'snmpv3: fail requests fast on agent engine ID mismatch'
+time: 2026-07-11T14:04:49.175999+02:00

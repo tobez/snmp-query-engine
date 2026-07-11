@@ -32,6 +32,7 @@ sub spawn {
 		v3_never_sync  => $opt{v3_never_sync} // 0,
 		v3_report      => $opt{v3_report}     // '',
 		v3_reply_fault => $opt{v3_reply_fault} // '',
+		v3_empty_eid_reply => $opt{v3_empty_eid_reply} // 0,
 	}, $class;
 	if (my $v = $self->{v3}) {
 		my $eid = pack('H*', $v->{engine_id});
@@ -51,7 +52,7 @@ sub spawn {
 	if (!$pid) {
 		close $rd;
 		my $sock = IO::Socket::INET->new(LocalAddr => '127.0.0.1',
-			LocalPort => 0, Proto => 'udp') or POSIX::_exit(1);
+			LocalPort => $opt{port} // 0, Proto => 'udp') or POSIX::_exit(1);
 		print $wr $sock->sockport, "\n";
 		close $wr;
 		$self->_serve($sock);
@@ -440,6 +441,16 @@ sub _handle_v3 {
 
 	my $r = $self->_parse_v3($self->{_last_pkt});
 
+	# misbehavior: answer any v3 request with a normal-looking GET-RESPONSE that
+	# carries an EMPTY authoritative engineID, noAuthNoPriv, the agent's username
+	return $self->_v3_empty_eid_reply($r) if $self->{v3_empty_eid_reply};
+
+	# engine id must match, else send unknown-engine report (noAuth);
+	# an empty engine id is the RFC 3414 discovery probe
+	if ($r->{eid} ne $s->{eid}) {
+		return $self->_v3_report($r, 'unknown_engine');
+	}
+
 	# username must match, else send unknown-user report (noAuth)
 	if ($r->{user} ne $s->{username}) {
 		return $self->_v3_report($r, 'unknown_user');
@@ -511,6 +522,23 @@ sub _handle_v3 {
 		eid => $eid, username => $user, auth_kul => $auth_kul, auth_proto => $s->{auth_proto},
 	);
 	return $reply;
+}
+
+# Build a noAuthNoPriv GET-RESPONSE with an empty authoritative engineID and the
+# agent's username (empty varbind list). Simulates a broken/hostile agent whose
+# reply, during discovery (stored engineID also empty), bypasses the client's
+# engine-id mismatch handling.
+sub _v3_empty_eid_reply {
+	my ($self, $r) = @_;
+	my $s = $self->{v3set};
+	my $resp_pdu = _tlv(0xa2,
+		_enc_uint(0x02, $r->{mid}) . _enc_uint(0x02, 0) . _enc_uint(0x02, 0)
+		. _tlv(0x30, ''));
+	my $scoped = $self->_scoped('', $resp_pdu);
+	return $self->_build_v3(
+		mid => $r->{mid}, flags => 0x00, boots => $s->{boots}, time => $s->{time},
+		authenticated => 0, encrypted => 0, scoped => $scoped, privp => '',
+		eid => '', username => $s->{username});
 }
 
 # Build a noAuthNoPriv report carrying $type; carries the agent's boots/time so

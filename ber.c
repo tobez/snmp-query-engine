@@ -88,11 +88,22 @@ ber_equal(struct ber *b1, struct ber *b2)
 }
 
 struct ber
+ber_string_error(const char *error_string)
+{
+    char       buf[256];
+    struct ber b;
+
+    b = ber_init(buf, sizeof(buf));
+    if (encode_string(error_string, &b) < 0)
+        croakx(2, "ber_string_error: error string too long");
+    b.buf[0] = VAL_STRING_ERROR;
+    return ber_rewind(ber_dup(&b));
+}
+
+struct ber
 ber_error_status(int error_status)
 {
     char       error_string[40];
-    char       buf[64];
-    struct ber b;
 
     switch (error_status) {
     case 0:
@@ -155,10 +166,7 @@ ber_error_status(int error_status)
     default:
         sprintf(error_string, "error-status %d", error_status);
     }
-    b = ber_init(buf, 64);
-    encode_string(error_string, &b);
-    b.buf[0] = VAL_STRING_ERROR;
-    return ber_rewind(ber_dup(&b));
+    return ber_string_error(error_string);
 }
 
 int
@@ -402,6 +410,101 @@ finalize_snmp_packet(struct packet_builder *pb, struct ber *out_encoded_packet, 
     *out_pi             = pb->pi;
     free(e->buf);
     return pb->pi.sid_offset;
+}
+
+/// @brief Builds a complete RFC 3414 engine id discovery probe: noAuthNoPriv,
+/// empty engine id and username, zero boots/time, reportable flag set, and a
+/// GET PDU with no varbinds.  The result is malloc'd into *out_packet.
+/// @return 0 for success, -1 for failure, in which case errno is set
+int
+build_v3_discovery_packet(unsigned request_id, unsigned msg_max_size, struct ber *out_packet)
+{
+    unsigned char  buf[128];
+    struct ber     enc = ber_init(buf, sizeof(buf));
+    struct ber    *e = &enc;
+    unsigned char *packet_sequence, *gdata, *sec_params_string, *sec_params_seq, *scoped_pdu, *pdu;
+    unsigned char  msg_flags = V3F_REPORTABLE;
+    unsigned char  empty[1]  = {0};
+
+    SPACECHECK2;
+    packet_sequence    = e->b;
+    packet_sequence[0] = AT_SEQUENCE;
+    EXTEND2;
+    if (encode_integer(3, e, 0) < 0)                 /* version */
+        return -1;
+
+    SPACECHECK2;
+    gdata    = e->b;
+    gdata[0] = AT_SEQUENCE;
+    EXTEND2;
+    if (encode_integer(request_id, e, 4) < 0)        /* msgID */
+        return -1;
+    if (encode_integer(msg_max_size, e, 0) < 0)
+        return -1;
+    if (encode_bytes(&msg_flags, 1, e) < 0)
+        return -1;
+    if (encode_integer(3, e, 0) < 0)                 /* msgSecurityModel USM */
+        return -1;
+    if (encode_store_length(e, gdata) < 0)
+        return -1;
+
+    SPACECHECK2;
+    sec_params_string    = e->b;
+    sec_params_string[0] = AT_STRING;
+    EXTEND2;
+    SPACECHECK2;
+    sec_params_seq    = e->b;
+    sec_params_seq[0] = AT_SEQUENCE;
+    EXTEND2;
+    if (encode_bytes(empty, 0, e) < 0)               /* engine id */
+        return -1;
+    if (encode_integer(0, e, 0) < 0)                 /* boots */
+        return -1;
+    if (encode_integer(0, e, 0) < 0)                 /* time */
+        return -1;
+    if (encode_bytes(empty, 0, e) < 0)               /* username */
+        return -1;
+    if (encode_bytes(empty, 0, e) < 0)               /* auth params */
+        return -1;
+    if (encode_bytes(empty, 0, e) < 0)               /* priv params */
+        return -1;
+    if (encode_store_length(e, sec_params_seq) < 0)
+        return -1;
+    if (encode_store_length(e, sec_params_string) < 0)
+        return -1;
+
+    SPACECHECK2;
+    scoped_pdu    = e->b;
+    scoped_pdu[0] = AT_SEQUENCE;
+    EXTEND2;
+    if (encode_bytes(empty, 0, e) < 0)               /* context engine id */
+        return -1;
+    if (encode_bytes(empty, 0, e) < 0)               /* context name */
+        return -1;
+
+    SPACECHECK2;
+    pdu    = e->b;
+    pdu[0] = PDU_GET_REQUEST;
+    EXTEND2;
+    if (encode_integer(request_id, e, 4) < 0)
+        return -1;
+    if (encode_integer(0, e, 0) < 0)                 /* error-status */
+        return -1;
+    if (encode_integer(0, e, 0) < 0)                 /* error-index */
+        return -1;
+    SPACECHECK2;
+    e->b[0] = AT_SEQUENCE;                           /* empty varbind list */
+    e->b[1] = 0;
+    EXTEND2;
+    if (encode_store_length(e, pdu) < 0)
+        return -1;
+    if (encode_store_length(e, scoped_pdu) < 0)
+        return -1;
+    if (encode_store_length(e, packet_sequence) < 0)
+        return -1;
+
+    *out_packet = ber_dup(e);
+    return 0;
 }
 
 /// @brief Stores actual length of a composite starting at s and ending at e->b, moving memory block if needed;  think of it as a
@@ -1166,6 +1269,7 @@ oid_compare(struct ber *aa, struct ber *bb)
 
 struct ber usmStatsNotInTimeWindows;
 struct ber usmStatsWrongDigests;
+struct ber usmStatsUnknownEngineIDs;
 
 int
 populate_well_known_oids(void)
@@ -1184,6 +1288,12 @@ populate_well_known_oids(void)
         return -1;
     }
     usmStatsWrongDigests = ber_dup(&e);
+
+    e = ber_init(tmp_buf, 2048);
+    if (encode_string_oid("1.3.6.1.6.3.15.1.1.4.0", -1, &e) < 0) {
+        return -1;
+    }
+    usmStatsUnknownEngineIDs = ber_dup(&e);
 
     return 0;
 }
