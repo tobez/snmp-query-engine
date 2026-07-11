@@ -110,6 +110,8 @@ kul_error:
 	{
 		struct ber errval = ber_string_error("kul-calculation-error");
 
+		errval.len = errval.max_len; /* fail_queued_oids ber_dup()s the encoded
+		                               * length, not the rewound decode position */
 		log_error("kul calculation error after engine id discovery",
 				"peer", peer, "engine_id", hex_eid, "error", err, NULL);
 		siv3->engine_id_len = 0;
