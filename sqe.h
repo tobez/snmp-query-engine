@@ -449,6 +449,7 @@ extern struct ber ber_error_status(int error_status);
 
 extern struct ber usmStatsNotInTimeWindows;
 extern struct ber usmStatsWrongDigests;
+extern struct ber usmStatsUnknownEngineIDs;
 
 extern int populate_well_known_oids(void);
 
@@ -495,6 +496,7 @@ finalize_snmp_packet(struct packet_builder* pb,
                      struct packet_info* out_pi,
                      unsigned char type,
                      int max_repetitions);
+extern int build_v3_discovery_packet(unsigned request_id, unsigned msg_max_size, struct ber *out_packet);
 extern int oid_belongs_to_table(struct ber *oid, struct ber *table);
 extern int oid_compare(struct ber *aa, struct ber *bb);
 /* returns -9999 if there is a problem,
