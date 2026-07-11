@@ -130,5 +130,22 @@ for my $i (0 .. $#faults) {
 	$adisc->stop;
 }
 
+# a setopt with no v3 option keys at all must leave an existing v3 config
+# untouched, not rebuild or drop it
+{
+	my $before = $d->request([RT_GETOPT, 520, $target, $port]);
+	request_match($d, 'setopt with only non-v3 options',
+		[RT_SETOPT, 521, $target, $port, {timeout => 1500, max_reply_size => 800}],
+		[RT_SETOPT|RT_REPLY, 521, T()]);
+	my $after = $d->request([RT_GETOPT, 522, $target, $port]);
+	is($after->[2]{username},     $before->[2]{username},     'username survives v3-keyless setopt');
+	is($after->[2]{engineid},     $before->[2]{engineid},     'engineid survives v3-keyless setopt');
+	is($after->[2]{authprotocol}, $before->[2]{authprotocol}, 'authprotocol survives v3-keyless setopt');
+	is($after->[2]{authkul},      $before->[2]{authkul},      'authkul survives v3-keyless setopt');
+	is($after->[2]{privprotocol}, $before->[2]{privprotocol}, 'privprotocol survives v3-keyless setopt');
+	is($after->[2]{privkul},      $before->[2]{privkul},      'privkul survives v3-keyless setopt');
+	is($after->[2]{timeout}, 1500, 'non-v3 option still applied by the same setopt');
+}
+
 $d->stop;
 done_testing;
