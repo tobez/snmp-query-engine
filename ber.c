@@ -88,11 +88,22 @@ ber_equal(struct ber *b1, struct ber *b2)
 }
 
 struct ber
+ber_string_error(const char *error_string)
+{
+    char       buf[256];
+    struct ber b;
+
+    b = ber_init(buf, sizeof(buf));
+    if (encode_string(error_string, &b) < 0)
+        croakx(2, "ber_string_error: error string too long");
+    b.buf[0] = VAL_STRING_ERROR;
+    return ber_rewind(ber_dup(&b));
+}
+
+struct ber
 ber_error_status(int error_status)
 {
     char       error_string[40];
-    char       buf[64];
-    struct ber b;
 
     switch (error_status) {
     case 0:
@@ -155,10 +166,7 @@ ber_error_status(int error_status)
     default:
         sprintf(error_string, "error-status %d", error_status);
     }
-    b = ber_init(buf, 64);
-    encode_string(error_string, &b);
-    b.buf[0] = VAL_STRING_ERROR;
-    return ber_rewind(ber_dup(&b));
+    return ber_string_error(error_string);
 }
 
 int

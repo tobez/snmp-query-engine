@@ -180,5 +180,47 @@ for my $i (0 .. $#faults) {
 	$asilent->stop;
 }
 
+# discovery happy path: probe, adopt, localize, release held queries
+{
+	my $ahappy = SQE::FakeAgent->spawn(tree => \@tree, v3 => \%v3);
+	my $disc0 = $d->request([RT_INFO, 530])->[2]{global}{v3_engineid_discoveries};
+	request_match($d, 'discovery setopt (happy path)',
+		[RT_SETOPT, 531, $target, $ahappy->port, {
+			version => 3, username => $v3{username},
+			authprotocol => 'sha256', authpassword => $v3{auth_pass},
+			privprotocol => 'aes128', privpassword => $v3{priv_pass} }],
+		[RT_SETOPT|RT_REPLY, 531, T()]);
+	request_match($d, 'v3 authPriv get succeeds via discovered engine id',
+		[RT_GET, 532, $target, $ahappy->port, ['1.3.6.1.2.1.1.5.0']],
+		[RT_GET|RT_REPLY, 532, [['1.3.6.1.2.1.1.5.0', $hostname]]]);
+	my $eid = pack 'H*', $v3{engine_id};
+	request_match($d, 'getopt shows discovered engine id and localized keys',
+		[RT_GETOPT, 533, $target, $ahappy->port],
+		[RT_GETOPT|RT_REPLY, 533, {
+			engineid => $v3{engine_id},
+			authkul  => unpack('H*', SQE::USM::password_to_kul('sha256', $v3{auth_pass}, $eid)),
+			privkul  => unpack('H*', SQE::USM::password_to_kul('sha256', $v3{priv_pass}, $eid)),
+		}]);
+	my $disc1 = $d->request([RT_INFO, 534])->[2]{global}{v3_engineid_discoveries};
+	is($disc1 - $disc0, 1, 'one engine id discovery counted');
+	$ahappy->stop;
+}
+
+# probe retry: first probe dropped, second one discovers
+{
+	my $adrop = SQE::FakeAgent->spawn(tree => \@tree, v3 => \%v3, drop_first => 1);
+	request_match($d, 'discovery setopt (drop-first agent)',
+		[RT_SETOPT, 540, $target, $adrop->port, {
+			version => 3, username => $v3{username},
+			authprotocol => 'sha256', authpassword => $v3{auth_pass},
+			privprotocol => 'aes128', privpassword => $v3{priv_pass},
+			timeout => 100, retries => 3 }],
+		[RT_SETOPT|RT_REPLY, 540, T()]);
+	request_match($d, 'discovery survives a dropped probe via normal retries',
+		[RT_GET, 541, $target, $adrop->port, ['1.3.6.1.2.1.1.5.0']],
+		[RT_GET|RT_REPLY, 541, [['1.3.6.1.2.1.1.5.0', $hostname]]]);
+	$adrop->stop;
+}
+
 $d->stop;
 done_testing;

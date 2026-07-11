@@ -447,6 +447,7 @@ extern void ber_dump(FILE *f, struct ber *e);
 extern int ber_equal(struct ber *b1, struct ber *b2);
 extern int ber_is_null(struct ber *ber);
 extern struct ber ber_error_status(int error_status);
+extern struct ber ber_string_error(const char *error_string);
 
 extern struct ber usmStatsNotInTimeWindows;
 extern struct ber usmStatsWrongDigests;

@@ -313,6 +313,20 @@ test_usm_stats_unknown_engine_ids_oid(void)
 }
 
 int
+test_ber_string_error(void)
+{
+	struct ber b = ber_string_error("hello");
+	int r = 1;
+
+	if (b.max_len != 7 || memcmp(b.buf, "\x90\x05hello", 7) != 0) {
+		tap_diag("ber_string_error: unexpected encoding");
+		r = 0;
+	}
+	free(b.buf);
+	return r;
+}
+
+int
 test_v2c_getbulk_packet(int max_repetitions, const char *mrep_tlv)
 {
 	struct packet_builder pb;
@@ -456,6 +470,7 @@ main(void)
 	ok(test_v3_header_encoding(), "v3_header_encoding");
 	ok(test_v3_discovery_packet(), "v3_discovery_packet");
 	ok(test_usm_stats_unknown_engine_ids_oid(), "usmStatsUnknownEngineIDs oid");
+	ok(test_ber_string_error(), "ber_string_error");
 	ok(test_v2c_getbulk_packet(100, "\x02\x01\x64"), "v2c_getbulk_packet max_repetitions=100");
 	ok(test_v2c_getbulk_packet(200, "\x02\x01\x7f"), "v2c_getbulk_packet max_repetitions=200");
 
