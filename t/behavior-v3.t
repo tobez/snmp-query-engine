@@ -28,6 +28,14 @@ my $agent  = SQE::FakeAgent->spawn(tree => \@tree, v3 => \%v3);
 my $target = '127.0.0.1';
 my $port   = $agent->port;
 
+{
+	my $info = $d->request([RT_INFO, 100])->[2];
+	is($info->{global}{v3_engineid_discoveries}, 0, 'v3_engineid_discoveries starts at 0');
+	is($info->{global}{v3_engineid_mismatches}, 0, 'v3_engineid_mismatches starts at 0');
+	ok(!exists $info->{connection}{v3_engineid_discoveries}, 'discoveries counter is global-only');
+	ok(!exists $info->{connection}{v3_engineid_mismatches}, 'mismatches counter is global-only');
+}
+
 request_match($d, 'set v3 credentials',
 	[RT_SETOPT, 200, $target, $port, {
 		version => 3, engineid => $v3{engine_id}, username => $v3{username},

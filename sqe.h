@@ -142,6 +142,8 @@ struct program_stats
 	int64_t snmp_v1_sends;
 	int64_t snmp_v2c_sends;
 	int64_t snmp_v3_sends;
+	int64_t v3_engineid_discoveries;
+	int64_t v3_engineid_mismatches;
 	int64_t snmp_retries;
 	int64_t snmp_timeouts;
 	int64_t udp_timeouts;
