@@ -122,6 +122,45 @@ kul_error:
 	return 1;
 }
 
+/* Fails all of a sid's oids with ["engine-id-mismatch: <hex>"] carrying the
+ * engine id the peer claimed.  Only the one request fails; the cri keeps its
+ * configuration, so a corrected setopt recovers instantly. */
+static void
+fail_sid_engine_id_mismatch(struct sid_info *si, struct snmpv3info *pkt_v3,
+                            const char *peer, struct destination *dest)
+{
+	char known[2*V3O_ENGINE_ID_MAXLEN+1] = "";
+	char received[2*V3O_ENGINE_ID_MAXLEN+1] = "";
+	char errstr[2*V3O_ENGINE_ID_MAXLEN+32];
+	struct snmpv3info *siv3 = si->cri->v3;
+	struct ber errval;
+	int p, i;
+
+	for (p = 0, i = 0; i < siv3->engine_id_len; i++)
+		p += snprintf(known+p, sizeof(known)-p, "%02x", siv3->engine_id[i]);
+	for (p = 0, i = 0; i < pkt_v3->engine_id_len; i++)
+		p += snprintf(received+p, sizeof(received)-p, "%02x", pkt_v3->engine_id[i]);
+	snprintf(errstr, sizeof(errstr), "engine-id-mismatch: %s", received);
+
+	PS.v3_engineid_mismatches++;
+	if (destination_log_allow(dest, LTC_ENGINE_ID_MISMATCH))
+		log_warn("engine-id mismatch, failing request", "peer", peer, "mid", U(si->sid),
+				"known_engine_id", known, "recv_engine_id", received, NULL);
+
+	errval = ber_string_error(errstr);
+	errval.len = errval.max_len; /* oid_done/all_oids_done ber_dup() the encoded
+	                               * length, not the rewound decode position */
+	if (si->table_oid) {
+		oid_done(si, si->table_oid, &errval, RT_GETTABLE, 0);
+		si->table_oid = NULL;
+	} else {
+		all_oids_done(si, &errval);
+	}
+	free(errval.buf);
+	free_sid_info(si);
+	maybe_query_destination(dest);
+}
+
 static void
 snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *buf, int n)
 {
@@ -260,6 +299,13 @@ snmp_process_datagram(struct socket_info *snmp, struct sockaddr_in *from, char *
 					return;
 				trace = NULL;
 				goto bad_snmp_packet;
+			}
+
+			if (!(v3.msg_flags & V3F_ENCRYPTED) &&
+			    report_carries_usm_stat(*e, &usmStatsUnknownEngineIDs))
+			{
+				fail_sid_engine_id_mismatch(si, &v3, peer, dest);
+				return;
 			}
 
 			for (p = 0, i = 0; i < v3.engine_id_len; i++)

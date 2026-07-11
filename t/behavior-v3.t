@@ -9,6 +9,7 @@ use Test2::V0;
 use SQE::Test ':all';
 use SQE::FakeAgent;
 use SQE::USM;
+use Time::HiRes ();
 
 my $hostname = 'sqe-fake-v3';
 my @tree = (
@@ -220,6 +221,64 @@ for my $i (0 .. $#faults) {
 		[RT_GET, 541, $target, $adrop->port, ['1.3.6.1.2.1.1.5.0']],
 		[RT_GET|RT_REPLY, 541, [['1.3.6.1.2.1.1.5.0', $hostname]]]);
 	$adrop->stop;
+}
+
+# pinned mismatch: wrong pin fast-fails with the agent's claimed engine id
+{
+	my $amis = SQE::FakeAgent->spawn(tree => \@tree, v3 => \%v3);
+	my $mm0 = $d->request([RT_INFO, 550])->[2]{global}{v3_engineid_mismatches};
+	request_match($d, 'pin a wrong engine id',
+		[RT_SETOPT, 551, $target, $amis->port, {
+			version => 3, engineid => '80001f8804deadbeef',
+			username => $v3{username},
+			authprotocol => 'sha256', authpassword => $v3{auth_pass},
+			privprotocol => 'aes128', privpassword => $v3{priv_pass},
+			timeout => 2000, retries => 3 }],
+		[RT_SETOPT|RT_REPLY, 551, T()]);
+	my $t0 = Time::HiRes::time();
+	request_match($d, 'engine id mismatch fails the request fast',
+		[RT_GET, 552, $target, $amis->port, ['1.3.6.1.2.1.1.5.0']],
+		[RT_GET|RT_REPLY, 552,
+			[['1.3.6.1.2.1.1.5.0', ["engine-id-mismatch: $v3{engine_id}"]]]]);
+	ok(Time::HiRes::time() - $t0 < 1, 'mismatch failure arrives well under the timeout');
+	my $mm1 = $d->request([RT_INFO, 553])->[2]{global}{v3_engineid_mismatches};
+	is($mm1 - $mm0, 1, 'one engine id mismatch counted');
+	$amis->stop;
+}
+
+# discovered-then-pinned: a device swap after discovery fast-fails, and an
+# explicit re-setopt without engineid re-discovers
+{
+	my %v3new = (%v3, engine_id => '80001f88046e657765');
+	my $aswap = SQE::FakeAgent->spawn(tree => \@tree, v3 => \%v3);
+	my %opts = (
+		version => 3, username => $v3{username},
+		authprotocol => 'sha256', authpassword => $v3{auth_pass},
+		privprotocol => 'aes128', privpassword => $v3{priv_pass},
+		timeout => 2000, retries => 3 );
+	request_match($d, 'discovery setopt (device-swap scenario)',
+		[RT_SETOPT, 560, $target, $aswap->port, \%opts],
+		[RT_SETOPT|RT_REPLY, 560, T()]);
+	request_match($d, 'initial discovery works',
+		[RT_GET, 561, $target, $aswap->port, ['1.3.6.1.2.1.1.5.0']],
+		[RT_GET|RT_REPLY, 561, [['1.3.6.1.2.1.1.5.0', $hostname]]]);
+	my $swap_port = $aswap->port;
+	$aswap->stop;
+	my $aswap2 = SQE::FakeAgent->spawn(tree => \@tree, v3 => \%v3new, port => $swap_port);
+	request_match($d, 'device swap after discovery fast-fails (discovered == pinned)',
+		[RT_GET, 562, $target, $swap_port, ['1.3.6.1.2.1.1.5.0']],
+		[RT_GET|RT_REPLY, 562,
+			[['1.3.6.1.2.1.1.5.0', ["engine-id-mismatch: $v3new{engine_id}"]]]]);
+	request_match($d, 're-setopt without engineid triggers re-discovery',
+		[RT_SETOPT, 563, $target, $swap_port, \%opts],
+		[RT_SETOPT|RT_REPLY, 563, {engineid => ''}]);
+	request_match($d, 'get succeeds against the swapped device after re-discovery',
+		[RT_GET, 564, $target, $swap_port, ['1.3.6.1.2.1.1.5.0']],
+		[RT_GET|RT_REPLY, 564, [['1.3.6.1.2.1.1.5.0', $hostname]]]);
+	request_match($d, 'getopt shows the new discovered engine id',
+		[RT_GETOPT, 565, $target, $swap_port],
+		[RT_GETOPT|RT_REPLY, 565, {engineid => $v3new{engine_id}}]);
+	$aswap2->stop;
 }
 
 $d->stop;
