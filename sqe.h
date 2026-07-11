@@ -335,6 +335,10 @@ struct destination
 #define V3F_ENCRYPTED		0x02
 #define V3F_AUTHENTICATED	0x01
 
+/* engine id acquisition state (struct snmpv3info.engine_state) */
+#define V3_ENGINE_KNOWN     0  /* engine id pinned via setopt, or discovered */
+#define V3_ENGINE_DISCOVERY 1  /* engine id unknown; discover it on first query */
+
 struct snmpv3info {
 	// these can be set via setopt and (mostly) obtained via getopt
 	unsigned  engine_id_len;
@@ -356,6 +360,9 @@ struct snmpv3info {
 	u_int32_t engine_boots;
 	u_int32_t engine_time;
 	u_int8_t  msg_flags;
+	// engine id acquisition (never packed by getopt)
+	int       engine_state;  /* V3_ENGINE_KNOWN / V3_ENGINE_DISCOVERY */
+	unsigned  probe_sid;     /* sid of the in-flight discovery probe, 0 = none */
 };
 
 struct client_requests_info

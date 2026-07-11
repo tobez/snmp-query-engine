@@ -8,6 +8,7 @@ use lib "$FindBin::Bin/lib";
 use Test2::V0;
 use SQE::Test ':all';
 use SQE::FakeAgent;
+use SQE::USM;
 
 my $hostname = 'sqe-fake-v3';
 my @tree = (
@@ -91,6 +92,42 @@ for my $i (0 .. $#faults) {
 		[RT_GET|RT_REPLY, $base + 2, [['1.3.6.1.2.1.1.5.0', ['timeout']]]]);
 	my $after = $d->request([RT_INFO, $base + 3])->[2]{global}{bad_snmp_responses};
 	ok($after > $before, "$fault reply bumped bad_snmp_responses");
+}
+
+# ---- engine id discovery: setopt semantics ----
+
+# localized keys cannot be re-localized: engineid is mandatory with kuls
+{
+	my $eid = pack 'H*', $v3{engine_id};
+	my $authkul = unpack 'H*', SQE::USM::password_to_kul('sha256', $v3{auth_pass}, $eid);
+	my $privkul = unpack 'H*', SQE::USM::password_to_kul('sha256', $v3{priv_pass}, $eid);
+	request_match($d, 'authkul without engineid is a setopt error',
+		[RT_SETOPT, 500, $target, $port, {
+			version => 3, username => $v3{username},
+			authprotocol => 'sha256', authkul => $authkul,
+			privprotocol => 'aes128', privpassword => $v3{priv_pass} }],
+		[RT_SETOPT|RT_ERROR, 500, qr{engineid is required with authkul/privkul}]);
+	request_match($d, 'privkul without engineid is a setopt error',
+		[RT_SETOPT, 501, $target, $port, {
+			version => 3, username => $v3{username},
+			authprotocol => 'sha256', authpassword => $v3{auth_pass},
+			privprotocol => 'aes128', privkul => $privkul }],
+		[RT_SETOPT|RT_ERROR, 501, qr{engineid is required with authkul/privkul}]);
+}
+
+# discovery mode: setopt without engineid + passwords is accepted, keys deferred
+{
+	my $adisc = SQE::FakeAgent->spawn(tree => \@tree, v3 => \%v3);
+	request_match($d, 'setopt without engineid enters discovery mode',
+		[RT_SETOPT, 510, $target, $adisc->port, {
+			version => 3, username => $v3{username},
+			authprotocol => 'sha256', authpassword => $v3{auth_pass},
+			privprotocol => 'aes128', privpassword => $v3{priv_pass} }],
+		[RT_SETOPT|RT_REPLY, 510, {engineid => '', authkul => '', privkul => ''}]);
+	request_match($d, 'getopt before first query: engineid and kuls empty',
+		[RT_GETOPT, 511, $target, $adisc->port],
+		[RT_GETOPT|RT_REPLY, 511, {engineid => '', authkul => '', privkul => ''}]);
+	$adisc->stop;
 }
 
 $d->stop;

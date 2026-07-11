@@ -89,6 +89,7 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	int seen_authkul = 0;
 	int seen_privpassword = 0;
 	int seen_privkul = 0;
+	int seen_engineid = 0;
 
 	if (o->via.array.size != 5)
 		return error_reply(si, RT_SETOPT|RT_ERROR, cid, "bad request length");
@@ -108,10 +109,6 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	memcpy(&d, cri->dest, sizeof(d));
 	memcpy(&c, cri, sizeof(c));
 	bzero(&v3, sizeof(v3));
-	if (c.v3) {
-		memcpy(&v3, cri->v3, sizeof(v3));
-		need_v3 = 1;
-	}
 
 	if (!option2index)
 		build_option2index();
@@ -208,6 +205,7 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 			if (v3.engine_id_len < 0)
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid engineid hexstring");
 			need_v3 = 1;
+			seen_engineid = 1;
 			break;
 		case OPT_username:
 			if (!object2string(v, v3.username, V3O_USERNAME_MAXSIZE))
@@ -299,7 +297,13 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	if (seen_privpassword && seen_privkul)
 		return error_reply(si, RT_SETOPT|RT_ERROR, cid, "privpassword and privkul are mutually exclusive");
 
-	if (need_v3 && v3.authpass[0]) {
+	if (need_v3 && !seen_engineid) {
+		if (seen_authkul || seen_privkul)
+			return error_reply(si, RT_SETOPT|RT_ERROR, cid, "engineid is required with authkul/privkul");
+		v3.engine_state = V3_ENGINE_DISCOVERY;
+	}
+
+	if (need_v3 && v3.engine_state == V3_ENGINE_KNOWN && v3.authpass[0]) {
 		char *err;
 
         if (!password_to_kul(v3.auth_proto,
@@ -317,7 +321,7 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
         }
     }
 
-	if (need_v3 && v3.privpass[0]) {
+	if (need_v3 && v3.engine_state == V3_ENGINE_KNOWN && v3.privpass[0]) {
 		char *err;
 
         if (!password_to_kul(v3.auth_proto,
@@ -382,6 +386,8 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "malloc v3 problem");
 		}
 		memcpy(cri->v3, &v3, sizeof(v3));
+	} else if (cri->v3) {
+		cri->v3->msg_max_size = d.max_reply_packet_size;
 	}
 
 	buffer = msgpack_sbuffer_new();
