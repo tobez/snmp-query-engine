@@ -133,6 +133,13 @@ request_match($d, "setopt bad max repetitions 2", [RT_SETOPT,2221,"127.0.0.1",16
 request_match($d, "setopt bad max repetitions 3", [RT_SETOPT,2222,"127.0.0.1",161,{max_repetitions=>256}], [RT_SETOPT|RT_ERROR,2222,qr/invalid max repetitions/]);
 request_match($d, "setopt bad max repetitions 4", [RT_SETOPT,2223,"127.0.0.1",161,{max_repetitions=>128}], [RT_SETOPT|RT_ERROR,2223,qr/invalid max repetitions/]);
 request_match($d, "gettable bad max repetitions", [RT_GETTABLE,2224,"127.0.0.1",161,"1.3.6.1.2.1.1.9.1.2",128], [RT_GETTABLE|RT_ERROR,2224,qr/bad max repetitions/]);
+request_match($d, "setopt bad engineid 1", [RT_SETOPT,2230,"127.0.0.1",161,{engineid=>"zz"}], [RT_SETOPT|RT_ERROR,2230,qr/invalid engineid hexstring/]);
+request_match($d, "setopt bad engineid 2", [RT_SETOPT,2231,"127.0.0.1",161,{engineid=>"800"}], [RT_SETOPT|RT_ERROR,2231,qr/invalid engineid hexstring/]);
+request_match($d, "setopt bad engineid 3", [RT_SETOPT,2232,"127.0.0.1",161,{engineid=>"ab" x 65}], [RT_SETOPT|RT_ERROR,2232,qr/invalid engineid hexstring/]);
+request_match($d, "setopt bad authkul 1", [RT_SETOPT,2233,"127.0.0.1",161,{authkul=>"zz"}], [RT_SETOPT|RT_ERROR,2233,qr/invalid authkul hexstring/]);
+request_match($d, "setopt bad authkul 2", [RT_SETOPT,2234,"127.0.0.1",161,{authkul=>"abc"}], [RT_SETOPT|RT_ERROR,2234,qr/invalid authkul hexstring/]);
+request_match($d, "setopt bad privkul 1", [RT_SETOPT,2235,"127.0.0.1",161,{privkul=>"zz"}], [RT_SETOPT|RT_ERROR,2235,qr/invalid privkul hexstring/]);
+request_match($d, "setopt bad privkul 2", [RT_SETOPT,2236,"127.0.0.1",161,{privkul=>"ab" x 65}], [RT_SETOPT|RT_ERROR,2236,qr/invalid privkul hexstring/]);
 request_match($d, "defaults unchanged", [RT_SETOPT,2023,"127.0.0.1",161, {}], [RT_SETOPT|RT_REPLY,2023,
 	{ip=>"127.0.0.1", port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 2000, retries => 3, min_interval => 10, max_repetitions => 10, }]);
 request_match($d, "change timeout", [RT_SETOPT,2024,"127.0.0.1",161, {timeout=>1500}], [RT_SETOPT|RT_REPLY,2024,

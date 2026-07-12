@@ -552,7 +552,7 @@ extern int feed_client_unpacker(struct client_connection *c, const uint8_t *buf,
 /* util.c */
 extern char *object_strdup(msgpack_object *o);
 extern char *object2string(msgpack_object *o, char s[], int bufsize);
-extern size_t object_hexstring_to_buffer(msgpack_object *o, uint8_t *buf, size_t bufsize);
+extern ssize_t object_hexstring_to_buffer(msgpack_object *o, uint8_t *buf, size_t bufsize);
 extern int object_string_eq(msgpack_object *o, char *s);
 extern int object2ip(msgpack_object *o, struct in_addr *ip); /* 1 = success, 0 = failure */
 extern unsigned next_sid(void);

@@ -90,6 +90,7 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 	int seen_privpassword = 0;
 	int seen_privkul = 0;
 	int seen_engineid = 0;
+	ssize_t hexlen;
 
 	if (o->via.array.size != 5)
 		return error_reply(si, RT_SETOPT|RT_ERROR, cid, "bad request length");
@@ -201,9 +202,10 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 				bzero(&d.ignore_until, sizeof(cri->dest->ignore_until));
 			break;
 		case OPT_engineid:
-			v3.engine_id_len = object_hexstring_to_buffer(v, v3.engine_id, V3O_ENGINE_ID_MAXLEN);
-			if (v3.engine_id_len < 0)
+			hexlen = object_hexstring_to_buffer(v, v3.engine_id, V3O_ENGINE_ID_MAXLEN);
+			if (hexlen < 0)
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid engineid hexstring");
+			v3.engine_id_len = hexlen;
 			need_v3 = 1;
 			seen_engineid = 1;
 			break;
@@ -241,9 +243,10 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 			need_v3 = 1;
 			break;
 		case OPT_authkul:
-			v3.authkul_len = object_hexstring_to_buffer(v, v3.authkul, V3O_AUTHKUL_MAXSIZE);
-			if (v3.authkul_len < 0)
+			hexlen = object_hexstring_to_buffer(v, v3.authkul, V3O_AUTHKUL_MAXSIZE);
+			if (hexlen < 0)
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid authkul hexstring");
+			v3.authkul_len = hexlen;
 			seen_authkul = 1;
 			v3.authpass[0] = 0;
 			need_v3 = 1;
@@ -280,9 +283,10 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 			need_v3 = 1;
 			break;
 		case OPT_privkul:
-			v3.privkul_len = object_hexstring_to_buffer(v, v3.privkul, V3O_PRIVKUL_MAXSIZE);
-			if (v3.privkul_len < 0)
+			hexlen = object_hexstring_to_buffer(v, v3.privkul, V3O_PRIVKUL_MAXSIZE);
+			if (hexlen < 0)
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid privkul hexstring");
+			v3.privkul_len = hexlen;
 			seen_privkul = 1;
 			v3.privpass[0] = 0;
 			need_v3 = 1;
