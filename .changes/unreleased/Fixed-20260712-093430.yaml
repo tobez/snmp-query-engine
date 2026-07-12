@@ -1,0 +1,3 @@
+kind: Fixed
+body: 'setopt: reject malformed engineid, authkul, and privkul hex strings'
+time: 2026-07-12T09:34:30.337334+02:00

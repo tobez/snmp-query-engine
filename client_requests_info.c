@@ -124,6 +124,7 @@ free_client_request_info(struct client_requests_info *cri)
 	}
 	JLFA(rc, cri->cid_info);
 	JLD(rc, cri->dest->client_requests_info, cri->fd);
+	free(cri->v3);
 	free(cri);
 	return 1;
 }

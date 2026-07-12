@@ -59,7 +59,7 @@ object2string(msgpack_object *o, char s[], int bufsize)
 	return s;
 }
 
-size_t
+ssize_t
 object_hexstring_to_buffer(msgpack_object *o, uint8_t *buf, size_t bufsize)
 {
 	const char *s = NULL;
