@@ -1,0 +1,3 @@
+kind: Fixed
+body: fix SNMPv3 settings memory leak on client disconnect
+time: 2026-07-12T09:34:35.882168+02:00
