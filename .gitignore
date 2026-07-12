@@ -4,6 +4,7 @@ t/test_v3
 t/test_sid_info
 t/test_log
 t/test_throttle
+t/test_cri
 t/*.dSYM/
 *.o
 .*.swp
