@@ -11,7 +11,7 @@ OPTIMIZE=	-O3 -g
 INCPATH=	-I. -I/usr/local/include -I/opt/local/include -I/opt/homebrew/include
 LIBPATH=	-L/usr/local/lib -L/opt/local/lib -L/opt/homebrew/lib
 CFLAGS=	-Wall -Wno-unused-function -Wno-deprecated-declarations -Werror $(OPTIMIZE) $(INCPATH)
-TESTBIN=	t/test_ber t/test_msgpack t/test_v3 t/test_sid_info t/test_log t/test_throttle
+TESTBIN=	t/test_ber t/test_msgpack t/test_v3 t/test_sid_info t/test_log t/test_throttle t/test_cri
 
 PREFIX?=	/usr/local
 BINDIR?=	$(PREFIX)/bin
@@ -29,7 +29,7 @@ STDOBJ=event_loop.o carp.o client_input.o client_listen.o opts.o util.o destinat
 STDLINK=$(STDOBJ) $(LIBPATH) $(LIBS)
 
 clean:
-	rm -f *.o snmp-query-engine t/test_ber t/test_msgpack t/test_v3 t/test_sid_info t/test_log t/test_throttle *.core core
+	rm -f *.o snmp-query-engine t/test_ber t/test_msgpack t/test_v3 t/test_sid_info t/test_log t/test_throttle t/test_cri *.core core
 	rm -rf t/*.dSYM *.dSYM
 
 install: snmp-query-engine
@@ -133,6 +133,9 @@ t/test_v3: t/test_v3.c t/tap.h $(STDOBJ)
 
 t/test_sid_info: t/test_sid_info.c t/tap.h $(STDOBJ)
 	$(CC) $(CFLAGS) -o t/test_sid_info t/test_sid_info.c $(STDLINK)
+
+t/test_cri: t/test_cri.c t/tap.h $(STDOBJ)
+	$(CC) $(CFLAGS) -o t/test_cri t/test_cri.c $(STDLINK)
 
 test: snmp-query-engine $(TESTBIN)
 	prove t/
