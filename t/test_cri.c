@@ -27,6 +27,8 @@ main(void)
 
 	cri = get_client_requests_info(&ip, 161, &sock);
 	ok(cri != NULL, "get_client_requests_info creates a cri");
+	if (!cri)
+		croak(2, "get_client_requests_info returned NULL");
 
 	/* what a v3 setopt does (request_setopt.c) */
 	cri->v3 = malloc(sizeof(struct snmpv3info));
