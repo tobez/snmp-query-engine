@@ -886,7 +886,7 @@ decode_type_len(struct ber *e, unsigned char *type, unsigned *len)
         EXTEND(3);
     } else if (l == 0x84) {
         SPACECHECK(4);
-        l = (((e->b[0] << 8) | e->b[1]) << 8 | e->b[2]) << 8 | e->b[3];
+        l = (((unsigned)e->b[0] << 8 | e->b[1]) << 8 | e->b[2]) << 8 | e->b[3];
         EXTEND(4);
     } else {
         errno = ERANGE;
