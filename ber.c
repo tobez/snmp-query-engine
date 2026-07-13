@@ -663,7 +663,7 @@ decode_ipv4_address(struct ber *e, int l, struct in_addr *ip)
         }
         l = (int)len;
     }
-    if (decode_integer(e, l, &int_ip) < 0)
+    if (decode_unsigned(e, l, &int_ip) < 0)
         return -1;
     ip->s_addr = htonl(int_ip);
     return 0;
@@ -731,6 +731,28 @@ decode_integer(struct ber *e, int l, unsigned *value)
         }
         l = (int)len;
     }
+    SPACECHECK(l);
+    if (!value) {
+        EXTEND(l);
+        return 0;
+    }
+    /* BER INTEGER is signed two's-complement: a 1-3 byte encoding whose
+     * first content byte has the top bit set is a negative number */
+    *value = (l >= 1 && l <= 3 && (e->b[0] & 0x80)) ? 0xffffffffu : 0;
+    while (l) {
+        *value = *value << 8 | e->b[0];
+        EXTEND(1);
+        l--;
+    }
+    return 0;
+}
+
+/* Raw big-endian accumulator without sign-extension, for content that is
+ * unsigned by definition: Counter32, Gauge32/Unsigned32, IpAddress bytes.
+ * The content length must already be known; there is no tag-reading path. */
+int
+decode_unsigned(struct ber *e, int l, unsigned *value)
+{
     SPACECHECK(l);
     if (!value) {
         EXTEND(l);

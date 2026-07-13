@@ -464,6 +464,7 @@ extern int encode_store_length(struct ber *e, unsigned char *s);
 
 extern int decode_type_len(struct ber *e, unsigned char *type, unsigned *len);
 extern int decode_integer(struct ber *e, int int_len, unsigned *value);
+extern int decode_unsigned(struct ber *e, int int_len, unsigned *value);
 extern int decode_string(struct ber *e, unsigned char *s, unsigned s_size, unsigned *s_len); // adds nul byte, needs space for it
 extern int decode_octets(struct ber *e, unsigned char *s, unsigned s_size, unsigned *s_len);  // does not add nul byte
 extern int decode_ipv4_address(struct ber *e, int l, struct in_addr *ip);

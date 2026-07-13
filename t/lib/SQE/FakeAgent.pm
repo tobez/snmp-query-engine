@@ -119,11 +119,21 @@ sub _tlv {
 	return chr($tag) . _ber_len(length $content) . $content;
 }
 
-sub _enc_uint {   # unsigned integer-valued types (INTEGER >= 0, Counter, Gauge, TimeTicks)
+sub _enc_uint {   # unsigned integer-valued types (Counter, Gauge, TimeTicks, non-negative INTEGER header fields)
 	my ($tag, $n) = @_;
 	my @b;
 	do { unshift @b, $n & 0xff; $n >>= 8 } while ($n);
 	unshift @b, 0 if $b[0] & 0x80;
+	return _tlv($tag, join '', map chr, @b);
+}
+
+sub _enc_int {   # signed INTEGER, minimal two's-complement encoding
+	my ($tag, $n) = @_;
+	my $l = 1;
+	$l++ while $n < -(2 ** (8*$l - 1)) || $n >= 2 ** (8*$l - 1);
+	$n += 2 ** (8 * $l) if $n < 0;
+	my @b;
+	unshift @b, ($n >> (8 * $_)) & 0xff for 0 .. $l - 1;
 	return _tlv($tag, join '', map chr, @b);
 }
 
@@ -140,7 +150,7 @@ sub _enc_oid_content {
 
 sub _enc_value {
 	my ($type, $v) = @_;
-	return _enc_uint(0x02, $v)                  if $type eq 'int';
+	return _enc_int(0x02, $v)                   if $type eq 'int';
 	return _tlv(0x04, $v)                       if $type eq 'str';
 	return _tlv(0x06, _enc_oid_content($v))     if $type eq 'oid';
 	return _enc_uint(0x41, $v)                  if $type eq 'counter';
