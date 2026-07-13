@@ -10,10 +10,10 @@
 
 #include <openssl/evp.h>
 
-#define SPACECHECK(bytes)                \
-    if (e->len + (bytes) > e->max_len) { \
-        errno = EMSGSIZE;                \
-        return -1;                       \
+#define SPACECHECK(bytes)                                      \
+    if ((unsigned)(bytes) > (unsigned)(e->max_len - e->len)) { \
+        errno = EMSGSIZE;                                      \
+        return -1;                                             \
     }
 #define SPACECHECK2 SPACECHECK(2)
 #define EXTEND(bytes)      \
