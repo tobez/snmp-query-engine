@@ -119,7 +119,7 @@ sub _tlv {
 	return chr($tag) . _ber_len(length $content) . $content;
 }
 
-sub _enc_uint {   # unsigned integer-valued types (Counter, Gauge, TimeTicks)
+sub _enc_uint {   # unsigned integer-valued types (Counter, Gauge, TimeTicks, non-negative INTEGER header fields)
 	my ($tag, $n) = @_;
 	my @b;
 	do { unshift @b, $n & 0xff; $n >>= 8 } while ($n);
