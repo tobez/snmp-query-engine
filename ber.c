@@ -736,7 +736,9 @@ decode_integer(struct ber *e, int l, unsigned *value)
         EXTEND(l);
         return 0;
     }
-    *value = 0;
+    /* BER INTEGER is signed two's-complement: a 1-3 byte encoding whose
+     * first content byte has the top bit set is a negative number */
+    *value = (l >= 1 && l <= 3 && (e->b[0] & 0x80)) ? 0xffffffffu : 0;
     while (l) {
         *value = *value << 8 | e->b[0];
         EXTEND(1);

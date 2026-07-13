@@ -233,6 +233,26 @@ test_decode_unsigned_short(void)
 }
 
 int
+test_decode_integer(const char *tlv, int tlv_len, unsigned expected)
+{
+	unsigned char buf[16];
+	struct ber e;
+	unsigned got;
+
+	memcpy(buf, tlv, tlv_len);
+	e = ber_init(buf, tlv_len);
+	if (decode_integer(&e, -1, &got) < 0) {
+		tap_diag("decode_integer: unexpected failure");
+		return 0;
+	}
+	if (got != expected) {
+		tap_diag("decode_integer: got %#x, expected %#x", got, expected);
+		return 0;
+	}
+	return 1;
+}
+
+int
 test_next_sid_from(unsigned cur, unsigned expected)
 {
 	unsigned got;
@@ -521,6 +541,20 @@ main(void)
 	ok(test_decode_unsigned("\xff\xff\xff\xff", 4, 0xffffffffu), "decode_unsigned ff ff ff ff");
 	ok(test_decode_unsigned_skip(), "decode_unsigned NULL value skips content");
 	ok(test_decode_unsigned_short(), "decode_unsigned fails on short buffer");
+
+	ok(test_decode_integer("\x02\x01\x00", 3, 0), "decode_integer 0");
+	ok(test_decode_integer("\x02\x01\x7f", 3, 127), "decode_integer 127");
+	ok(test_decode_integer("\x02\x02\x00\x80", 4, 128), "decode_integer 128");
+	ok(test_decode_integer("\x02\x03\x00\xff\xe3", 5, 65507), "decode_integer 65507");
+	ok(test_decode_integer("\x02\x01\xff", 3, 0xffffffffu), "decode_integer -1");
+	ok(test_decode_integer("\x02\x01\x80", 3, 0xffffff80u), "decode_integer -128");
+	ok(test_decode_integer("\x02\x02\xff\x7f", 4, 0xffffff7fu), "decode_integer -129");
+	ok(test_decode_integer("\x02\x02\x80\x00", 4, 0xffff8000u), "decode_integer -32768");
+	ok(test_decode_integer("\x02\x03\x80\x00\x00", 5, 0xff800000u), "decode_integer -8388608");
+	ok(test_decode_integer("\x02\x04\xff\xff\xff\xff", 6, 0xffffffffu), "decode_integer 4-byte -1");
+	ok(test_decode_integer("\x02\x04\x80\x00\x00\x00", 6, 0x80000000u), "decode_integer INT32_MIN");
+	ok(test_decode_integer("\x02\x05\x00\xff\xff\xff\xff", 7, 0xffffffffu), "decode_integer 5-byte 0xffffffff");
+	ok(test_decode_integer("\x02\x00", 2, 0), "decode_integer zero-length content");
 
 	ok(test_next_sid_from(0x01000000, 0x01000001), "next_sid_from 0x01000000");
 	ok(test_next_sid_from(0x01ffffff, 0x02000000), "next_sid_from 0x01ffffff");
