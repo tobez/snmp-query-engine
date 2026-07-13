@@ -221,6 +221,39 @@ request_match($d, "destinfo non-zero", [RT_DEST_INFO,6630,$target,$port], [RT_DE
 	$droppy->stop;
 }
 
+# --- negative INTEGER values ---
+# _enc_int byte-level pins: minimal two's-complement encodings
+is(SQE::FakeAgent::_enc_int(0x02, 0),          "\x02\x01\x00",             "_enc_int 0");
+is(SQE::FakeAgent::_enc_int(0x02, 127),        "\x02\x01\x7f",             "_enc_int 127");
+is(SQE::FakeAgent::_enc_int(0x02, 128),        "\x02\x02\x00\x80",         "_enc_int 128");
+is(SQE::FakeAgent::_enc_int(0x02, -1),         "\x02\x01\xff",             "_enc_int -1");
+is(SQE::FakeAgent::_enc_int(0x02, -5),         "\x02\x01\xfb",             "_enc_int -5");
+is(SQE::FakeAgent::_enc_int(0x02, -128),       "\x02\x01\x80",             "_enc_int -128");
+is(SQE::FakeAgent::_enc_int(0x02, -129),       "\x02\x02\xff\x7f",         "_enc_int -129");
+is(SQE::FakeAgent::_enc_int(0x02, -32768),     "\x02\x02\x80\x00",         "_enc_int -32768");
+is(SQE::FakeAgent::_enc_int(0x02, 2147483647), "\x02\x04\x7f\xff\xff\xff", "_enc_int INT32_MAX");
+
+{
+	my $neg = SQE::FakeAgent->spawn(tree => [
+		['1.3.6.1.2.1.99.1', int => -5],
+		['1.3.6.1.2.1.99.2', int => -129],
+		['1.3.6.1.2.1.99.3', int => -32768],
+		['1.3.6.1.2.1.99.4', int => -2147483648],
+		['1.3.6.1.2.1.99.5', int => 2147483647],
+	]);
+	my $nport = $neg->port;
+	request_match($d, "negative INTEGER values decode correctly",
+		[RT_GET, 7300, $target, $nport, ["1.3.6.1.2.1.99.1", "1.3.6.1.2.1.99.2", "1.3.6.1.2.1.99.3", "1.3.6.1.2.1.99.4", "1.3.6.1.2.1.99.5"]],
+		[RT_GET|RT_REPLY, 7300, [
+			["1.3.6.1.2.1.99.1", -5],
+			["1.3.6.1.2.1.99.2", -129],
+			["1.3.6.1.2.1.99.3", -32768],
+			["1.3.6.1.2.1.99.4", -2147483648],
+			["1.3.6.1.2.1.99.5", 2147483647],
+		]]);
+	$neg->stop;
+}
+
 $agent->stop;
 $d->stop;
 done_testing;
