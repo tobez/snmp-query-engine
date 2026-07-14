@@ -10,10 +10,10 @@
 
 #include <openssl/evp.h>
 
-#define SPACECHECK(bytes)                \
-    if (e->len + (bytes) > e->max_len) { \
-        errno = EMSGSIZE;                \
-        return -1;                       \
+#define SPACECHECK(bytes)                                      \
+    if ((unsigned)(bytes) > (unsigned)(e->max_len - e->len)) { \
+        errno = EMSGSIZE;                                      \
+        return -1;                                             \
     }
 #define SPACECHECK2 SPACECHECK(2)
 #define EXTEND(bytes)      \
@@ -886,7 +886,7 @@ decode_type_len(struct ber *e, unsigned char *type, unsigned *len)
         EXTEND(3);
     } else if (l == 0x84) {
         SPACECHECK(4);
-        l = (((e->b[0] << 8) | e->b[1]) << 8 | e->b[2]) << 8 | e->b[3];
+        l = (((unsigned)e->b[0] << 8 | e->b[1]) << 8 | e->b[2]) << 8 | e->b[3];
         EXTEND(4);
     } else {
         errno = ERANGE;

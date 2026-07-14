@@ -253,6 +253,60 @@ test_decode_integer(const char *tlv, int tlv_len, unsigned expected)
 }
 
 int
+test_decode_type_len_hostile(void)
+{
+	/* 0x84 FF FF FF FF: a ~4GB long-form length claim. The final
+	 * SPACECHECK(l) must reject it; historically e->len + l wrapped in
+	 * unsigned arithmetic and the claim slipped through. */
+	unsigned char buf[6] = { 0x30, 0x84, 0xff, 0xff, 0xff, 0xff };
+	struct ber e = ber_init(buf, 6);
+	unsigned char t;
+	unsigned len;
+
+	if (decode_type_len(&e, &t, &len) == 0) {
+		tap_diag("decode_type_len: accepted hostile 0x84 ffffffff length (len=%#x)", len);
+		return 0;
+	}
+	return 1;
+}
+
+int
+test_decode_type_len_ok(void)
+{
+	/* 0x81-form length of 3 with 3 content bytes present: must be accepted. */
+	unsigned char buf[6] = { 0x04, 0x81, 0x03, 0x41, 0x42, 0x43 };
+	struct ber e = ber_init(buf, 6);
+	unsigned char t;
+	unsigned len;
+
+	if (decode_type_len(&e, &t, &len) < 0) {
+		tap_diag("decode_type_len: rejected a valid long-form length");
+		return 0;
+	}
+	if (t != 0x04 || len != 3) {
+		tap_diag("decode_type_len: got type=%#x len=%u, expected type=0x04 len=3", t, len);
+		return 0;
+	}
+	return 1;
+}
+
+int
+test_decode_type_len_short(void)
+{
+	/* 0x81-form length claims 5 content bytes but only 2 are present. */
+	unsigned char buf[5] = { 0x04, 0x81, 0x05, 0x41, 0x42 };
+	struct ber e = ber_init(buf, 5);
+	unsigned char t;
+	unsigned len;
+
+	if (decode_type_len(&e, &t, &len) == 0) {
+		tap_diag("decode_type_len: accepted length past buffer end (len=%#x)", len);
+		return 0;
+	}
+	return 1;
+}
+
+int
 test_next_sid_from(unsigned cur, unsigned expected)
 {
 	unsigned got;
@@ -555,6 +609,10 @@ main(void)
 	ok(test_decode_integer("\x02\x04\x80\x00\x00\x00", 6, 0x80000000u), "decode_integer INT32_MIN");
 	ok(test_decode_integer("\x02\x05\x00\xff\xff\xff\xff", 7, 0xffffffffu), "decode_integer 5-byte 0xffffffff");
 	ok(test_decode_integer("\x02\x00", 2, 0), "decode_integer zero-length content");
+
+	ok(test_decode_type_len_hostile(), "decode_type_len rejects hostile 0x84 ffffffff length");
+	ok(test_decode_type_len_ok(),      "decode_type_len accepts valid 0x81 long-form length");
+	ok(test_decode_type_len_short(),   "decode_type_len rejects length past buffer end");
 
 	ok(test_next_sid_from(0x01000000, 0x01000001), "next_sid_from 0x01000000");
 	ok(test_next_sid_from(0x01ffffff, 0x02000000), "next_sid_from 0x01ffffff");
