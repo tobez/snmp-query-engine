@@ -207,7 +207,9 @@ Supported options:
 **`privprotocol`**
 :   Privacy protocol (for SNMPv3).  There is no default;  it is required in
     the same request as `privkul`.
-    Valid values are "des", "aes", "aes192", "aes256", "aes192c", and "aes256c".
+    Valid values are "des", "aes", "aes128", "aes192", "aes256", "aes192c",
+    and "aes256c".
+    "aes128" is synonymous to "aes".
     Only "aes" and "aes256c" are currently implemented.
     This is a per destination/client option which does
     not affect other clients.
