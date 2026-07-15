@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.2.0] - 2026-07-15
+
+### Added
+
+- Log listening config at startup and the signal that triggered shutdown
+- Coalesce repeated per-agent and per-connection log messages to prevent log floods.
+- snmpv3: discover agent engine ID when engineid is omitted
+- snmpv3: fail requests fast on agent engine ID mismatch
+
+### Changed
+
+- logs: emit machine-parseable key=value lines
+- Log lines carry peer, message id, and connection details
+
+### Fixed
+
+- v3: crash on reply with unmatched message id
+- v3: memory leaks on crypto error paths
+- manual: clarify GETTABLE empty replies and errors
+- daemon: survive transient accept() failures instead of exiting
+- logging: escape DEL, C1 controls, and invalid UTF-8 in field values
+- client input: close the connection cleanly if memory runs out
+- setopt: reject malformed engineid, authkul, and privkul hex strings
+- fix SNMPv3 settings memory leak on client disconnect
+- ber: reject oversized length claims in decoded packets
+- setopt: reject empty v3 credentials and wrong-size localized keys
+
+### Security
+
+- No longer log SNMPv3 credentials when a setopt request fails
+
 ## [v2.1.0] - 2026-07-04
 
 ### Added

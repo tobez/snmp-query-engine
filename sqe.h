@@ -49,7 +49,7 @@
 #include "bsdqueue.h"
 #include "log.h"
 
-#define SQE_VERSION "2.1.0"
+#define SQE_VERSION "2.2.0"
 
 #define RT_UNKNOWN   0
 #define RT_SETOPT    1

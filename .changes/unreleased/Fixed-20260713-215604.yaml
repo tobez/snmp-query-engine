@@ -1,3 +1,0 @@
-kind: Fixed
-body: 'ber: reject oversized length claims in decoded packets'
-time: 2026-07-13T21:56:04.953578+02:00

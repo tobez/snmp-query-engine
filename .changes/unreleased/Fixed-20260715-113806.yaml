@@ -1,3 +1,0 @@
-kind: Fixed
-body: 'setopt: reject empty v3 credentials and wrong-size localized keys'
-time: 2026-07-15T11:38:06.043714+02:00
