@@ -130,8 +130,8 @@ clients.
 \f[B]\f[CB]engineid\f[B]\f[R]
 Authoritative SNMP engine ID of the destination (for SNMPv3).
 The default is \f[B]\(lq\(lq\f[R].
-Valid values must be (optionally space\-separated) hex strings, for
-example \(lq39 6a 66 39 4d 5a 35 6b 68 49 72 61\(rq.
+Valid values must be non\-empty (optionally space\-separated) hex
+strings, for example \(lq39 6a 66 39 4d 5a 35 6b 68 49 72 61\(rq.
 If \f[CR]engineid\f[R] is omitted, the engine discovers it from the
 agent on first use (RFC 3414 discovery) and then treats it as fixed
 until the options are set again.
@@ -148,12 +148,17 @@ clients.
 .TP
 \f[B]\f[CB]username\f[B]\f[R]
 User name (for SNMPv3); default is \f[B]\(lq\(lq\f[R].
+A supplied value must be non\-empty.
 This is a per destination/client option which does not affect other
 clients.
 .TP
 \f[B]\f[CB]authprotocol\f[B]\f[R]
-Authentication protocol (for SNMPv3); default is \f[B]\(lqsha1\(rq\f[R].
-Valid values are \(lqmd5\(rq, \(lqsha1\(rq, and \(lqsha\(rq.
+Authentication protocol (for SNMPv3).
+There is no default; it must be supplied for SNMPv3 operation, and is
+required in the same request as \f[CR]authkul\f[R] or
+\f[CR]privkul\f[R].
+Valid values are \(lqmd5\(rq, \(lqsha1\(rq, \(lqsha\(rq, \(lqsha224\(rq,
+\(lqsha256\(rq, \(lqsha384\(rq, and \(lqsha512\(rq.
 \(lqsha\(rq is synonymous to \(lqsha1\(rq.
 \(lqmd5\(rq is currently not implemented.
 This is a per destination/client option which does not affect other
@@ -161,6 +166,7 @@ clients.
 .TP
 \f[B]\f[CB]authpassword\f[B]\f[R]
 Authentication password (for SNMPv3); default is \f[B]\(lq\(lq\f[R].
+A supplied value must be non\-empty.
 The \f[CR]authpassword\f[R] is never returned by \f[B]GETOPT\f[R]
 (instead, \f[CR]authkul\f[R] is computed and returned).
 This is a per destination/client option which does not affect other
@@ -169,22 +175,29 @@ clients.
 \f[B]\f[CB]authkul\f[B]\f[R]
 Localized authentication key (for SNMPv3); default is
 \f[B]\(lq\(lq\f[R].
-Valid values must be (optionally space\-separated) hex strings.
+Valid values must be non\-empty (optionally space\-separated) hex
+strings, exactly as long as the digest of the \f[CR]authprotocol\f[R]
+supplied in the same request: 20/28/32/48/64 bytes for
+sha1/sha224/sha256/sha384/sha512.
 It is an error to specify both \f[CR]authpassword\f[R] and
 \f[CR]authkul\f[R].
 This is a per destination/client option which does not affect other
 clients.
 .TP
 \f[B]\f[CB]privprotocol\f[B]\f[R]
-Privacy protocol (for SNMPv3); default is \f[B]\(lqaes\(rq\f[R].
-Valid values are \(lqdes\(rq, \(lqaes\(rq, \(lqaes192\(rq,
-\(lqaes256\(rq, \(lqaes192c\(rq, and \(lqaes256c\(rq.
+Privacy protocol (for SNMPv3).
+There is no default; it is required in the same request as
+\f[CR]privkul\f[R].
+Valid values are \(lqdes\(rq, \(lqaes\(rq, \(lqaes128\(rq,
+\(lqaes192\(rq, \(lqaes256\(rq, \(lqaes192c\(rq, and \(lqaes256c\(rq.
+\(lqaes128\(rq is synonymous to \(lqaes\(rq.
 Only \(lqaes\(rq and \(lqaes256c\(rq are currently implemented.
 This is a per destination/client option which does not affect other
 clients.
 .TP
 \f[B]\f[CB]privpassword\f[B]\f[R]
 Privacy password (for SNMPv3); default is \f[B]\(lq\(lq\f[R].
+A supplied value must be non\-empty.
 The \f[CR]privpassword\f[R] is never returned by \f[B]GETOPT\f[R]
 (instead, \f[CR]privkul\f[R] is computed and returned).
 This is a per destination/client option which does not affect other
@@ -192,7 +205,10 @@ clients.
 .TP
 \f[B]\f[CB]privkul\f[B]\f[R]
 Localized privacy key (for SNMPv3); default is \f[B]\(lq\(lq\f[R].
-Valid values must be (optionally space\-separated) hex strings.
+Valid values must be non\-empty (optionally space\-separated) hex
+strings, exactly as long as the digest of the \f[CR]authprotocol\f[R]
+supplied in the same request: 20/28/32/48/64 bytes for
+sha1/sha224/sha256/sha384/sha512.
 It is an error to specify both \f[CR]privpassword\f[R] and
 \f[CR]privkul\f[R].
 This is a per destination/client option which does not affect other

@@ -156,7 +156,7 @@ Supported options:
 
 **`engineid`**
 :   Authoritative SNMP engine ID of the destination (for SNMPv3).  The default is **""**.
-    Valid values must be (optionally space-separated) hex strings, for example
+    Valid values must be non-empty (optionally space-separated) hex strings, for example
     "39 6a 66 39 4d 5a 35 6b 68 49 72 61".
     If `engineid` is omitted, the engine discovers it from the agent on first
     use (RFC 3414 discovery) and then treats it as fixed until the options are
@@ -172,12 +172,16 @@ Supported options:
 
 **`username`**
 :   User name (for SNMPv3);  default is **""**.
+    A supplied value must be non-empty.
     This is a per destination/client option which does
     not affect other clients.
 
 **`authprotocol`**
-:   Authentication protocol (for SNMPv3);  default is **"sha1"**.
-    Valid values are "md5", "sha1", and "sha".
+:   Authentication protocol (for SNMPv3).  There is no default;  it must be
+    supplied for SNMPv3 operation, and is required in the same request as
+    `authkul` or `privkul`.
+    Valid values are "md5", "sha1", "sha", "sha224", "sha256", "sha384",
+    and "sha512".
     "sha" is synonymous to "sha1".
     "md5" is currently not implemented.
     This is a per destination/client option which does
@@ -185,6 +189,7 @@ Supported options:
 
 **`authpassword`**
 :   Authentication password (for SNMPv3);  default is **""**.
+    A supplied value must be non-empty.
     The `authpassword` is never returned by **GETOPT**
     (instead, `authkul` is computed and returned).
     This is a per destination/client option which does
@@ -192,20 +197,26 @@ Supported options:
 
 **`authkul`**
 :   Localized authentication key (for SNMPv3);  default is **""**.
-    Valid values must be (optionally space-separated) hex strings.
+    Valid values must be non-empty (optionally space-separated) hex strings,
+    exactly as long as the digest of the `authprotocol` supplied in the same
+    request: 20/28/32/48/64 bytes for sha1/sha224/sha256/sha384/sha512.
     It is an error to specify both `authpassword` and `authkul`.
     This is a per destination/client option which does
     not affect other clients.
 
 **`privprotocol`**
-:   Privacy protocol (for SNMPv3);  default is **"aes"**.
-    Valid values are "des", "aes", "aes192", "aes256", "aes192c", and "aes256c".
+:   Privacy protocol (for SNMPv3).  There is no default;  it is required in
+    the same request as `privkul`.
+    Valid values are "des", "aes", "aes128", "aes192", "aes256", "aes192c",
+    and "aes256c".
+    "aes128" is synonymous to "aes".
     Only "aes" and "aes256c" are currently implemented.
     This is a per destination/client option which does
     not affect other clients.
 
 **`privpassword`**
 :   Privacy password (for SNMPv3);  default is **""**.
+    A supplied value must be non-empty.
     The `privpassword` is never returned by **GETOPT**
     (instead, `privkul` is computed and returned).
     This is a per destination/client option which does
@@ -213,7 +224,9 @@ Supported options:
 
 **`privkul`**
 :   Localized privacy key (for SNMPv3);  default is **""**.
-    Valid values must be (optionally space-separated) hex strings.
+    Valid values must be non-empty (optionally space-separated) hex strings,
+    exactly as long as the digest of the `authprotocol` supplied in the same
+    request: 20/28/32/48/64 bytes for sha1/sha224/sha256/sha384/sha512.
     It is an error to specify both `privpassword` and `privkul`.
     This is a per destination/client option which does
     not affect other clients.

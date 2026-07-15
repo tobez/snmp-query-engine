@@ -44,6 +44,21 @@ v3_auth_maclen(int auth_proto)
     }
 }
 
+/// @brief Localized authentication key (kul) length for a protocol
+/// @return the length in bytes, or -1 if the protocol is unsupported
+int
+v3_auth_kul_len(int auth_proto)
+{
+    switch (auth_proto) {
+    case V3O_AUTH_PROTO_SHA1:   return 20;
+    case V3O_AUTH_PROTO_SHA224: return 28;
+    case V3O_AUTH_PROTO_SHA256: return 32;
+    case V3O_AUTH_PROTO_SHA384: return 48;
+    case V3O_AUTH_PROTO_SHA512: return 64;
+    default:                    return -1;
+    }
+}
+
 int
 hmac_message(const struct snmpv3info* v3,
              unsigned char* out,
