@@ -686,6 +686,8 @@ struct evp_md_st;  /* == OpenSSL EVP_MD; forward-declared to keep openssl out of
 extern const struct evp_md_st *v3_auth_md(int auth_proto);
 /* MAC truncation length in bytes (12/16/24/32/48), or a negative sentinel for unsupported protocols */
 extern int v3_auth_maclen(int auth_proto);
+/* localized-key (kul) length in bytes (20/28/32/48/64), or a negative sentinel for unsupported protocols */
+extern int v3_auth_kul_len(int auth_proto);
 
 extern int encrypt_in_place(unsigned char *buf, int buf_len, unsigned char *privp, const struct snmpv3info *v3);
 extern int decrypt_in_place(unsigned char *buf, int buf_len, unsigned char *privp, const struct snmpv3info *v3);

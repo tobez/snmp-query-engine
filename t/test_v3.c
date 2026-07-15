@@ -165,5 +165,14 @@ main(void)
     check_hmac("sha384", V3O_AUTH_PROTO_SHA384);
     check_hmac("sha512", V3O_AUTH_PROTO_SHA512);
 
+    /* localized-key length per protocol */
+    is_int(v3_auth_kul_len(V3O_AUTH_PROTO_SHA1), 20, "sha1 kul length");
+    is_int(v3_auth_kul_len(V3O_AUTH_PROTO_SHA224), 28, "sha224 kul length");
+    is_int(v3_auth_kul_len(V3O_AUTH_PROTO_SHA256), 32, "sha256 kul length");
+    is_int(v3_auth_kul_len(V3O_AUTH_PROTO_SHA384), 48, "sha384 kul length");
+    is_int(v3_auth_kul_len(V3O_AUTH_PROTO_SHA512), 64, "sha512 kul length");
+    is_int(v3_auth_kul_len(V3O_AUTH_PROTO_MD5), -1, "md5 kul length unsupported");
+    is_int(v3_auth_kul_len(0), -1, "absent auth proto kul length unsupported");
+
     return tap_done();
 }
