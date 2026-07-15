@@ -307,6 +307,19 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 		v3.engine_state = V3_ENGINE_DISCOVERY;
 	}
 
+	if (seen_authkul || seen_privkul) {
+		int kul_len = v3_auth_kul_len(v3.auth_proto);
+
+		if (kul_len < 0)
+			return error_reply(si, RT_SETOPT|RT_ERROR, cid, "authprotocol is required with authkul/privkul");
+		if (seen_authkul && v3.authkul_len != (unsigned)kul_len)
+			return error_reply(si, RT_SETOPT|RT_ERROR, cid, "authkul length does not match auth protocol");
+		if (seen_privkul && v3.privkul_len != (unsigned)kul_len)
+			return error_reply(si, RT_SETOPT|RT_ERROR, cid, "privkul length does not match auth protocol");
+		if (seen_privkul && !v3.priv_proto)
+			return error_reply(si, RT_SETOPT|RT_ERROR, cid, "privprotocol is required with privkul");
+	}
+
 	if (need_v3 && v3.engine_state == V3_ENGINE_KNOWN && v3.authpass[0]) {
 		char *err;
 
