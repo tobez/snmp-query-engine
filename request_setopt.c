@@ -203,14 +203,14 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 			break;
 		case OPT_engineid:
 			hexlen = object_hexstring_to_buffer(v, v3.engine_id, V3O_ENGINE_ID_MAXLEN);
-			if (hexlen < 0)
+			if (hexlen <= 0)
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid engineid hexstring");
 			v3.engine_id_len = hexlen;
 			need_v3 = 1;
 			seen_engineid = 1;
 			break;
 		case OPT_username:
-			if (!object2string(v, v3.username, V3O_USERNAME_MAXSIZE))
+			if (!object2string(v, v3.username, V3O_USERNAME_MAXSIZE) || !v3.username[0])
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid username");
 			need_v3 = 1;
 			break;
@@ -236,7 +236,7 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 			need_v3 = 1;
 			break;
 		case OPT_authpassword:
-			if (!object2string(v, v3.authpass, V3O_AUTHPASS_MAXSIZE))
+			if (!object2string(v, v3.authpass, V3O_AUTHPASS_MAXSIZE) || !v3.authpass[0])
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid auth password");
 			seen_authpassword = 1;
 			v3.authkul_len = 0;
@@ -244,7 +244,7 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 			break;
 		case OPT_authkul:
 			hexlen = object_hexstring_to_buffer(v, v3.authkul, V3O_AUTHKUL_MAXSIZE);
-			if (hexlen < 0)
+			if (hexlen <= 0)
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid authkul hexstring");
 			v3.authkul_len = hexlen;
 			seen_authkul = 1;
@@ -276,7 +276,7 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 			need_v3 = 1;
 			break;
 		case OPT_privpassword:
-			if (!object2string(v, v3.privpass, V3O_PRIVPASS_MAXSIZE))
+			if (!object2string(v, v3.privpass, V3O_PRIVPASS_MAXSIZE) || !v3.privpass[0])
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid priv password");
 			seen_privpassword = 1;
 			v3.privkul_len = 0;
@@ -284,7 +284,7 @@ handle_setopt_request(struct socket_info *si, unsigned cid, msgpack_object *o)
 			break;
 		case OPT_privkul:
 			hexlen = object_hexstring_to_buffer(v, v3.privkul, V3O_PRIVKUL_MAXSIZE);
-			if (hexlen < 0)
+			if (hexlen <= 0)
 				return error_reply(si, RT_SETOPT|RT_ERROR, cid, "invalid privkul hexstring");
 			v3.privkul_len = hexlen;
 			seen_privkul = 1;

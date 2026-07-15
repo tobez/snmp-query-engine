@@ -140,6 +140,13 @@ request_match($d, "setopt bad authkul 1", [RT_SETOPT,2233,"127.0.0.1",161,{authk
 request_match($d, "setopt bad authkul 2", [RT_SETOPT,2234,"127.0.0.1",161,{authkul=>"abc"}], [RT_SETOPT|RT_ERROR,2234,qr/invalid authkul hexstring/]);
 request_match($d, "setopt bad privkul 1", [RT_SETOPT,2235,"127.0.0.1",161,{privkul=>"zz"}], [RT_SETOPT|RT_ERROR,2235,qr/invalid privkul hexstring/]);
 request_match($d, "setopt bad privkul 2", [RT_SETOPT,2236,"127.0.0.1",161,{privkul=>"ab" x 65}], [RT_SETOPT|RT_ERROR,2236,qr/invalid privkul hexstring/]);
+request_match($d, "setopt empty engineid", [RT_SETOPT,2237,"127.0.0.1",161,{engineid=>""}], [RT_SETOPT|RT_ERROR,2237,qr/invalid engineid hexstring/]);
+request_match($d, "setopt blank engineid", [RT_SETOPT,2238,"127.0.0.1",161,{engineid=>" "}], [RT_SETOPT|RT_ERROR,2238,qr/invalid engineid hexstring/]);
+request_match($d, "setopt empty authkul", [RT_SETOPT,2239,"127.0.0.1",161,{authkul=>""}], [RT_SETOPT|RT_ERROR,2239,qr/invalid authkul hexstring/]);
+request_match($d, "setopt empty privkul", [RT_SETOPT,2240,"127.0.0.1",161,{privkul=>""}], [RT_SETOPT|RT_ERROR,2240,qr/invalid privkul hexstring/]);
+request_match($d, "setopt empty username", [RT_SETOPT,2241,"127.0.0.1",161,{username=>""}], [RT_SETOPT|RT_ERROR,2241,qr/invalid username/]);
+request_match($d, "setopt empty authpassword", [RT_SETOPT,2242,"127.0.0.1",161,{authpassword=>""}], [RT_SETOPT|RT_ERROR,2242,qr/invalid auth password/]);
+request_match($d, "setopt empty privpassword", [RT_SETOPT,2243,"127.0.0.1",161,{privpassword=>""}], [RT_SETOPT|RT_ERROR,2243,qr/invalid priv password/]);
 request_match($d, "defaults unchanged", [RT_SETOPT,2023,"127.0.0.1",161, {}], [RT_SETOPT|RT_REPLY,2023,
 	{ip=>"127.0.0.1", port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 2000, retries => 3, min_interval => 10, max_repetitions => 10, }]);
 request_match($d, "change timeout", [RT_SETOPT,2024,"127.0.0.1",161, {timeout=>1500}], [RT_SETOPT|RT_REPLY,2024,
