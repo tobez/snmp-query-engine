@@ -59,6 +59,18 @@ v3_auth_kul_len(int auth_proto)
     }
 }
 
+/// Cipher key size in bytes of the localized privacy key for a priv protocol.
+/// @return the length in bytes, or -1 if the protocol is unsupported
+int
+v3_priv_key_len(int priv_proto)
+{
+    switch (priv_proto) {
+    case V3O_PRIV_PROTO_AES128:       return 16;
+    case V3O_PRIV_PROTO_AES256_CISCO: return 32;
+    default:                          return -1;
+    }
+}
+
 int
 hmac_message(const struct snmpv3info* v3,
              unsigned char* out,
