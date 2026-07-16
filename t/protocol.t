@@ -148,15 +148,27 @@ request_match($d, "setopt empty username", [RT_SETOPT,2241,"127.0.0.1",161,{user
 request_match($d, "setopt empty authpassword", [RT_SETOPT,2242,"127.0.0.1",161,{authpassword=>""}], [RT_SETOPT|RT_ERROR,2242,qr/invalid auth password/]);
 request_match($d, "setopt empty privpassword", [RT_SETOPT,2243,"127.0.0.1",161,{privpassword=>""}], [RT_SETOPT|RT_ERROR,2243,qr/invalid priv password/]);
 
-my $kul32 = "ab" x 32;
+my $kul16 = "ef" x 16;
 my $kul20 = "cd" x 20;
+my $kul28 = "ab" x 28;
+my $kul32 = "ab" x 32;
+my $kul48 = "ab" x 48;
+my $kul64 = "ab" x 64;
 my $v3eid = "0a0b0c0d0e";
 request_match($d, "setopt authkul without authprotocol", [RT_SETOPT,2244,"127.0.0.1",1610,{engineid=>$v3eid, username=>"u", authkul=>$kul32}], [RT_SETOPT|RT_ERROR,2244,qr{authprotocol is required with authkul/privkul}]);
 request_match($d, "setopt privkul without authprotocol", [RT_SETOPT,2245,"127.0.0.1",1610,{engineid=>$v3eid, username=>"u", privprotocol=>"aes", privkul=>$kul32}], [RT_SETOPT|RT_ERROR,2245,qr{authprotocol is required with authkul/privkul}]);
 request_match($d, "setopt authkul wrong length", [RT_SETOPT,2246,"127.0.0.1",1610,{engineid=>$v3eid, username=>"u", authprotocol=>"sha256", authkul=>$kul20}], [RT_SETOPT|RT_ERROR,2246,qr/authkul length does not match auth protocol/]);
-request_match($d, "setopt privkul wrong length", [RT_SETOPT,2247,"127.0.0.1",1610,{engineid=>$v3eid, username=>"u", authprotocol=>"sha256", authkul=>$kul32, privprotocol=>"aes", privkul=>$kul20}], [RT_SETOPT|RT_ERROR,2247,qr/privkul length does not match auth protocol/]);
+request_match($d, "setopt privkul length matching neither protocol", [RT_SETOPT,2247,"127.0.0.1",1610,{engineid=>$v3eid, username=>"u", authprotocol=>"sha256", authkul=>$kul32, privprotocol=>"aes", privkul=>$kul20}], [RT_SETOPT|RT_ERROR,2247,qr/privkul length matches neither auth nor priv protocol/]);
 request_match($d, "setopt privkul without privprotocol", [RT_SETOPT,2248,"127.0.0.1",1610,{engineid=>$v3eid, username=>"u", authprotocol=>"sha256", authkul=>$kul32, privkul=>$kul32}], [RT_SETOPT|RT_ERROR,2248,qr/privprotocol is required with privkul/]);
-request_match($d, "setopt correct kuls accepted", [RT_SETOPT,2249,"127.0.0.1",1610,{engineid=>$v3eid, username=>"u", authprotocol=>"sha256", authkul=>$kul32, privprotocol=>"aes", privkul=>$kul32}], [RT_SETOPT|RT_REPLY,2249,{engineid=>$v3eid, authkul=>$kul32, privkul=>$kul32}]);
+request_match($d, "setopt digest-length kuls accepted", [RT_SETOPT,2249,"127.0.0.1",1610,{engineid=>$v3eid, username=>"u", authprotocol=>"sha256", authkul=>$kul32, privprotocol=>"aes", privkul=>$kul32}], [RT_SETOPT|RT_REPLY,2249,{engineid=>$v3eid, authkul=>$kul32, privkul=>$kul32}]);
+request_match($d, "setopt cipher-length privkul accepted (sha1)", [RT_SETOPT,2250,"127.0.0.1",1610,{engineid=>$v3eid, username=>"u", authprotocol=>"sha1", authkul=>$kul20, privprotocol=>"aes", privkul=>$kul16}], [RT_SETOPT|RT_REPLY,2250,{engineid=>$v3eid, authkul=>$kul20, privkul=>$kul16}]);
+request_match($d, "setopt cipher-length privkul accepted (sha224)", [RT_SETOPT,2251,"127.0.0.1",1610,{engineid=>$v3eid, username=>"u", authprotocol=>"sha224", authkul=>$kul28, privprotocol=>"aes", privkul=>$kul16}], [RT_SETOPT|RT_REPLY,2251,{engineid=>$v3eid, authkul=>$kul28, privkul=>$kul16}]);
+request_match($d, "setopt cipher-length privkul accepted (sha256)", [RT_SETOPT,2252,"127.0.0.1",1610,{engineid=>$v3eid, username=>"u", authprotocol=>"sha256", authkul=>$kul32, privprotocol=>"aes", privkul=>$kul16}], [RT_SETOPT|RT_REPLY,2252,{engineid=>$v3eid, authkul=>$kul32, privkul=>$kul16}]);
+request_match($d, "setopt cipher-length privkul accepted (sha384)", [RT_SETOPT,2253,"127.0.0.1",1610,{engineid=>$v3eid, username=>"u", authprotocol=>"sha384", authkul=>$kul48, privprotocol=>"aes", privkul=>$kul16}], [RT_SETOPT|RT_REPLY,2253,{engineid=>$v3eid, authkul=>$kul48, privkul=>$kul16}]);
+request_match($d, "setopt cipher-length privkul accepted (sha512, the v2.2.0 regression)", [RT_SETOPT,2254,"127.0.0.1",1610,{engineid=>$v3eid, username=>"u", authprotocol=>"sha512", authkul=>$kul64, privprotocol=>"aes", privkul=>$kul16}], [RT_SETOPT|RT_REPLY,2254,{engineid=>$v3eid, authkul=>$kul64, privkul=>$kul16}]);
+request_match($d, "setopt cipher-length privkul accepted (aes256c)", [RT_SETOPT,2255,"127.0.0.1",1610,{engineid=>$v3eid, username=>"u", authprotocol=>"sha512", authkul=>$kul64, privprotocol=>"aes256c", privkul=>$kul32}], [RT_SETOPT|RT_REPLY,2255,{engineid=>$v3eid, authkul=>$kul64, privkul=>$kul32}]);
+request_match($d, "setopt digest-length privkul accepted (sha1 + aes256c)", [RT_SETOPT,2256,"127.0.0.1",1610,{engineid=>$v3eid, username=>"u", authprotocol=>"sha1", authkul=>$kul20, privprotocol=>"aes256c", privkul=>$kul20}], [RT_SETOPT|RT_REPLY,2256,{engineid=>$v3eid, authkul=>$kul20, privkul=>$kul20}]);
+request_match($d, "setopt privkul matching neither (sha512 + aes256c)", [RT_SETOPT,2257,"127.0.0.1",1610,{engineid=>$v3eid, username=>"u", authprotocol=>"sha512", authkul=>$kul64, privprotocol=>"aes256c", privkul=>$kul16}], [RT_SETOPT|RT_ERROR,2257,qr/privkul length matches neither auth nor priv protocol/]);
 
 request_match($d, "defaults unchanged", [RT_SETOPT,2023,"127.0.0.1",161, {}], [RT_SETOPT|RT_REPLY,2023,
 	{ip=>"127.0.0.1", port=>161, community=>"public", version=>2, max_packets => 3, max_req_size => 1400, timeout => 2000, retries => 3, min_interval => 10, max_repetitions => 10, }]);
