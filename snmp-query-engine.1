@@ -206,9 +206,11 @@ clients.
 \f[B]\f[CB]privkul\f[B]\f[R]
 Localized privacy key (for SNMPv3); default is \f[B]\(lq\(lq\f[R].
 Valid values must be non\-empty (optionally space\-separated) hex
-strings, exactly as long as the digest of the \f[CR]authprotocol\f[R]
-supplied in the same request: 20/28/32/48/64 bytes for
-sha1/sha224/sha256/sha384/sha512.
+strings, either as long as the digest of the \f[CR]authprotocol\f[R]
+supplied in the same request (20/28/32/48/64 bytes for
+sha1/sha224/sha256/sha384/sha512), or as long as the cipher key of the
+\f[CR]privprotocol\f[R] supplied in the same request (16 bytes for aes,
+32 bytes for aes256c).
 It is an error to specify both \f[CR]privpassword\f[R] and
 \f[CR]privkul\f[R].
 This is a per destination/client option which does not affect other

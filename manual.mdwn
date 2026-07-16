@@ -225,8 +225,10 @@ Supported options:
 **`privkul`**
 :   Localized privacy key (for SNMPv3);  default is **""**.
     Valid values must be non-empty (optionally space-separated) hex strings,
-    exactly as long as the digest of the `authprotocol` supplied in the same
-    request: 20/28/32/48/64 bytes for sha1/sha224/sha256/sha384/sha512.
+    either as long as the digest of the `authprotocol` supplied in the same
+    request (20/28/32/48/64 bytes for sha1/sha224/sha256/sha384/sha512), or
+    as long as the cipher key of the `privprotocol` supplied in the same
+    request (16 bytes for aes, 32 bytes for aes256c).
     It is an error to specify both `privpassword` and `privkul`.
     This is a per destination/client option which does
     not affect other clients.
