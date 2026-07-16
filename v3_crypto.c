@@ -59,7 +59,7 @@ v3_auth_kul_len(int auth_proto)
     }
 }
 
-/// Cipher key size in bytes of the localized privacy key for a priv protocol.
+/// @brief Cipher key size in bytes of the localized privacy key for a priv protocol.
 /// @return the length in bytes, or -1 if the protocol is unsupported
 int
 v3_priv_key_len(int priv_proto)
