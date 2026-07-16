@@ -174,5 +174,11 @@ main(void)
     is_int(v3_auth_kul_len(V3O_AUTH_PROTO_MD5), -1, "md5 kul length unsupported");
     is_int(v3_auth_kul_len(0), -1, "absent auth proto kul length unsupported");
 
+    is_int(v3_priv_key_len(V3O_PRIV_PROTO_AES), 16, "aes priv key length");
+    is_int(v3_priv_key_len(V3O_PRIV_PROTO_AES128), 16, "aes128 priv key length");
+    is_int(v3_priv_key_len(V3O_PRIV_PROTO_AES256_CISCO), 32, "aes256c priv key length");
+    is_int(v3_priv_key_len(V3O_PRIV_PROTO_DES), -1, "des priv key length unsupported");
+    is_int(v3_priv_key_len(0), -1, "absent priv proto key length unsupported");
+
     return tap_done();
 }

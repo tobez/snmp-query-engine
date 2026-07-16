@@ -420,5 +420,24 @@ for my $i (0 .. $#faults) {
 	$asilent->stop;
 }
 
+# cipher-truncated privkul, as sent by Net::SNMP-style clients, polls end-to-end
+{
+	my %v3s = (%v3, auth_proto => 'sha512');
+	my $a16 = SQE::FakeAgent->spawn(tree => \@tree, v3 => \%v3s);
+	my $eid = pack 'H*', $v3s{engine_id};
+	my $authkul = unpack 'H*', SQE::USM::password_to_kul('sha512', $v3s{auth_pass}, $eid);
+	my $privkul = unpack 'H*', SQE::USM::priv_key('sha512', $v3s{priv_pass}, $eid);
+	request_match($d, 'setopt accepts a 16-byte privkul with sha512 auth',
+		[RT_SETOPT, 700, $target, $a16->port, {
+			version => 3, engineid => $v3s{engine_id}, username => $v3s{username},
+			authprotocol => 'sha512', authkul => $authkul,
+			privprotocol => 'aes128', privkul => $privkul }],
+		[RT_SETOPT|RT_REPLY, 700, T()]);
+	request_match($d, 'v3 authPriv get succeeds with a cipher-truncated privkul',
+		[RT_GET, 701, $target, $a16->port, ['1.3.6.1.2.1.1.5.0']],
+		[RT_GET|RT_REPLY, 701, [['1.3.6.1.2.1.1.5.0', $hostname]]]);
+	$a16->stop;
+}
+
 $d->stop;
 done_testing;
