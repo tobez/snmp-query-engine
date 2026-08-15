@@ -8,7 +8,7 @@ snmp-query-engine - multiplexing SNMP query engine
 
 # VERSION
 
-This document describes snmp-query-engine version 2.2.1.
+This document describes snmp-query-engine version 2.2.2.
 
 # SYNOPSIS
 

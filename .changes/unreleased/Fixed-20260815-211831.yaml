@@ -1,3 +1,0 @@
-kind: Fixed
-body: 'release binaries: fully static, run regardless of the system''s glibc version'
-time: 2026-08-15T21:18:31.698307+02:00
