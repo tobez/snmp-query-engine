@@ -12,7 +12,7 @@ permissions:
 
 env:
   STATIC_LIBS: >-
-    -Wl,-Bstatic -lJudy -lmsgpackc -lcrypto -Wl,-Bdynamic -ldl -pthread
+    -static -lJudy -lmsgpackc -lcrypto -pthread
 
 jobs:
   tarball:
@@ -51,8 +51,8 @@ jobs:
         run: make LIBS="$STATIC_LIBS"
       - name: Verify static linking
         run: |
-          ldd snmp-query-engine
-          ! ldd snmp-query-engine | grep -E 'msgpack|Judy|crypto'
+          file snmp-query-engine
+          file snmp-query-engine | grep -q 'statically linked'
           ./snmp-query-engine -v
       - name: Test
         run: make LIBS="$STATIC_LIBS" test
@@ -65,9 +65,32 @@ jobs:
           name: linux-${{ matrix.arch }}
           path: snmp-query-engine-*-linux-*
 
+  smoke-old-glibc:
+    needs: linux-binary
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-22.04
+            arch: x86_64
+          - runner: ubuntu-22.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    container: ubuntu:20.04
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: linux-${{ matrix.arch }}
+      - name: Run the binary on glibc 2.31
+        run: |
+          BIN=$(echo snmp-query-engine-*-linux-${{ matrix.arch }})
+          chmod +x "$BIN"
+          "./$BIN" -v
+          "./$BIN" -v | grep -q '^snmp-query-engine '
+
   release:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [tarball, linux-binary]
+    needs: [tarball, linux-binary, smoke-old-glibc]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
