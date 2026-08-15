@@ -12,7 +12,7 @@ permissions:
 
 env:
   STATIC_LIBS: >-
-    -Wl,-Bstatic -lJudy -lmsgpackc -lcrypto -Wl,-Bdynamic -ldl -pthread
+    -static -lJudy -lmsgpackc -lcrypto -pthread
 
 jobs:
   tarball:
@@ -51,8 +51,8 @@ jobs:
         run: make LIBS="$STATIC_LIBS"
       - name: Verify static linking
         run: |
-          ldd snmp-query-engine
-          ! ldd snmp-query-engine | grep -E 'msgpack|Judy|crypto'
+          file snmp-query-engine
+          file snmp-query-engine | grep -q 'statically linked'
           ./snmp-query-engine -v
       - name: Test
         run: make LIBS="$STATIC_LIBS" test
